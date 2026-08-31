@@ -1,0 +1,13 @@
+iniciar servidor
+python manage.py runserver
+cloudflared tunnel --url http://127.0.0.1:8000     
+
+git add .
+git commit -m ""
+git push origin main
+
+cloudflaere
+python manage.py runserver 0.0.0.0:8000
+powershell
+cd C:\Users\user\Desktop\sistema_convivenciacss
+.\cloudflared.exe tunnel --url http://localhost:8000

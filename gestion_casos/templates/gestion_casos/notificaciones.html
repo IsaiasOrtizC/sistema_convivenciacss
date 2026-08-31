@@ -1,0 +1,62 @@
+{% extends 'gestion_casos/base.html' %}
+{% load static %}
+
+{% block title %}ConviData – Centro de Notificaciones{% endblock %}
+
+{% block extra_css %}
+<style>
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--text-lo); margin-bottom: 18px; }
+  .breadcrumb a { color: var(--guinda); text-decoration: none; font-weight: 500; }
+  .breadcrumb a:hover { text-decoration: underline; }
+  .breadcrumb-sep { opacity: .4; }
+
+  .page-header { margin-bottom: 24px; }
+  .page-header h1 { font-family: 'Merriweather', serif; font-size: 1.5rem; font-weight: 900; color: var(--guinda); }
+  .page-header p { font-size: .85rem; color: var(--text-lo); margin-top: 4px; }
+
+  .notif-container { display: flex; flex-direction: column; gap: 12px; max-width: 800px; }
+  .notif-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 18px; display: flex; gap: 16px; align-items: start; transition: all var(--transition); }
+  .notif-card:hover { border-color: var(--text-mid); }
+  .notif-unread { border-left: 4px solid var(--guinda); background: var(--cream); }
+  
+  .notif-icon { font-size: 1.4rem; padding-top: 2px; }
+  .notif-body { flex-grow: 1; }
+  .notif-title { font-weight: 700; color: var(--text-dark); font-size: .95rem; margin-bottom: 4px; }
+  .notif-text { font-size: .85rem; color: var(--text-mid); line-height: 1.4; }
+  .notif-meta { font-size: .75rem; color: var(--text-lo); margin-top: 8px; font-weight: 500; }
+  
+  .badge-unread { background: var(--guinda); color: white; font-size: .65rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; margin-left: 6px; vertical-align: middle; }
+</style>
+{% endblock %}
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{% url 'dashboard' %}">Inicio</a>
+    <span class="breadcrumb-sep">›</span>
+    <span>Notificaciones</span>
+  </div>
+  <div class="page-header">
+    <h1>Centro de Notificaciones</h1>
+    <p>Alertas del sistema y actualizaciones de bitácoras del Colegio San Sebastián</p>
+  </div>
+  <div class="notif-container">
+    {% if notificaciones %}
+      {% for n in notificaciones %}
+        <div class="notif-card {% if not n.notificacion_leido %}notif-unread{% endif %}">
+          <div class="notif-icon">{{ n.notificacion_icono }}</div>
+          <div class="notif-body">
+            <div class="notif-title">
+              {{ n.notificacion_titulo }}
+              {% if not n.notificacion_leido %}<span class="badge-unread">Nueva</span>{% endif %}
+            </div>
+            <div class="notif-text">{{ n.notificacion_mensaje }}</div>
+            <div class="notif-meta"> {{ n.notificacion_fecha|date:"d M, Y · H:i" }}</div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="notif-card" style="justify-content: center; padding: 40px; color: var(--text-lo); font-style: italic;">
+        No tienes notificaciones pendientes en este momento.
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

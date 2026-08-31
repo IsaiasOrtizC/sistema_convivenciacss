@@ -1,0 +1,389 @@
+{% extends 'gestion_casos/base.html' %}
+{% load static %}
+
+{% block title %}ConviData – Registrar nuevo caso{% endblock %}
+
+{% block extra_css %}
+<style>
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--text-lo); margin-bottom: 18px; }
+  .breadcrumb a { color: var(--guinda); text-decoration: none; font-weight: 500; }
+  .breadcrumb a:hover { text-decoration: underline; }
+  .breadcrumb-sep { opacity: .4; }
+
+  .page-header { margin-bottom: 24px; }
+  .page-header h1 { font-family: 'Merriweather', serif; font-size: 1.5rem; font-weight: 900; color: var(--guinda); }
+  .page-header p { font-size: .85rem; color: var(--text-lo); margin-top: 4px; }
+
+  .form-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 28px; max-width: 800px; }
+  
+  .form-section-header { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; margin-bottom: 18px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .form-section-title { font-family: 'Merriweather', serif; font-size: 1.05rem; font-weight: 900; color: var(--text-dark); margin: 0; }
+  .form-section-title:first-of-type { margin-top: 0; }
+
+  /* 🌟 Cuadrículas adaptables para 2, 3 y 4 columnas */
+  .form-grid-4 { display: grid; grid-template-columns: 2fr 2fr 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+  @media (max-width: 768px) { 
+    .form-grid-4, .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; } 
+  }
+  
+  .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .form-label { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--text-mid); }
+  
+  .form-control { padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--white); color: var(--text-dark); font-size: .88rem; font-family: inherit; transition: border-color var(--transition); width: 100%; box-sizing: border-box; }
+  .form-control:focus { outline: none; border-color: var(--guinda); }
+  textarea.form-control { resize: vertical; min-height: 100px; font-family: inherit; }
+
+  /* 🌟 Estilos para las tarjetas de involucrados */
+  .estudiante-card { background: var(--cream); padding: 18px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 16px; position: relative; }
+  .estudiante-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .estudiante-badge { font-weight: 700; font-size: .78rem; color: var(--guinda); text-transform: uppercase; letter-spacing: .05em; }
+
+  .btn-add-student { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 6px; background: transparent; color: var(--guinda); border: 1.5px solid var(--guinda); font-size: .78rem; font-weight: 600; cursor: pointer; transition: all var(--transition); }
+  .btn-add-student:hover { background: var(--guinda); color: #fff; }
+
+  .btn-remove-student { background: #C0392B; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; font-size: .72rem; cursor: pointer; font-weight: 600; transition: background var(--transition); }
+  .btn-remove-student:hover { background: #A93226; }
+
+  /* 🌟 Buscador de alumno existente (dropdown propio, con el estilo del sitio) */
+  .buscar-alumno-wrap { margin-bottom: 16px; }
+  .autocomplete-container { position: relative; }
+  .buscar-alumno-wrap .form-control { border-style: dashed; }
+  .buscar-alumno-hint { font-size: .7rem; color: var(--text-lo); margin-top: 4px; }
+  .alumno-encontrado-tag { display: none; align-items: center; gap: 6px; margin-top: 6px; font-size: .74rem; font-weight: 700; color: #1E8449; background: rgba(30,132,73,.1); border: 1px solid rgba(30,132,73,.2); padding: 4px 10px; border-radius: 999px; width: fit-content; }
+  .alumno-encontrado-tag.visible { display: inline-flex; }
+  .alumno-encontrado-tag .quitar-seleccion { cursor: pointer; font-weight: 900; margin-left: 4px; }
+
+  .autocomplete-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); max-height: 230px; overflow-y: auto; z-index: 60; display: none; }
+  .autocomplete-dropdown.open { display: block; }
+  .autocomplete-item { padding: 9px 14px; font-size: .84rem; color: var(--text-dark); cursor: pointer; border-bottom: 1px solid var(--border); transition: background var(--transition); }
+  .autocomplete-item:last-child { border-bottom: none; }
+  .autocomplete-item:hover { background: var(--cream); color: var(--guinda); }
+  .autocomplete-empty { padding: 12px 14px; font-size: .8rem; color: var(--text-lo); font-style: italic; }
+
+  .btn-submit { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 8px; background: var(--guinda); color: #fff; font-size: .85rem; font-weight: 600; border: none; cursor: pointer; width: 100%; transition: all var(--transition); margin-top: 24px; }
+  .btn-submit:hover { background: var(--guinda-mid); box-shadow: 0 4px 12px rgba(123,26,26,.2); }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{% url 'dashboard' %}">Inicio</a>
+    <span class="breadcrumb-sep">›</span>
+    <a href="{% url 'historial_casos' %}">Casos</a>
+    <span class="breadcrumb-sep">›</span>
+    <span>Registrar nuevo</span>
+  </div>
+
+  <div class="page-header">
+    <h1>Registrar nuevo caso</h1>
+    <p>Formulario de bitácora oficial · Gestión manual de datos estudiantiles</p>
+  </div>
+
+  <div class="form-card">
+    <form action="{% url 'registrar_caso' %}" method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <!-- Datos Generales del Caso -->
+      <div class="form-group">
+        <label class="form-label" for="titulo">Título del Caso</label>
+        <input type="text" id="titulo" name="titulo" class="form-control" placeholder="Alumno agrede a su compañero" required>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="fecha">Fecha del Suceso</label>
+          <input 
+            type="date" 
+            id="fecha" 
+            name="fecha" 
+            class="form-control" 
+            value="{{ fecha_hoy }}" 
+            max="{{ fecha_hoy }}" 
+            required
+          >
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="lugar">Lugar del Suceso</label>
+          <select id="lugar" name="lugar" class="form-control" required>
+            <option value="" disabled selected>-- Seleccione un lugar --</option>
+            {% for lugar in lugares %}
+              <option value="{{ lugar.lugar_id }}">{{ lugar.lugar_nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- 🌟 SECCIÓN DINÁMICA DE ALUMNOS INVOLUCRADOS -->
+      <div class="form-section-header">
+        <h3 class="form-section-title">Identificación de Alumnos Involucrados</h3>
+        <button type="button" class="btn-add-student" onclick="agregarEstudiante()">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          Agregar otro involucrado
+        </button>
+      </div>
+
+      <div id="contenedor-estudiantes">
+        <!-- Estudiante Principal #1 -->
+        <div class="estudiante-card">
+          <div class="estudiante-card-header">
+            <span class="estudiante-badge">Estudiante Involucrado #1</span>
+          </div>
+
+          <div class="buscar-alumno-wrap">
+            <label class="form-label">Buscar Alumno Ya Registrado (opcional)</label>
+            <div class="autocomplete-container">
+              <input type="text" class="form-control input-buscar-alumno"
+                     placeholder="Escribe apellido o nombre para buscar..." autocomplete="off"
+                     oninput="buscarYAutocompletar(this)" onfocus="buscarYAutocompletar(this)">
+              <div class="autocomplete-dropdown"></div>
+            </div>
+            <div class="buscar-alumno-hint">Si el alumno ya está en el sistema, elígelo aquí para autocompletar sus datos. Si no aparece, complétalos manualmente abajo.</div>
+            <span class="alumno-encontrado-tag">
+              ✓ Alumno existente seleccionado <span class="quitar-seleccion" onclick="quitarSeleccion(this)">&times;</span>
+            </span>
+            <input type="hidden" name="estudiante_id[]" class="input-estudiante-id" value="">
+          </div>
+
+          <div class="form-grid-4">
+            <div class="form-group">
+              <label class="form-label">Nombre(s)</label>
+              <input type="text" name="alumno_nombre[]" class="form-control" placeholder="Matias" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Apellido Paterno</label>
+              <input type="text" name="alumno_apaterno[]" class="form-control" placeholder="Urria" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Apellido Materno</label>
+              <input type="text" name="alumno_amaterno[]" class="form-control" placeholder="Vera" required>
+            </div>
+            <!-- 🌟 CAMBIO: Campo Número de Lista -->
+            <div class="form-group">
+              <label class="form-label">N° Lista</label>
+              <input type="number" min="1" max="99" name="alumno_num_lista[]" class="form-control" placeholder="Ej: 14">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Curso Actual del Alumno</label>
+            <select name="curso[]" class="form-control" required>
+              <option value="" disabled selected>-- Seleccione el curso --</option>
+              {% for curso in cursos %}
+                <option value="{{ curso.curso_id }}">{{ curso.curso_grado }} {{ curso.curso_letra }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gravedad y Descripción -->
+      <div class="form-section-title" style="margin-top: 24px;">Gravedad y Descripción de los Hechos</div>
+      
+      <div class="form-group">
+        <label class="form-label" for="tipo_falta">Tipo de Falta</label>
+        <select id="tipo_falta" name="tipo_falta" class="form-control" required>
+          <option value="Leve">Falta Leve</option>
+          <option value="Grave">Falta Grave</option>
+          <option value="Gravísima">Falta Gravísima</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="descripcion">Descripción Detallada</label>
+        <textarea id="descripcion" name="descripcion" class="form-control" placeholder="El alumno le da una cachetada mientras jugaban" required></textarea>
+      </div>
+
+      <!-- Evidencia Fotográfica -->
+      <div class="form-section-title">Evidencia Fotográfica de Respaldo</div>
+      <div class="form-group">
+        <label class="form-label">Adjuntar archivo de evidencia (Opcional)</label>
+        <div style="border: 2px dashed var(--border); border-radius: 8px; padding: 20px; background: var(--cream); text-align: center;">
+          <input type="file" name="evidencia_foto" id="evidencia_foto" accept="image/*" style="font-size: .82rem; color: var(--text-dark); font-family: inherit;">
+          <p style="font-size: .7rem; color: var(--text-lo); margin-top: 8px; margin-bottom: 0;">Soportado: Imágenes PNG, JPG o JPEG. El archivo se almacenará directamente en la columna de evidencias del sistema.</p>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+        Guardar Expediente de Caso
+      </button>
+    </form>
+  </div>
+
+  <!-- 🌟 PLANTILLA OCULTA PARA AGREGAR NUEVOS ESTUDIANTES CON JS -->
+  <template id="plantilla-estudiante">
+    <div class="estudiante-card">
+      <div class="estudiante-card-header">
+        <span class="estudiante-badge">Estudiante Involucrado #{NUMERO}</span>
+        <button type="button" class="btn-remove-student" onclick="eliminarEstudiante(this)">&times; Quitar</button>
+      </div>
+
+      <div class="buscar-alumno-wrap">
+        <label class="form-label">Buscar Alumno Ya Registrado (opcional)</label>
+        <div class="autocomplete-container">
+          <input type="text" class="form-control input-buscar-alumno"
+                 placeholder="Escribe apellido o nombre para buscar..." autocomplete="off"
+                 oninput="buscarYAutocompletar(this)" onfocus="buscarYAutocompletar(this)">
+          <div class="autocomplete-dropdown"></div>
+        </div>
+        <div class="buscar-alumno-hint">Si el alumno ya está en el sistema, elígelo aquí para autocompletar sus datos. Si no aparece, complétalos manualmente abajo.</div>
+        <span class="alumno-encontrado-tag">
+          ✓ Alumno existente seleccionado <span class="quitar-seleccion" onclick="quitarSeleccion(this)">&times;</span>
+        </span>
+        <input type="hidden" name="estudiante_id[]" class="input-estudiante-id" value="">
+      </div>
+
+      <div class="form-grid-4">
+        <div class="form-group">
+          <label class="form-label">Nombre(s)</label>
+          <input type="text" name="alumno_nombre[]" class="form-control" placeholder="Nombre" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Apellido Paterno</label>
+          <input type="text" name="alumno_apaterno[]" class="form-control" placeholder="Apellido Paterno" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Apellido Materno</label>
+          <input type="text" name="alumno_amaterno[]" class="form-control" placeholder="Apellido Materno" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">N° Lista</label>
+          <input type="number" min="1" max="99" name="alumno_num_lista[]" class="form-control" placeholder="Ej: 14">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label">Curso Actual del Alumno</label>
+        <select name="curso[]" class="form-control" required>
+          <option value="" disabled selected>-- Seleccione el curso --</option>
+          {% for curso in cursos %}
+            <option value="{{ curso.curso_id }}">{{ curso.curso_grado }} {{ curso.curso_letra }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </template>
+
+  <!-- 🌟 SCRIPT PARA CLONAR Y ELIMINAR TARJETAS -->
+  <script>
+    let contadorEstudiantes = 1;
+
+    // Datos de todos los alumnos ya registrados, usados por el buscador para autocompletar.
+    const listaAlumnosExistentes = [
+      {% for e in estudiantes_existentes %}
+      {
+        id: {{ e.estudiante_id }},
+        nombre: "{{ e.estudiante_nombre|escapejs }}",
+        apaterno: "{{ e.estudiante_apaterno|escapejs }}",
+        amaterno: "{{ e.estudiante_amaterno|escapejs }}",
+        curso_id: {{ e.curso_id|default:"null" }},
+        texto: "{{ e.estudiante_apaterno|escapejs }} {{ e.estudiante_amaterno|escapejs }}, {{ e.estudiante_nombre|escapejs }} — {{ e.curso.curso_grado|escapejs }} {{ e.curso.curso_letra|escapejs }}"
+      },
+      {% endfor %}
+    ];
+
+    function buscarYAutocompletar(inputEl) {
+      const wrap = inputEl.closest('.buscar-alumno-wrap');
+      const dropdown = wrap.querySelector('.autocomplete-dropdown');
+      const valor = inputEl.value.trim().toLowerCase();
+
+      if (!valor) {
+        dropdown.classList.remove('open');
+        dropdown.innerHTML = '';
+        return;
+      }
+
+      const coincidencias = listaAlumnosExistentes
+        .filter(a => a.texto.toLowerCase().includes(valor))
+        .slice(0, 8);
+
+      dropdown.innerHTML = '';
+
+      if (coincidencias.length === 0) {
+        dropdown.innerHTML = '<div class="autocomplete-empty">No se encontraron alumnos. Puedes crear uno nuevo completando los campos abajo.</div>';
+      } else {
+        coincidencias.forEach(alumno => {
+          const item = document.createElement('div');
+          item.className = 'autocomplete-item';
+          item.textContent = alumno.texto;
+          item.addEventListener('click', () => seleccionarAlumno(inputEl, alumno));
+          dropdown.appendChild(item);
+        });
+      }
+
+      dropdown.classList.add('open');
+    }
+
+    function seleccionarAlumno(inputEl, alumno) {
+      const card = inputEl.closest('.estudiante-card');
+
+      inputEl.value = alumno.texto;
+      card.querySelector('input[name="alumno_nombre[]"]').value = alumno.nombre;
+      card.querySelector('input[name="alumno_apaterno[]"]').value = alumno.apaterno;
+      card.querySelector('input[name="alumno_amaterno[]"]').value = alumno.amaterno;
+      const selectCurso = card.querySelector('select[name="curso[]"]');
+      if (selectCurso && alumno.curso_id) selectCurso.value = alumno.curso_id;
+      card.querySelector('.input-estudiante-id').value = alumno.id;
+      card.querySelector('.alumno-encontrado-tag').classList.add('visible');
+
+      const dropdown = inputEl.closest('.buscar-alumno-wrap').querySelector('.autocomplete-dropdown');
+      dropdown.classList.remove('open');
+      dropdown.innerHTML = '';
+    }
+
+    function quitarSeleccion(spanEl) {
+      const card = spanEl.closest('.estudiante-card');
+      card.querySelector('.input-buscar-alumno').value = '';
+      card.querySelector('.input-estudiante-id').value = '';
+      card.querySelector('.alumno-encontrado-tag').classList.remove('visible');
+      // Limpia también los campos autocompletados para que quede libre para escribir uno nuevo
+      card.querySelector('input[name="alumno_nombre[]"]').value = '';
+      card.querySelector('input[name="alumno_apaterno[]"]').value = '';
+      card.querySelector('input[name="alumno_amaterno[]"]').value = '';
+      const selectCurso = card.querySelector('select[name="curso[]"]');
+      if (selectCurso) selectCurso.value = '';
+    }
+
+    // Cierra cualquier menú desplegable abierto si se hace clic fuera de él
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.autocomplete-container')) {
+        document.querySelectorAll('.autocomplete-dropdown.open').forEach(d => {
+          d.classList.remove('open');
+        });
+      }
+    });
+
+    function agregarEstudiante() {
+      contadorEstudiantes++;
+      const contenedor = document.getElementById('contenedor-estudiantes');
+      const plantilla = document.getElementById('plantilla-estudiante').content.cloneNode(true);
+      
+      // Actualizar el número correlativo del badge
+      const badge = plantilla.querySelector('.estudiante-badge');
+      if (badge) {
+        badge.textContent = `Estudiante Involucrado #${contadorEstudiantes}`;
+      }
+
+      contenedor.appendChild(plantilla);
+    }
+
+    function eliminarEstudiante(btn) {
+      btn.closest('.estudiante-card').remove();
+      actualizarCorrelativos();
+    }
+
+    function actualizarCorrelativos() {
+      const tarjetas = document.querySelectorAll('#contenedor-estudiantes .estudiante-card');
+      contadorEstudiantes = tarjetas.length;
+      tarjetas.forEach((tarjeta, index) => {
+        const badge = tarjeta.querySelector('.estudiante-badge');
+        if (badge) {
+          badge.textContent = `Estudiante Involucrado #${index + 1}`;
+        }
+      });
+    }
+  </script>
+{% endblock %}

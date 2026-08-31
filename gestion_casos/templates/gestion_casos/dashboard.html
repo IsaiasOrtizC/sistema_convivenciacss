@@ -1,0 +1,188 @@
+{% extends 'gestion_casos/base.html' %}
+{% load static %}
+
+{% block title %}ConviData – Panel de Control{% endblock %}
+
+{% block extra_css %}
+<style>
+  .welcome-box { margin-bottom: 28px; }
+  .welcome-box h1 { font-family: 'Merriweather', serif; font-size: 1.6rem; font-weight: 900; color: var(--guinda); }
+  .welcome-box p { font-size: .88rem; color: var(--text-lo); margin-top: 4px; }
+
+  /* Grilla de Tarjetas de Métricas */
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  
+  .metric-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 20px; display: flex; flex-direction: column; justify-content: space-between; transition: transform var(--transition); }
+  .metric-card:hover { transform: translateY(-2px); }
+  
+  .metric-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-mid); }
+  .metric-num { font-size: 2rem; font-weight: 900; color: var(--text-dark); margin-top: 8px; font-family: 'Inter', sans-serif; }
+
+  /* Colores dinámicos por tipo de falta */
+  .card-total { border-top: 4px solid var(--text-mid); }
+  .card-leve { border-top: 4px solid #1e8449; }
+  .card-leve .metric-num { color: #1e8449; }
+  .card-grave { border-top: 4px solid #b7860b; }
+  .card-grave .metric-num { color: #b7860b; }
+  .card-gravisima { border-top: 4px solid var(--guinda); }
+  .card-gravisima .metric-num { color: var(--guinda); }
+
+  /* 🔄 Sección de contenido inferior: Ahora es de 1 sola columna para ocupar todo el ancho */
+  .dashboard-content { display: grid; grid-template-columns: 1fr; gap: 24px; }
+
+  .pane-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 24px; }
+  .pane-title { font-family: 'Merriweather', serif; font-size: 1.1rem; font-weight: 900; color: var(--text-dark); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+  
+  .btn-action { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 8px; background: var(--guinda); color: #fff; font-size: .82rem; font-weight: 600; text-decoration: none; transition: all var(--transition); border: none; cursor: pointer; }
+  .btn-action:hover { background: var(--guinda-mid); box-shadow: 0 4px 12px rgba(123,26,26,.2); }
+
+  /* Tabla de Casos Recientes */
+  .recent-table { width: 100%; border-collapse: collapse; text-align: left; font-size: .85rem; }
+  .recent-table th { padding: 10px 12px; font-weight: 700; text-transform: uppercase; font-size: .7rem; color: var(--text-lo); border-bottom: 1px solid var(--border); letter-spacing: .03em; }
+  .recent-table td { padding: 12px; border-bottom: 1px solid var(--border); color: var(--text-dark); vertical-align: middle; }
+  .recent-table tr:last-child td { border-bottom: none; }
+  .recent-table tr:hover td { background: var(--cream); }
+  
+  .lnk-detalles { color: var(--guinda); text-decoration: none; font-weight: 600; }
+  .lnk-detalles:hover { text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block content %}
+  <!-- Mensaje de bienvenida -->
+  <div class="welcome-box">
+    <h1>Panel de Convivencia Escolar</h1>
+    <p>Bienvenido(a), <strong>{{ request.session.username|default:request.session.usuario_nombre }}</strong> · Bitácora oficial digitalizada</p>
+  </div>
+
+  <!-- Contadores reales desde Postgres -->
+  <div class="metrics-grid">
+    <div class="metric-card card-total">
+      <span class="metric-label">Total Casos</span>
+      <span class="metric-num">{{ total_casos }}</span>
+    </div>
+    <div class="metric-card card-leve">
+      <span class="metric-label">Faltas Leves</span>
+      <span class="metric-num">{{ casos_leves }}</span>
+    </div>
+    <div class="metric-card card-grave">
+      <span class="metric-label">Faltas Graves</span>
+      <span class="metric-num">{{ casos_graves }}</span>
+    </div>
+    <div class="metric-card card-gravisima">
+      <span class="metric-label">Faltas Gravísimas</span>
+      <span class="metric-num">{{ casos_gravisimas }}</span>
+    </div>
+  </div>
+
+  <!-- 📍 COMPLEMENTO RF-10: Gráfico de Barras por Zona (Últimos 30 días) -->
+  <div class="pane-card" style="margin-bottom: 32px;">
+    <div class="pane-title" style="margin-bottom: 8px;">
+      <span> Incidentes por Zona del Establecimiento</span>
+      <span style="font-size: .75rem; color: var(--text-lo); font-weight: 500; font-family: 'Inter', sans-serif;">Últimos 30 días</span>
+    </div>
+    <div id="apexBarrasZonas" style="width: 100%; min-height: 260px;"></div>
+  </div>
+
+  <!-- Contenido Inferior -->
+  <div class="dashboard-content">
+    
+    <!-- Bloque Único: Últimas Bitácoras (Ahora al 100% de ancho) -->
+    <div class="pane-card">
+      <div class="pane-title">
+        <span>Últimas Bitácoras Registradas</span>
+        <a href="{% url 'registrar_caso' %}" class="btn-action">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          Nuevo Caso
+        </a>
+      </div>
+      
+      {% if casos_recientes %}
+        <table class="recent-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Caso / Título</th>
+              <th>Fecha</th>
+              <th>Lugar</th>
+              <th style="text-align: right;">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for caso in casos_recientes %}
+              <tr>
+                <td style="font-weight: 700; color: var(--text-lo);">#{{ caso.id }}</td>
+                <td style="font-weight: 600;">{{ caso.titulo }}</td>
+                <td> {{ caso.fecha|date:"d M, Y" }}</td>
+                <td> {{ caso.lugar }}</td>
+                <td style="text-align: right;">
+                  <a href="{% url 'detalle_caso' caso.id %}" class="lnk-detalles">Ver ficha →</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p style="font-size: .85rem; color: var(--text-lo); font-style: italic; padding: 20px 0;">No existen casos registrados en el sistema actualmente.</p>
+      {% endif %}
+    </div>
+
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Parseo seguro de los datos procesados en la vista por la base de datos
+  const labelsZonas = JSON.parse('{{ zonas_labels_json|safe }}');
+  const dataZonas = JSON.parse('{{ zonas_data_json|safe }}');
+
+  const categoriasX = labelsZonas.length ? labelsZonas : ['Sin reportes recientes'];
+  const serieData = dataZonas.length ? dataZonas : [0];
+
+  const opcionesZonas = {
+    series: [{
+      name: 'Casos Registrados',
+      data: serieData
+    }],
+    chart: { 
+      type: 'bar', 
+      height: 260, 
+      fontFamily: "'Inter', sans-serif",
+      toolbar: { show: false } 
+    },
+    colors: ['#7B1A1A'],
+    plotOptions: {
+      bar: {
+        horizontal: true,
+        borderRadius: 4,
+        barHeight: '45%',
+      }
+    },
+    dataLabels: {
+      enabled: true,
+      style: { colors: ['#fff'] },
+      formatter: function (val) { return val > 0 ? val : ''; }
+    },
+    xaxis: {
+      categories: categoriasX,
+      labels: { style: { colors: '#5C3A2A' } },
+      tickAmount: 5
+    },
+    yaxis: {
+      labels: { style: { colors: '#1C0A0A', fontWeight: 600 } }
+    },
+    grid: {
+      borderColor: 'rgba(123,26,26,0.06)',
+      xaxis: { lines: { show: true } }
+    },
+    tooltip: {
+      theme: 'light',
+      y: { title: { formatter: () => 'Total: ' } }
+    }
+  };
+
+  document.addEventListener("DOMContentLoaded", function() {
+    new ApexCharts(document.querySelector("#apexBarrasZonas"), opcionesZonas).render();
+  });
+</script>
+{% endblock %}

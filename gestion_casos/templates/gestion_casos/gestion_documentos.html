@@ -1,0 +1,219 @@
+{% extends 'gestion_casos/base.html' %}
+{% load static %}
+
+{% block title %}ConviData – Documentos Institucionales{% endblock %}
+
+{% block extra_css %}
+<style>
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--text-lo); margin-bottom: 18px; }
+  .breadcrumb a { color: var(--guinda); text-decoration: none; font-weight: 500; }
+  .breadcrumb a:hover { text-decoration: underline; }
+  .breadcrumb-sep { opacity: .4; }
+
+  .page-header { margin-bottom: 24px; }
+  .page-header h1 { font-family: 'Merriweather', serif; font-size: 1.5rem; font-weight: 900; color: var(--guinda); }
+  .page-header p { font-size: .85rem; color: var(--text-lo); margin-top: 4px; }
+
+  .admin-layout { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: start; }
+  @media (max-width: 1200px) { .admin-layout { grid-template-columns: 1fr; } }
+
+  .pane-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 24px; }
+  .pane-title { font-family: 'Merriweather', serif; font-size: 1.1rem; font-weight: 900; color: var(--text-dark); margin-bottom: 18px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .form-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; color: var(--text-mid); }
+  .form-control { padding: 9px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--white); color: var(--text-dark); font-size: .85rem; font-family: inherit; width: 100%; box-sizing: border-box; }
+  .form-control:focus { outline: none; border-color: var(--guinda); }
+
+  .btn-submit { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 20px; border-radius: 8px; background: var(--guinda); color: #fff; font-size: .83rem; font-weight: 600; border: none; cursor: pointer; width: 100%; transition: all var(--transition); margin-top: 10px; }
+  .btn-submit:hover { background: var(--guinda-mid); box-shadow: 0 4px 12px rgba(123,26,26,.2); }
+
+  .no-permission-note { font-size: .82rem; color: var(--text-lo); background: var(--cream); border: 1px solid var(--border); border-radius: 8px; padding: 14px; line-height: 1.5; }
+
+  .doc-section { margin-bottom: 28px; }
+  .doc-section:last-child { margin-bottom: 0; }
+  .doc-section-title { font-size: .95rem; font-weight: 800; color: var(--guinda); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+  .doc-item { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; background: var(--cream); transition: all var(--transition); }
+  .doc-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+  .doc-icon { width: 36px; height: 36px; flex-shrink: 0; border-radius: 6px; background: #fdedec; color: #c0392b; display: flex; align-items: center; justify-content: center; font-size: .68rem; font-weight: 800; }
+  .doc-info { flex: 1; min-width: 0; }
+  .doc-titulo { font-weight: 700; color: var(--text-dark); font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .doc-meta { font-size: .72rem; color: var(--text-lo); margin-top: 2px; }
+  .doc-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+  .btn-view-doc { display: inline-flex; align-items: center; gap: 4px; background: #eaf3ea; color: #1e8449; border: 1px solid #cde8cd; padding: 6px 10px; border-radius: 4px; font-size: .72rem; font-weight: 600; text-decoration: none; transition: all var(--transition); }
+  .btn-view-doc:hover { background: #d6ecd6; }
+
+  .btn-delete-doc { display: inline-flex; align-items: center; gap: 4px; background: #fdedec; color: #c0392b; border: 1px solid #f5b7b1; padding: 6px 8px; border-radius: 4px; font-size: .72rem; font-weight: 600; cursor: pointer; transition: all var(--transition); }
+  .btn-delete-doc:hover { background: #fadbd8; }
+
+  .empty-note { text-align: center; padding: 24px; color: var(--text-lo); font-style: italic; font-size: .85rem; border: 1px dashed var(--border); border-radius: 8px; }
+
+  /* Visor de PDF incrustado en la página */
+  .pdf-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(28,10,10,.65); z-index: 2000; align-items: center; justify-content: center; padding: 24px; }
+  .pdf-modal-overlay.open { display: flex; }
+  .pdf-modal-box { background: var(--white); border-radius: var(--radius); width: 100%; max-width: 950px; height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+  .pdf-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); background: var(--cream); }
+  .pdf-modal-title { font-weight: 700; font-size: .9rem; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pdf-modal-close { background: none; border: none; cursor: pointer; color: var(--text-lo); padding: 4px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all var(--transition); }
+  .pdf-modal-close:hover { background: var(--border); color: var(--guinda); }
+  .pdf-modal-frame { flex: 1; border: none; width: 100%; }
+
+  .btn-download-doc { display: inline-flex; align-items: center; gap: 4px; background: var(--cream); color: var(--text-mid); border: 1px solid var(--border); padding: 6px 8px; border-radius: 4px; font-size: .72rem; font-weight: 600; text-decoration: none; transition: all var(--transition); }
+  .btn-download-doc:hover { background: var(--border); }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{% url 'dashboard' %}">Inicio</a>
+    <span class="breadcrumb-sep">›</span>
+    <span>Documentos Institucionales</span>
+  </div>
+
+  <div class="page-header">
+    <h1>Documentos Institucionales</h1>
+    <p>Reglamento Interno y Protocolos de Convivencia disponibles para toda la comunidad escolar</p>
+  </div>
+
+  <div class="admin-layout">
+    <div class="pane-card">
+      <div class="pane-title">Publicar Documento</div>
+
+      {% if es_administrador %}
+      <form action="{% url 'gestion_documentos' %}" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="form-group">
+          <label class="form-label">Categoría</label>
+          <select name="tipo_documento" class="form-control" required>
+            <option value="" disabled selected>-- Seleccione categoría --</option>
+            <option value="Reglamento">Reglamento Interno</option>
+            <option value="Protocolo">Protocolo de Convivencia</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Título del documento</label>
+          <input type="text" name="titulo" class="form-control" placeholder="Ej: Reglamento Interno 2026" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Archivo (solo PDF, máx. 20 MB)</label>
+          <input type="file" name="archivo" class="form-control" accept="application/pdf" required>
+        </div>
+
+        <button type="submit" class="btn-submit">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+          Subir Documento
+        </button>
+      </form>
+      {% else %}
+        <div class="no-permission-note">
+          🔒 Solo un usuario con rol <strong>Administrador</strong> puede publicar o eliminar documentos institucionales. Puedes ver y descargar los documentos ya disponibles a la derecha.
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="pane-card">
+      <div class="doc-section">
+        <div class="doc-section-title">📘 Reglamento Interno</div>
+        {% for doc in reglamentos %}
+          <div class="doc-item">
+            <div class="doc-icon">PDF</div>
+            <div class="doc-info">
+              <div class="doc-titulo">{{ doc.titulo }}</div>
+              <div class="doc-meta">Subido el {{ doc.fecha_subida|date:"d/m/Y" }}{% if doc.usuario %} por {{ doc.usuario.usuario_nombre }} {{ doc.usuario.usuario_apaterno }}{% endif %}</div>
+            </div>
+            <div class="doc-actions">
+              <button type="button" class="btn-view-doc"
+                onclick="abrirVisorPDF('{{ doc.archivo.url }}', '{{ doc.titulo|escapejs }}')">
+                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                Ver
+              </button>
+              <a href="{{ doc.archivo.url }}" download class="btn-download-doc" title="Descargar">
+                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+              </a>
+              {% if es_administrador %}
+              <button type="button" class="btn-delete-doc"
+                onclick="if(confirm('¿Eliminar el documento «{{ doc.titulo }}»? Esta acción no se puede deshacer.')){ document.getElementById('form-eliminar-doc-{{ doc.documento_id }}').submit(); }">
+                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+              <form id="form-eliminar-doc-{{ doc.documento_id }}" method="POST" action="{% url 'eliminar_documento' doc.documento_id %}" style="display:none;">
+                {% csrf_token %}
+              </form>
+              {% endif %}
+            </div>
+          </div>
+        {% empty %}
+          <div class="empty-note">Aún no se ha publicado ningún Reglamento Interno.</div>
+        {% endfor %}
+      </div>
+
+      <div class="doc-section">
+        <div class="doc-section-title">🛡️ Protocolos de Convivencia</div>
+        {% for doc in protocolos %}
+          <div class="doc-item">
+            <div class="doc-icon">PDF</div>
+            <div class="doc-info">
+              <div class="doc-titulo">{{ doc.titulo }}</div>
+              <div class="doc-meta">Subido el {{ doc.fecha_subida|date:"d/m/Y" }}{% if doc.usuario %} por {{ doc.usuario.usuario_nombre }} {{ doc.usuario.usuario_apaterno }}{% endif %}</div>
+            </div>
+            <div class="doc-actions">
+              <button type="button" class="btn-view-doc"
+                onclick="abrirVisorPDF('{{ doc.archivo.url }}', '{{ doc.titulo|escapejs }}')">
+                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                Ver
+              </button>
+              <a href="{{ doc.archivo.url }}" download class="btn-download-doc" title="Descargar">
+                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+              </a>
+              {% if es_administrador %}
+              <button type="button" class="btn-delete-doc"
+                onclick="if(confirm('¿Eliminar el documento «{{ doc.titulo }}»? Esta acción no se puede deshacer.')){ document.getElementById('form-eliminar-doc-{{ doc.documento_id }}').submit(); }">
+                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+              <form id="form-eliminar-doc-{{ doc.documento_id }}" method="POST" action="{% url 'eliminar_documento' doc.documento_id %}" style="display:none;">
+                {% csrf_token %}
+              </form>
+              {% endif %}
+            </div>
+          </div>
+        {% empty %}
+          <div class="empty-note">Aún no se ha publicado ningún Protocolo de Convivencia.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Visor de PDF incrustado -->
+  <div class="pdf-modal-overlay" id="pdfModalOverlay" onclick="if(event.target === this){ cerrarVisorPDF(); }">
+    <div class="pdf-modal-box">
+      <div class="pdf-modal-header">
+        <div class="pdf-modal-title" id="pdfModalTitle">Documento</div>
+        <button type="button" class="pdf-modal-close" onclick="cerrarVisorPDF()" title="Cerrar">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <iframe class="pdf-modal-frame" id="pdfModalFrame" src="" title="Visor de PDF"></iframe>
+    </div>
+  </div>
+
+  <script>
+    function abrirVisorPDF(url, titulo) {
+      document.getElementById('pdfModalFrame').src = url;
+      document.getElementById('pdfModalTitle').textContent = titulo;
+      document.getElementById('pdfModalOverlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function cerrarVisorPDF() {
+      document.getElementById('pdfModalOverlay').classList.remove('open');
+      document.getElementById('pdfModalFrame').src = '';
+      document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') cerrarVisorPDF();
+    });
+  </script>
+{% endblock %}

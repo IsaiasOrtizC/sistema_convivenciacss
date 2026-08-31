@@ -1,0 +1,119 @@
+{% extends 'gestion_casos/base.html' %}
+{% load static %}
+
+{% block title %}ConviData – Editar Caso #{{ caso.caso_id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .form-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 28px; max-width: 700px; margin: 0 auto; }
+  .form-title { font-family: 'Merriweather', serif; font-size: 1.3rem; font-weight: 900; color: var(--guinda); margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+  .form-group { margin-bottom: 18px; display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: .8rem; font-weight: 700; color: var(--text-dark); text-transform: uppercase; }
+  .form-control { padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: .9rem; font-family: 'Inter', sans-serif; }
+  .form-control:focus { border-color: var(--guinda); outline: none; }
+  .row-two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .btn-submit { background: var(--guinda); color: white; border: none; padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all var(--transition); margin-top: 10px; width: 100%; }
+  .btn-submit:hover { background: var(--guinda-mid); }
+
+  .alumno-bloque { border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-bottom: 16px; position: relative; background: #FBFAF8; }
+  .alumno-bloque-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .alumno-bloque-header .form-title { margin: 0; border: none; padding: 0; font-size: 1rem; }
+  .btn-remove-alumno {
+    background: transparent; border: 1px solid #C0392B; color: #C0392B;
+    width: 28px; height: 28px; border-radius: 50%; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; line-height: 1; transition: all var(--transition);
+  }
+  .btn-remove-alumno:hover { background: #C0392B; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-card">
+  <div class="form-title">📝 Editar Caso de Convivencia #{{ caso.caso_id }}</div>
+
+  <form method="POST">
+    {% csrf_token %}
+
+    <div class="form-group">
+      <label>Título del Incidente</label>
+      <input type="text" name="titulo" class="form-control" value="{{ titulo_actual }}" required>
+    </div>
+
+    <div class="row-two">
+      <div class="form-group">
+        <label>Lugar del Colegio</label>
+        <select name="lugar" class="form-control" required>
+          {% for l in lugares %}
+            <option value="{{ l.lugar_id }}" {% if l.lugar_id == caso.lugar_id %}selected{% endif %}>{{ l.lugar_nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Severidad de la Falta</label>
+        <select name="tipo_falta" class="form-control" required>
+          <option value="Leve" {% if tipo_falta_actual == "Leve" %}selected{% endif %}>Leve</option>
+          <option value="Grave" {% if tipo_falta_actual == "Grave" %}selected{% endif %}>Grave</option>
+          <option value="Gravísima" {% if tipo_falta_actual == "Gravísima" %}selected{% endif %}>Gravísima</option>
+        </select>
+      </div>
+    </div>
+
+    {% for est in estudiantes %}
+    <div class="alumno-bloque">
+      <div class="alumno-bloque-header">
+        <div class="form-title">👤 Alumno Involucrado #{{ forloop.counter }}</div>
+        {% if estudiantes|length > 1 %}
+        <button type="button" class="btn-remove-alumno"
+          title="Eliminar a este alumno del caso"
+          onclick="if(confirm('¿Eliminar a {{ est.estudiante_nombre }} {{ est.estudiante_apaterno }} de este caso?')){ document.getElementById('form-eliminar-{{ est.estudiante_id }}').submit(); }">
+          ✕
+        </button>
+        {% endif %}
+      </div>
+
+      <input type="hidden" name="estudiante_id[]" value="{{ est.estudiante_id }}">
+
+      <div class="form-group">
+        <label>Nombre del Estudiante</label>
+        <input type="text" name="alumno_nombre[]" class="form-control" value="{{ est.estudiante_nombre }}" required>
+      </div>
+
+      <div class="row-two">
+        <div class="form-group">
+          <label>Apellido Paterno</label>
+          <input type="text" name="alumno_apaterno[]" class="form-control" value="{{ est.estudiante_apaterno }}" required>
+        </div>
+        <div class="form-group">
+          <label>Apellido Materno</label>
+          <input type="text" name="alumno_amaterno[]" class="form-control" value="{{ est.estudiante_amaterno }}" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Curso Actual</label>
+        <select name="curso[]" class="form-control" required>
+          {% for c in cursos %}
+            <option value="{{ c.curso_id }}" {% if c.curso_id == est.curso_id %}selected{% endif %}>{{ c.curso_grado }} {{ c.curso_letra }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="form-group">
+      <label>Descripción / Relato de los Hechos</label>
+      <textarea name="descripcion" class="form-control" rows="4" required>{{ descripcion_actual }}</textarea>
+    </div>
+
+    <button type="submit" class="btn-submit">💾 Guardar Cambios en la Bitácora</button>
+  </form>
+
+  <!-- Formularios ocultos para eliminar alumnos (fuera del form principal para evitar forms anidados) -->
+  {% for est in estudiantes %}
+  <form id="form-eliminar-{{ est.estudiante_id }}" method="POST"
+        action="{% url 'eliminar_estudiante_caso' caso.caso_id est.estudiante_id %}" style="display:none;">
+    {% csrf_token %}
+  </form>
+  {% endfor %}
+</div>
+{% endblock %}

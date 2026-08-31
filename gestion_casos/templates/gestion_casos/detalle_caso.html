@@ -1,0 +1,147 @@
+{% extends 'gestion_casos/base.html' %}
+{% load static %}
+
+{% block title %}ConviData – Detalle del Caso #{{ caso.caso_id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--text-lo); margin-bottom: 18px; }
+  .breadcrumb a { color: var(--guinda); text-decoration: none; font-weight: 500; }
+  .breadcrumb a:hover { text-decoration: underline; }
+  .breadcrumb-sep { opacity: .4; }
+
+  .page-header { margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; }
+  .page-header h1 { font-family: 'Merriweather', serif; font-size: 1.5rem; font-weight: 900; color: var(--guinda); }
+  
+  .btn-back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--white); color: var(--text-mid); font-size: .8rem; font-weight: 600; text-decoration: none; transition: all var(--transition); }
+  .btn-back:hover { border-color: var(--guinda); color: var(--guinda); }
+
+  .grid-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+  @media (max-width: 768px) { .grid-layout { grid-template-columns: 1fr; } }
+
+  .card-pane { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 24px; }
+  .pane-title { font-family: 'Merriweather', serif; font-size: 1.1rem; font-weight: 900; color: var(--text-dark); margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+  
+  .meta-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-lo); margin-top: 14px; display: block; }
+  .meta-value { font-size: .9rem; color: var(--text-dark); margin-top: 4px; display: block; line-height: 1.5; }
+  
+  .desc-box { background: var(--cream); border-radius: 8px; padding: 16px; border-left: 4px solid var(--guinda); margin-top: 8px; font-size: .88rem; line-height: 1.5; color: var(--text-dark); white-space: pre-wrap; }
+  
+  /* Badges de Gravedad */
+  .badge-falta { display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: .75rem; font-weight: 700; text-transform: uppercase; margin-top: 4px; }
+  .falta-Leve { background: rgba(30,132,73,.1); color: #1E8449; }
+  .falta-Grave { background: rgba(212,160,23,.15); color: #B7860B; }
+  .falta-Gravísima { background: rgba(123,26,26,.1); color: var(--guinda); }
+
+  /* Tarjetas de implicados limpias sin badge */
+  .student-item { background: var(--cream); border-radius: 8px; border: 1px solid var(--border); padding: 12px 14px; margin-top: 10px; }
+  .student-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .student-name { font-weight: 700; font-size: .88rem; color: var(--text-dark); }
+  .student-list-num { font-size: .75rem; font-weight: 700; color: var(--guinda); background: rgba(123,26,26,.08); padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+
+  /* Evidencia */
+  .evidence-box { margin-top: 20px; border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--cream); width: fit-content; max-width: 100%; box-shadow: var(--shadow); }
+  .evidence-img { max-width: 100%; max-height: 350px; border-radius: 6px; display: block; object-fit: contain; border: 1px solid var(--border); }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{% url 'dashboard' %}">Inicio</a>
+    <span class="breadcrumb-sep">›</span>
+    <a href="{% url 'historial_casos' %}">Casos</a>
+    <span class="breadcrumb-sep">›</span>
+    <span>Detalle #{{ caso.caso_id }}</span>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <h1>Expediente de Caso #{{ caso.caso_id }}</h1>
+    </div>
+    <a href="{% url 'historial_casos' %}" class="btn-back">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+      Volver al listado
+    </a>
+  </div>
+
+  <div class="grid-layout">
+    <!-- PANEL PRINCIPAL: DETALLES DE LA BITÁCORA -->
+    <div class="card-pane">
+      <div class="pane-title">Detalles de la Bitácora</div>
+      
+      <span class="meta-label">Título del Suceso</span>
+      <span class="meta-value" style="font-weight: 700; font-size: 1.05rem; color: var(--guinda);">{{ titulo }}</span>
+      
+      <span class="meta-label">Descripción Narrativa</span>
+      <div class="desc-box">
+        {{ descripcion }}
+      </div>
+
+      {% if nombre_foto %}
+        <span class="meta-label" style="margin-top: 20px;">Evidencia Adjunta de Respaldo</span>
+        <div class="evidence-box">
+          <img src="{% static 'evidencias/' %}{{ nombre_foto }}" alt="Evidencia Fotográfica del Caso" class="evidence-img">
+        </div>
+      {% endif %}
+
+      <!-- Cuadrícula de 3 columnas para Fecha, Lugar y Tipo de Falta -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px;">
+        <div>
+          <span class="meta-label">Fecha del Suceso</span>
+          <span class="meta-value">📅 {{ caso.caso_fecha|date:"d \d\e F, Y" }}</span>
+        </div>
+        <div>
+          <span class="meta-label">Lugar de los Hechos</span>
+          <span class="meta-value">📍 {{ caso.lugar.lugar_nombre|default:"No especificado" }}</span>
+        </div>
+        <!-- 🌟 TIPO DE FALTA MOVIDO A DETALLES DE BITÁCORA -->
+        <div>
+          <span class="meta-label">Gravedad de la Falta</span>
+          <div>
+            <span class="badge-falta falta-{{ tipo_falta }}">
+              {{ tipo_falta }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL LATERAL: IMPLICADOS -->
+    <div class="card-pane">
+      <div class="pane-title">Implicados ({% if relaciones %}{{ relaciones|length }}{% else %}0{% endif %})</div>
+      
+      {% if relaciones %}
+        {% for relacion in relaciones %}
+          <div class="student-item">
+            <div class="student-header">
+              <!-- 🌟 ORDEN DE NOMBRE: Nombre ApellidoPaterno ApellidoMaterno -->
+              <span class="student-name">
+                {{ relacion.estudiante.estudiante_nombre }} {{ relacion.estudiante.estudiante_apaterno }} {{ relacion.estudiante.estudiante_amaterno }}
+              </span>
+              <span class="student-list-num">
+                N° Lista: {% if relacion.estudiante.estudiante_numero_lista %}{{ relacion.estudiante.estudiante_numero_lista }}{% else %}N/A{% endif %}
+              </span>
+            </div>
+
+            <div style="font-size: .8rem; color: var(--text-mid); margin-top: 6px;">
+              🏫 <strong>Curso:</strong> {{ relacion.estudiante.curso.curso_grado }} {{ relacion.estudiante.curso.curso_letra }}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <span class="meta-value" style="color: var(--text-lo); font-style: italic;">No hay alumnos registrados en este caso.</span>
+      {% endif %}
+
+      <span class="meta-label" style="border-top: 1px solid var(--border); margin-top: 20px; padding-top: 14px;">Funcionario Registrador</span>
+      <span class="meta-value" style="font-size: .83rem; color: var(--text-mid); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+        👤 {{ caso.usuario.usuario_nombre }} {{ caso.usuario.usuario_apaterno }}
+        
+        {% if es_mi_caso %}
+          <span style="background: rgba(123,26,26,.1); color: var(--guinda); padding: 2px 6px; border-radius: 4px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .02em;">
+            Registrado por mí
+          </span>
+        {% endif %}
+      </span>
+    </div>
+  </div>
+{% endblock %}
