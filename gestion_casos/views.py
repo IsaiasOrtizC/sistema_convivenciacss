@@ -117,6 +117,10 @@ def login_view(request):
                         defaults={'session_key': request.session.session_key, 'fecha_inicio': timezone.now()}
                     )
                     
+                    # El Profesor Jefe no tiene panel general: entra directo a su curso
+                    if usuario.rol.rol_nombre == 'Profesor Jefe':
+                        return redirect('mis_casos_curso')
+
                     return redirect('dashboard')
                 else:
                     messages.error(request, "Contraseña incorrecta. Intente nuevamente.")
@@ -145,10 +149,26 @@ def logout_view(request):
 
 
 # ES LA PANTALLA DE INICIO
+def _bloquear_si_profesor_jefe(request, mensaje=None):
+    """Helper de seguridad: el Profesor Jefe solo debe acceder a 'Mi Curso',
+    su Perfil, Configuración y Documentos. Se usa al inicio de las demás
+    vistas para bloquearlo y redirigirlo a su propia sección."""
+    if request.session.get('usuario_rol') == 'Profesor Jefe':
+        if mensaje:
+            messages.error(request, mensaje)
+        return redirect('mis_casos_curso')
+    return None
+
+
 def dashboard_view(request):
     # 1. Seguridad: Validar que el usuario haya iniciado sesión
     if 'usuario_id' not in request.session:
         return redirect('login')
+
+    # El Profesor Jefe no ve el panel general: se le redirige directo a su curso
+    redireccion = _bloquear_si_profesor_jefe(request)
+    if redireccion:
+        return redireccion
 
     # CONTADOR DE CASOS
     total_casos = Caso.objects.count()
@@ -209,6 +229,10 @@ def dashboard_view(request):
 def historial_casos_view(request):
     if 'usuario_id' not in request.session:
         return redirect('login')
+
+    redireccion = _bloquear_si_profesor_jefe(request, "Acceso denegado: como Profesor Jefe, solo puedes ver los casos de tu curso.")
+    if redireccion:
+        return redireccion
 
     # RF-13: parámetros de búsqueda y filtros (vienen por GET, así se puede compartir/recargar la URL filtrada)
     busqueda = request.GET.get('q', '').strip()
@@ -341,6 +365,10 @@ def eliminar_caso_view(request, caso_id):
 def registrar_caso_view(request):
     if 'usuario_id' not in request.session:
         return redirect('login')
+
+    redireccion = _bloquear_si_profesor_jefe(request, "Acceso denegado: como Profesor Jefe no puedes registrar casos, solo consultarlos.")
+    if redireccion:
+        return redireccion
 
     # ZONA HORARIA LOCAL
     fecha_hoy = timezone.localdate().strftime('%Y-%m-%d')
@@ -493,7 +521,11 @@ def registrar_caso_view(request):
 def detalle_caso_view(request, caso_id):
     if 'usuario_id' not in request.session:
         return redirect('login')
-        
+
+    redireccion = _bloquear_si_profesor_jefe(request, "Acceso denegado: como Profesor Jefe, revisa los casos de tu curso desde 'Mi Curso'.")
+    if redireccion:
+        return redireccion
+
     caso = get_object_or_404(Caso.objects.select_related('lugar', 'usuario'), pk=caso_id)
     
     titulo = "Sin título"
@@ -1146,6 +1178,11 @@ def editar_caso_view(request, caso_id):
     # 1. Seguridad: Validar sesión activa
     if 'usuario_id' not in request.session:
         return redirect('login')
+
+    redireccion = _bloquear_si_profesor_jefe(request, "Acceso denegado: como Profesor Jefe no puedes editar casos.")
+    if redireccion:
+        return redireccion
+
     usuario_id_sesion = request.session.get('usuario_id')
     usuario_instancia = Usuario.objects.get(pk=usuario_id_sesion)
 
