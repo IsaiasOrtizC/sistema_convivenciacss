@@ -11,3 +11,13 @@ python manage.py runserver 0.0.0.0:8000
 powershell
 cd C:\Users\user\Desktop\sistema_convivenciacss
 .\cloudflared.exe tunnel --url http://localhost:8000
+
+para el venv e inciar el programa (Ejecutar uno por uno):
+Instala postgress (si no lo tienes)
+Remove-Item -Recurse -Force .\venv
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python -m pip install resend
+python -m pip install reportlab
+python -m pip install openpyxl
