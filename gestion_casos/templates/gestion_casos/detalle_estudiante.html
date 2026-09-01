@@ -18,9 +18,43 @@
   .badge-curso { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: .7rem; font-weight: 700; text-transform: uppercase; background: rgba(30,132,73,.1); color: #1E8449; border: 1px solid rgba(30,132,73,.2); margin-top: 4px; }
 
   .kpi-row { display: flex; gap: 16px; flex-wrap: wrap; }
-  .kpi-mini { background: var(--cream); border-radius: 8px; border: 1px solid var(--border); padding: 12px 18px; flex: 1; min-width: 140px; }
+  .kpi-mini { background: var(--cream); border-radius: 8px; border: 1px solid var(--border); padding: 12px 18px; flex: 1; min-width: 120px; }
   .kpi-mini-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; color: var(--text-lo); }
   .kpi-mini-value { font-family: 'Merriweather', serif; font-size: 1.3rem; font-weight: 900; color: var(--guinda); margin-top: 2px; }
+
+  /* 🌟 Fila superior: KPIs a la izquierda, estado del alumno a la derecha */
+  .top-info-row { display: flex; gap: 16px; align-items: stretch; margin-bottom: 20px; flex-wrap: wrap; }
+  .top-info-row .kpi-row { flex: 0 0 220px; flex-direction: column; margin-bottom: 0; }
+  .top-info-row .estado-banner { flex: 1; min-width: 280px; margin-bottom: 0; }
+
+  /* 🌟 Estado del alumno (semáforo automático) */
+  .estado-banner { display: flex; align-items: flex-start; gap: 14px; padding: 18px 20px; border-radius: 10px; margin-bottom: 20px; border: 1.5px solid; }
+  .estado-banner.alerta { background: #FDEDEC; border-color: #C0392B; }
+  .estado-banner.atencion { background: #FEF9E7; border-color: #B7860B; }
+  .estado-banner.seguimiento { background: #EAF3FB; border-color: #2874A6; }
+  .estado-banner.sin_incidencias { background: #EAF3EA; border-color: #1E8449; }
+  .estado-icon { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.3rem; }
+  .estado-banner.alerta .estado-icon { background: #C0392B; color: #fff; }
+  .estado-banner.atencion .estado-icon { background: #B7860B; color: #fff; }
+  .estado-banner.seguimiento .estado-icon { background: #2874A6; color: #fff; }
+  .estado-banner.sin_incidencias .estado-icon { background: #1E8449; color: #fff; }
+  .estado-titulo { font-family: 'Merriweather', serif; font-weight: 900; font-size: 1.05rem; }
+  .estado-banner.alerta .estado-titulo { color: #922B21; }
+  .estado-banner.atencion .estado-titulo { color: #7D5A00; }
+  .estado-banner.seguimiento .estado-titulo { color: #1A5276; }
+  .estado-banner.sin_incidencias .estado-titulo { color: #196F3D; }
+  .estado-desc { font-size: .82rem; color: var(--text-mid); margin-top: 3px; line-height: 1.5; }
+
+  .gravedad-breakdown { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+  .gravedad-mini { flex: 1; min-width: 100px; text-align: center; padding: 10px; border-radius: 8px; border: 1px solid var(--border); }
+  .gravedad-mini.leve { background: rgba(30,132,73,.06); }
+  .gravedad-mini.grave { background: rgba(212,160,23,.08); }
+  .gravedad-mini.gravisima { background: rgba(192,57,43,.06); }
+  .gravedad-mini-num { font-family: 'Merriweather', serif; font-size: 1.4rem; font-weight: 900; }
+  .gravedad-mini.leve .gravedad-mini-num { color: #1E8449; }
+  .gravedad-mini.grave .gravedad-mini-num { color: #B7860B; }
+  .gravedad-mini.gravisima .gravedad-mini-num { color: #C0392B; }
+  .gravedad-mini-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; color: var(--text-lo); margin-top: 2px; }
 
   .table-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
   .table-topbar { padding: 18px 24px 14px; border-bottom: 1px solid var(--border); }
@@ -60,16 +94,46 @@
       </div>
     </div>
 
-    <div class="kpi-row">
-      <div class="kpi-mini">
-        <div class="kpi-mini-label">Total de Casos</div>
-        <div class="kpi-mini-value">{{ total_casos }}</div>
+    <div class="top-info-row">
+      <div class="kpi-row">
+        <div class="kpi-mini">
+          <div class="kpi-mini-label">Total de Casos</div>
+          <div class="kpi-mini-value">{{ total_casos }}</div>
+        </div>
+        <div class="kpi-mini">
+          <div class="kpi-mini-label">ID en el Sistema</div>
+          <div class="kpi-mini-value" style="font-family: monospace; font-size: 1.1rem;">#{{ estudiante.estudiante_id }}</div>
+        </div>
       </div>
-      <div class="kpi-mini">
-        <div class="kpi-mini-label">ID en el Sistema</div>
-        <div class="kpi-mini-value" style="font-family: monospace; font-size: 1.1rem;">#{{ estudiante.estudiante_id }}</div>
+
+      <!-- 🌟 Estado automático del alumno -->
+      <div class="estado-banner {{ estado_clave }}">
+        <div class="estado-icon">
+          {% if estado_clave == 'alerta' %}🔴{% elif estado_clave == 'atencion' %}🟡{% elif estado_clave == 'seguimiento' %}🔵{% else %}🟢{% endif %}
+        </div>
+        <div>
+          <div class="estado-titulo">{{ estado_texto }}</div>
+          <div class="estado-desc">{{ estado_detalle }}</div>
+        </div>
       </div>
     </div>
+
+    {% if total_casos > 0 %}
+    <div class="gravedad-breakdown">
+      <div class="gravedad-mini leve">
+        <div class="gravedad-mini-num">{{ conteo_gravedad.Leve }}</div>
+        <div class="gravedad-mini-label">Leves</div>
+      </div>
+      <div class="gravedad-mini grave">
+        <div class="gravedad-mini-num">{{ conteo_gravedad.Grave }}</div>
+        <div class="gravedad-mini-label">Graves</div>
+      </div>
+      <div class="gravedad-mini gravisima">
+        <div class="gravedad-mini-num">{{ conteo_gravedad.Gravísima }}</div>
+        <div class="gravedad-mini-label">Gravísimas</div>
+      </div>
+    </div>
+    {% endif %}
   </div>
 
   <div class="table-card">

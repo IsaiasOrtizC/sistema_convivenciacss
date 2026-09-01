@@ -1940,23 +1940,60 @@ def detalle_estudiante_view(request, estudiante_id):
     casos_qs = Caso.objects.filter(caso_id__in=caso_ids).select_related('lugar').order_by('-caso_fecha')
 
     casos_detalle = []
+    conteo_gravedad = {'Leve': 0, 'Grave': 0, 'Gravísima': 0}
+
     for caso in casos_qs:
         texto = caso.caso_descripcion or ""
         titulo = texto
         if "]" in texto and "-" in texto:
             partes = texto.split("] -", 1)
             titulo = partes[0].replace("[", "").strip()
+
+        gravedad_caso = gravedad_por_caso.get(caso.caso_id, '')
+        if gravedad_caso in conteo_gravedad:
+            conteo_gravedad[gravedad_caso] += 1
+
         casos_detalle.append({
             'caso_id': caso.caso_id,
             'titulo': titulo if titulo else f"Caso #{caso.caso_id}",
             'fecha': caso.caso_fecha,
             'lugar': caso.lugar.lugar_nombre if caso.lugar else "No especificado",
-            'gravedad': gravedad_por_caso.get(caso.caso_id, ''),
+            'gravedad': gravedad_caso,
         })
+
+    total_casos = len(casos_detalle)
+
+    # ---- Estado del alumno (semáforo automático según cantidad y gravedad de casos) ----
+    # Puntaje ponderado: Leve = 1, Grave = 3, Gravísima = 5.
+    # Se basa SOLO en el puntaje acumulado (una sola falta gravísima aislada no dispara
+    # la alerta máxima por sí sola, se necesita una acumulación real).
+    puntaje = (conteo_gravedad['Leve'] * 1) + (conteo_gravedad['Grave'] * 3) + (conteo_gravedad['Gravísima'] * 5)
+
+    if puntaje >= 10:
+        estado_clave = 'alerta'
+        estado_texto = 'Alerta: requiere intervención'
+        estado_detalle = 'Este alumno acumula una cantidad importante de faltas graves o gravísimas. Se recomienda intervención prioritaria de Convivencia Escolar.'
+    elif puntaje >= 5:
+        estado_clave = 'atencion'
+        estado_texto = 'Requiere atención'
+        estado_detalle = 'El alumno tiene antecedentes que ameritan seguimiento cercano, aunque no son motivo de alarma todavía.'
+    elif puntaje >= 1:
+        estado_clave = 'seguimiento'
+        estado_texto = 'Bajo seguimiento'
+        estado_detalle = 'El alumno tiene antecedentes leves registrados. No requiere acción urgente, pero conviene monitorear.'
+    else:
+        estado_clave = 'sin_incidencias'
+        estado_texto = 'Sin incidencias'
+        estado_detalle = 'Este alumno no tiene casos de convivencia registrados en el sistema.'
 
     context = {
         'estudiante': estudiante,
         'casos': casos_detalle,
-        'total_casos': len(casos_detalle),
+        'total_casos': total_casos,
+        'conteo_gravedad': conteo_gravedad,
+        'puntaje_riesgo': puntaje,
+        'estado_clave': estado_clave,
+        'estado_texto': estado_texto,
+        'estado_detalle': estado_detalle,
     }
     return render(request, 'gestion_casos/detalle_estudiante.html', context)
