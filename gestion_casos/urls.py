@@ -40,4 +40,8 @@ urlpatterns = [
     path('mis-casos-curso/', views.mis_casos_curso_view, name='mis_casos_curso'),
     path('mis-casos-curso/pdf/', views.descargar_casos_pdf_view, name='descargar_casos_pdf'),
     path('mis-casos-curso/xlsx/', views.descargar_casos_xlsx_view, name='descargar_casos_xlsx'),
+
+    # Buscador global (lupa en la barra superior)
+    path('busqueda/', views.busqueda_global_view, name='busqueda_global'),
+    path('alumnos/<int:estudiante_id>/ficha/', views.detalle_estudiante_view, name='detalle_estudiante'),
 ]

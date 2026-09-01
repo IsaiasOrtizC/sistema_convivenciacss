@@ -1,0 +1,120 @@
+{% extends 'gestion_casos/base.html' %}
+{% load static %}
+
+{% block title %}ConviData – Ficha de {{ estudiante.estudiante_nombre }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--text-lo); margin-bottom: 18px; }
+  .breadcrumb a { color: var(--guinda); text-decoration: none; font-weight: 500; }
+  .breadcrumb a:hover { text-decoration: underline; }
+  .breadcrumb-sep { opacity: .4; }
+
+  .profile-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); max-width: 700px; padding: 28px; margin-bottom: 24px; }
+
+  .avatar-row { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+  .avatar-circle { width: 60px; height: 60px; border-radius: 50%; background: var(--cream); border: 2px solid var(--guinda); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; color: var(--guinda); font-weight: 700; flex-shrink: 0; }
+  .student-title { font-family: 'Merriweather', serif; font-size: 1.25rem; font-weight: 900; color: var(--text-dark); }
+  .badge-curso { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: .7rem; font-weight: 700; text-transform: uppercase; background: rgba(30,132,73,.1); color: #1E8449; border: 1px solid rgba(30,132,73,.2); margin-top: 4px; }
+
+  .kpi-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .kpi-mini { background: var(--cream); border-radius: 8px; border: 1px solid var(--border); padding: 12px 18px; flex: 1; min-width: 140px; }
+  .kpi-mini-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; color: var(--text-lo); }
+  .kpi-mini-value { font-family: 'Merriweather', serif; font-size: 1.3rem; font-weight: 900; color: var(--guinda); margin-top: 2px; }
+
+  .table-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
+  .table-topbar { padding: 18px 24px 14px; border-bottom: 1px solid var(--border); }
+  .table-topbar-title { font-family: 'Merriweather', serif; font-size: .95rem; font-weight: 900; color: var(--text-dark); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  thead tr { border-bottom: 2px solid var(--border); }
+  thead th { padding: 11px 16px; text-align: left; color: var(--text-lo); font-weight: 600; font-size: .71rem; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
+  tbody tr:hover { background: var(--cream); }
+  tbody td { padding: 13px 16px; color: var(--text-dark); vertical-align: middle; }
+  .td-id { font-weight: 700; color: var(--guinda); font-family: monospace; font-size: .9rem; }
+
+  .badge-severidad { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: .68rem; font-weight: 700; text-transform: uppercase; }
+  .badge-severidad.leve { background: rgba(30,132,73,.1); color: #1E8449; border: 1px solid rgba(30,132,73,.2); }
+  .badge-severidad.grave { background: rgba(212,160,23,.12); color: #B7860B; border: 1px solid rgba(212,160,23,.25); }
+  .badge-severidad.gravisima { background: rgba(192,57,43,.1); color: #C0392B; border: 1px solid rgba(192,57,43,.2); }
+
+  .btn-ver-caso { display: inline-flex; align-items: center; gap: 5px; padding: 6px 14px; border-radius: 6px; background: transparent; color: var(--guinda); border: 1.5px solid var(--guinda); font-size: .78rem; font-weight: 600; text-decoration: none; transition: all var(--transition); }
+  .btn-ver-caso:hover { background: var(--guinda); color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{% url 'dashboard' %}">Inicio</a>
+    <span class="breadcrumb-sep">›</span>
+    <span>Ficha de Alumno</span>
+  </div>
+
+  <div class="profile-card">
+    <div class="avatar-row">
+      <div class="avatar-circle">{{ estudiante.estudiante_nombre|slice:":1" }}{{ estudiante.estudiante_apaterno|slice:":1" }}</div>
+      <div>
+        <div class="student-title">{{ estudiante.estudiante_nombre }} {{ estudiante.estudiante_apaterno }} {{ estudiante.estudiante_amaterno }}</div>
+        <span class="badge-curso">📚 {{ estudiante.curso.curso_grado|default:"Sin" }} {{ estudiante.curso.curso_letra }}</span>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi-mini">
+        <div class="kpi-mini-label">Total de Casos</div>
+        <div class="kpi-mini-value">{{ total_casos }}</div>
+      </div>
+      <div class="kpi-mini">
+        <div class="kpi-mini-label">ID en el Sistema</div>
+        <div class="kpi-mini-value" style="font-family: monospace; font-size: 1.1rem;">#{{ estudiante.estudiante_id }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-topbar">
+      <div class="table-topbar-title">Casos en los que ha estado involucrado(a)</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Título</th>
+            <th>Fecha</th>
+            <th>Lugar</th>
+            <th>Gravedad</th>
+            <th style="text-align: center;">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in casos %}
+          <tr>
+            <td class="td-id">#{{ c.caso_id }}</td>
+            <td style="font-weight: 600;">{{ c.titulo }}</td>
+            <td style="white-space: nowrap;">{{ c.fecha|date:"d/m/Y" }}</td>
+            <td>{{ c.lugar }}</td>
+            <td>
+              {% if c.gravedad == "Leve" %}
+                <span class="badge-severidad leve">{{ c.gravedad }}</span>
+              {% elif c.gravedad == "Grave" %}
+                <span class="badge-severidad grave">{{ c.gravedad }}</span>
+              {% else %}
+                <span class="badge-severidad gravisima">{{ c.gravedad }}</span>
+              {% endif %}
+            </td>
+            <td style="text-align: center;">
+              <a href="{% url 'detalle_caso' c.caso_id %}" class="btn-ver-caso">Ver caso</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" style="text-align:center; padding:40px; color:var(--text-lo); font-style: italic;">Este alumno no tiene casos registrados en el sistema.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

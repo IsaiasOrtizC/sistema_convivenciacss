@@ -38,6 +38,9 @@
   .badge-severidad.gravisima { background: rgba(192,57,43,.1); color: #C0392B; border: 1px solid rgba(192,57,43,.2); }
 
   .empty-note { text-align: center; padding: 32px; color: var(--text-lo); font-style: italic; }
+
+  .btn-ver-caso { display: inline-flex; align-items: center; gap: 5px; padding: 6px 14px; border-radius: 6px; background: transparent; color: var(--guinda); border: 1.5px solid var(--guinda); font-size: .78rem; font-weight: 600; text-decoration: none; transition: all var(--transition); white-space: nowrap; }
+  .btn-ver-caso:hover { background: var(--guinda); color: #fff; }
 </style>
 {% endblock %}
 
@@ -78,6 +81,7 @@
           <th>Lugar</th>
           <th>Severidad</th>
           <th>Alumno(s) Involucrado(s)</th>
+          <th style="text-align: center;">Acción</th>
         </tr>
       </thead>
       <tbody>
@@ -97,10 +101,13 @@
               {% endif %}
             </td>
             <td>{{ c.alumnos }}</td>
+            <td style="text-align: center;">
+              <a href="{% url 'detalle_caso' c.caso_id %}" class="btn-ver-caso">Ver detalle</a>
+            </td>
           </tr>
         {% empty %}
           <tr>
-            <td colspan="6" class="empty-note">Aún no hay casos registrados para los alumnos de tu curso.</td>
+            <td colspan="7" class="empty-note">Aún no hay casos registrados para los alumnos de tu curso.</td>
           </tr>
         {% endfor %}
       </tbody>

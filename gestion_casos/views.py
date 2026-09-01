@@ -15,7 +15,7 @@ from django.db.models import Count
 from django.db.models.functions import ExtractMonth
 import json
 from datetime import timedelta
-from django.db.models import Count, Value
+from django.db.models import Count, Value, Q
 from django.db.models.functions import Concat
 from django.db import transaction, connection
 
@@ -522,12 +522,24 @@ def detalle_caso_view(request, caso_id):
     if 'usuario_id' not in request.session:
         return redirect('login')
 
-    redireccion = _bloquear_si_profesor_jefe(request, "Acceso denegado: como Profesor Jefe, revisa los casos de tu curso desde 'Mi Curso'.")
-    if redireccion:
-        return redireccion
-
     caso = get_object_or_404(Caso.objects.select_related('lugar', 'usuario'), pk=caso_id)
-    
+
+    # El Profesor Jefe solo puede ver el detalle si el caso pertenece a un alumno de SU curso
+    if request.session.get('usuario_rol') == 'Profesor Jefe':
+        try:
+            profesor = ProfesorJefe.objects.select_related('curso').get(usuario_id=request.session['usuario_id'])
+        except ProfesorJefe.DoesNotExist:
+            messages.error(request, "Acceso denegado.")
+            return redirect('mis_casos_curso')
+
+        pertenece_a_su_curso = Estudiante.objects.filter(
+            involucran__caso_id=caso_id, curso=profesor.curso
+        ).exists()
+
+        if not pertenece_a_su_curso:
+            messages.error(request, "Acceso denegado: ese caso no corresponde a los alumnos de tu curso.")
+            return redirect('mis_casos_curso')
+
     titulo = "Sin título"
     descripcion_limpia = caso.caso_descripcion if caso.caso_descripcion else ""
     if descripcion_limpia.startswith('['):
@@ -1854,3 +1866,97 @@ def descargar_casos_xlsx_view(request):
     )
     response['Content-Disposition'] = f'attachment; filename="{nombre_archivo}"'
     return response
+
+
+# ============================================================
+#  BÚSQUEDA GLOBAL (lupa en la barra superior)
+# ============================================================
+
+def busqueda_global_view(request):
+    """API JSON para el buscador global de la barra superior (alumnos y casos)."""
+    if 'usuario_id' not in request.session:
+        return JsonResponse({'error': 'No autenticado'}, status=401)
+
+    # El Profesor Jefe no tiene acceso al buscador global (solo ve su propio curso)
+    if request.session.get('usuario_rol') == 'Profesor Jefe':
+        return JsonResponse({'error': 'Acceso denegado'}, status=403)
+
+    query = request.GET.get('q', '').strip()
+    resultado = {'estudiantes': [], 'casos': []}
+
+    if len(query) < 2:
+        return JsonResponse(resultado)
+
+    # ---- Alumnos ----
+    estudiantes = Estudiante.objects.select_related('curso').filter(
+        Q(estudiante_nombre__icontains=query) |
+        Q(estudiante_apaterno__icontains=query) |
+        Q(estudiante_amaterno__icontains=query)
+    )[:8]
+    for e in estudiantes:
+        resultado['estudiantes'].append({
+            'id': e.estudiante_id,
+            'nombre_completo': f"{e.estudiante_nombre} {e.estudiante_apaterno} {e.estudiante_amaterno}",
+            'curso': f"{e.curso.curso_grado} {e.curso.curso_letra}" if e.curso else "Sin curso asignado",
+        })
+
+    # ---- Casos ----
+    casos = Caso.objects.filter(caso_descripcion__icontains=query).select_related('lugar').order_by('-caso_fecha')[:8]
+    for c in casos:
+        texto = c.caso_descripcion or ""
+        titulo = texto
+        if "]" in texto and "-" in texto:
+            partes = texto.split("] -", 1)
+            titulo = partes[0].replace("[", "").strip()
+        resultado['casos'].append({
+            'id': c.caso_id,
+            'titulo': titulo if titulo else f"Caso #{c.caso_id}",
+            'fecha': c.caso_fecha.strftime('%d/%m/%Y') if c.caso_fecha else '',
+            'lugar': c.lugar.lugar_nombre if c.lugar else 'No especificado',
+        })
+
+    return JsonResponse(resultado)
+
+
+def detalle_estudiante_view(request, estudiante_id):
+    """Ficha de un alumno: sus datos + todos los casos en los que ha estado involucrado."""
+    if 'usuario_id' not in request.session:
+        return redirect('login')
+
+    if request.session.get('usuario_rol') == 'Profesor Jefe':
+        messages.error(request, "Acceso denegado.")
+        return redirect('mis_casos_curso')
+
+    estudiante = get_object_or_404(Estudiante.objects.select_related('curso'), pk=estudiante_id)
+
+    # La tabla 'involucran' no tiene columna 'id', se consulta con SQL directo
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT caso_id, tipo_falta FROM involucran WHERE estudiante_id = %s", [estudiante_id])
+        filas = cursor.fetchall()
+
+    caso_ids = [f[0] for f in filas]
+    gravedad_por_caso = {f[0]: f[1] for f in filas}
+
+    casos_qs = Caso.objects.filter(caso_id__in=caso_ids).select_related('lugar').order_by('-caso_fecha')
+
+    casos_detalle = []
+    for caso in casos_qs:
+        texto = caso.caso_descripcion or ""
+        titulo = texto
+        if "]" in texto and "-" in texto:
+            partes = texto.split("] -", 1)
+            titulo = partes[0].replace("[", "").strip()
+        casos_detalle.append({
+            'caso_id': caso.caso_id,
+            'titulo': titulo if titulo else f"Caso #{caso.caso_id}",
+            'fecha': caso.caso_fecha,
+            'lugar': caso.lugar.lugar_nombre if caso.lugar else "No especificado",
+            'gravedad': gravedad_por_caso.get(caso.caso_id, ''),
+        })
+
+    context = {
+        'estudiante': estudiante,
+        'casos': casos_detalle,
+        'total_casos': len(casos_detalle),
+    }
+    return render(request, 'gestion_casos/detalle_estudiante.html', context)
