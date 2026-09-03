@@ -1346,6 +1346,7 @@ def gestion_de_estudiantes_view(request):
         apaterno = request.POST.get('apaterno').strip()
         amaterno = request.POST.get('amaterno').strip()
         curso_id = request.POST.get('curso')
+        numero_lista = request.POST.get('numero_lista', '').strip()
 
         try:
             curso_instancia = Curso.objects.get(pk=curso_id)
@@ -1354,10 +1355,23 @@ def gestion_de_estudiantes_view(request):
                 estudiante_nombre=nombre,
                 estudiante_apaterno=apaterno,
                 estudiante_amaterno=amaterno,
-                curso=curso_instancia
+                curso=curso_instancia,
+                estudiante_numero_lista=int(numero_lista) if numero_lista.isdigit() else None,
             )
             nuevo_estudiante.save()
-            messages.success(request, f"Alumno(a) {nombre} {apaterno} registrado(a) exitosamente.")
+
+            if nuevo_estudiante.estudiante_identificador:
+                messages.success(
+                    request,
+                    f"Alumno(a) {nombre} {apaterno} registrado(a) exitosamente. "
+                    f"Identificador asignado: {nuevo_estudiante.estudiante_identificador}"
+                )
+            else:
+                messages.warning(
+                    request,
+                    f"Alumno(a) {nombre} {apaterno} registrado(a), pero no se pudo generar su "
+                    f"identificador único (revisa que el N° de lista y el curso sean válidos)."
+                )
             return redirect('gestion_de_alumnos')
                 
         except Exception as e:
@@ -1455,8 +1469,8 @@ def importar_estudiantes_view(request):
     errores = []
 
     # Fila 1 = encabezados. Los datos parten en la fila 2.
-    # Columnas esperadas: A) Nombres  B) Apellido Paterno  C) Apellido Materno  D) Curso (Grado)  E) Curso (Letra)
-    for num_fila, fila in enumerate(hoja.iter_rows(min_row=2, max_col=5, values_only=True), start=2):
+    # Columnas esperadas: A) Nombres  B) Apellido Paterno  C) Apellido Materno  D) Curso (Grado)  E) Curso (Letra)  F) N° Lista (opcional)
+    for num_fila, fila in enumerate(hoja.iter_rows(min_row=2, max_col=6, values_only=True), start=2):
         if not fila or all(c is None or str(c).strip() == '' for c in fila):
             continue  # fila completamente vacía, se ignora sin marcarla como error
 
@@ -1466,6 +1480,7 @@ def importar_estudiantes_view(request):
             amaterno = str(fila[2]).strip() if fila[2] is not None else ''
             valor_curso_grado = fila[3]
             curso_letra = str(fila[4]).strip() if fila[4] is not None else ''
+            valor_numero_lista = fila[5] if len(fila) > 5 else None
 
             if not (nombre and apaterno and amaterno and valor_curso_grado is not None and curso_letra):
                 errores.append(f"Fila {num_fila}: faltan datos obligatorios.")
@@ -1489,11 +1504,18 @@ def importar_estudiantes_view(request):
                 omitidos += 1
                 continue
 
+            numero_lista = None
+            if isinstance(valor_numero_lista, (int, float)):
+                numero_lista = int(valor_numero_lista)
+            elif isinstance(valor_numero_lista, str) and valor_numero_lista.strip().isdigit():
+                numero_lista = int(valor_numero_lista.strip())
+
             estudiante, creado = Estudiante.objects.get_or_create(
                 estudiante_nombre=nombre,
                 estudiante_apaterno=apaterno,
                 estudiante_amaterno=amaterno,
-                curso=curso_instancia
+                curso=curso_instancia,
+                defaults={'estudiante_numero_lista': numero_lista}
             )
             if creado:
                 creados += 1
@@ -1533,6 +1555,7 @@ def editar_estudiante_view(request, estudiante_id):
         apaterno = request.POST.get('apaterno', '').strip()
         amaterno = request.POST.get('amaterno', '').strip()
         curso_id = request.POST.get('curso')
+        numero_lista = request.POST.get('numero_lista', '').strip()
 
         try:
             curso_instancia = Curso.objects.get(pk=curso_id)
@@ -1540,7 +1563,8 @@ def editar_estudiante_view(request, estudiante_id):
             estudiante.estudiante_apaterno = apaterno
             estudiante.estudiante_amaterno = amaterno
             estudiante.curso = curso_instancia
-            estudiante.save()
+            estudiante.estudiante_numero_lista = int(numero_lista) if numero_lista.isdigit() else None
+            estudiante.save()  # recalcula el identificador automáticamente
             messages.success(request, f"Alumno(a) {nombre} {apaterno} actualizado(a) exitosamente.")
         except Exception as e:
             messages.error(request, f"Ocurrió un error al actualizar al alumno: {str(e)}")

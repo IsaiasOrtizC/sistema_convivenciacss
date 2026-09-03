@@ -1,5 +1,75 @@
+import re
+import unicodedata
 from django.db import models
 from django.utils import timezone
+
+
+def _quitar_tildes(texto):
+    """Quita tildes/acentos de un texto (ej: 'Á' -> 'A'), para que el
+    identificador del alumno solo use letras planas, como exige el formato."""
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', texto)
+        if unicodedata.category(c) != 'Mn'
+    )
+
+
+def generar_identificador_alumno(nombre, apaterno, numero_lista, curso_grado, curso_letra):
+    """
+    Genera el identificador único de 7 caracteres para un alumno, según el formato:
+    [Inicial Nombre][Inicial Apellido][N° Lista (2 dígitos)][Curso][Nivel][Paralelo]
+
+    Ejemplo: Juan Pérez, lista N°5, 3° Medio, paralelo A -> "JP053MA"
+
+    Reglas:
+    - Básica: cursos válidos del 1 al 8 (nivel 'B')
+    - Media: cursos válidos del 1 al 4 (nivel 'M')
+    - El N° de lista es por curso + paralelo (no es global)
+
+    Devuelve None si falta algún dato o si el resultado no cumple el formato
+    (^[A-ZÑ]{2}\\d{2}([1-8]B|[1-4]M)[A-Z]$).
+    """
+    if not (nombre and apaterno and numero_lista and curso_grado and curso_letra):
+        return None
+
+    inicial_nombre = _quitar_tildes(nombre.strip()[0]).upper()
+    inicial_apaterno = _quitar_tildes(apaterno.strip()[0]).upper()
+
+    if not inicial_nombre.isalpha() or not inicial_apaterno.isalpha():
+        return None
+
+    try:
+        lista_str = f"{int(numero_lista):02d}"
+    except (ValueError, TypeError):
+        return None
+
+    match_curso = re.search(r'(\d+)', curso_grado)
+    if not match_curso:
+        return None
+    curso_num = int(match_curso.group(1))
+
+    curso_grado_normalizado = _quitar_tildes(curso_grado).lower()
+    if 'basica' in curso_grado_normalizado:
+        nivel = 'B'
+        if not (1 <= curso_num <= 8):
+            return None
+    elif 'medio' in curso_grado_normalizado:
+        nivel = 'M'
+        if not (1 <= curso_num <= 4):
+            return None
+    else:
+        return None
+
+    paralelo = curso_letra.strip().upper()[:1]
+    if not paralelo.isalpha():
+        return None
+
+    identificador = f"{inicial_nombre}{inicial_apaterno}{lista_str}{curso_num}{nivel}{paralelo}"
+
+    # Validación final contra el regex oficial de la especificación
+    if not re.match(r'^[A-ZÑ]{2}\d{2}([1-8]B|[1-4]M)[A-Z]$', identificador):
+        return None
+
+    return identificador
 
 # 1. TABLA ROL
 class Rol(models.Model):
@@ -55,6 +125,8 @@ class Estudiante(models.Model):
     estudiante_apaterno = models.CharField(max_length=100)
     estudiante_amaterno = models.CharField(max_length=100)
     curso = models.ForeignKey(Curso, on_delete=models.CASCADE, db_column='curso_id')
+    estudiante_numero_lista = models.IntegerField(null=True, blank=True)
+    estudiante_identificador = models.CharField(max_length=10, unique=True, null=True, blank=True)
 
     class Meta:
         db_table = 'estudiante' 
@@ -62,6 +134,26 @@ class Estudiante(models.Model):
 
     def __str__(self):
         return f"{self.estudiante_nombre} {self.estudiante_apaterno}"
+
+    def save(self, *args, **kwargs):
+        # Recalcula el identificador único cada vez que se guarda el alumno,
+        # siempre que tenga los datos necesarios (nombre, apellido, N° lista y curso).
+        if self.estudiante_numero_lista and self.curso_id:
+            try:
+                curso_obj = self.curso
+            except Curso.DoesNotExist:
+                curso_obj = None
+            if curso_obj:
+                nuevo_id = generar_identificador_alumno(
+                    self.estudiante_nombre,
+                    self.estudiante_apaterno,
+                    self.estudiante_numero_lista,
+                    curso_obj.curso_grado,
+                    curso_obj.curso_letra,
+                )
+                if nuevo_id:
+                    self.estudiante_identificador = nuevo_id
+        super().save(*args, **kwargs)
 
 # 5. TABLA LUGAR
 class Lugar(models.Model):

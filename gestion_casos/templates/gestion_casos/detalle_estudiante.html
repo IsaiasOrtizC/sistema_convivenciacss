@@ -91,6 +91,9 @@
       <div>
         <div class="student-title">{{ estudiante.estudiante_nombre }} {{ estudiante.estudiante_apaterno }} {{ estudiante.estudiante_amaterno }}</div>
         <span class="badge-curso">📚 {{ estudiante.curso.curso_grado|default:"Sin" }} {{ estudiante.curso.curso_letra }}</span>
+        {% if estudiante.estudiante_identificador %}
+          <span style="display: inline-block; font-family: monospace; font-weight: 700; font-size: .78rem; color: var(--guinda); background: var(--cream); border: 1px solid var(--border); padding: 3px 10px; border-radius: 4px; margin-top: 4px; margin-left: 6px;">🆔 {{ estudiante.estudiante_identificador }}</span>
+        {% endif %}
       </div>
     </div>
 
