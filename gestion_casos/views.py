@@ -8,7 +8,7 @@ from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.http import HttpResponse, JsonResponse
 from django.core.paginator import Paginator
-from .models import Caso, Lugar, Estudiante, Involucran, Curso, Usuario, Rol, Notificacion, HistorialUsuario, DocumentoInstitucional, ProfesorJefe, Administrador, Inspector, PConvivencia, SesionActiva
+from .models import Caso, Lugar, Estudiante, Involucran, Curso, Usuario, Rol, Notificacion, HistorialUsuario, DocumentoInstitucional, ProfesorJefe, Administrador, Inspector, PConvivencia, SesionActiva, _quitar_tildes
 from django.contrib.messages import get_messages
 from django.utils import timezone
 from django.db.models import Count
@@ -1897,7 +1897,8 @@ def descargar_casos_xlsx_view(request):
 # ============================================================
 
 def busqueda_global_view(request):
-    """API JSON para el buscador global de la barra superior (alumnos y casos)."""
+    """API JSON para el buscador global de la barra superior (alumnos, casos y funcionarios).
+    Ignora tildes y mayúsculas/minúsculas en ambos lados (lo que se busca y lo guardado)."""
     if 'usuario_id' not in request.session:
         return JsonResponse({'error': 'No autenticado'}, status=401)
 
@@ -1906,16 +1907,22 @@ def busqueda_global_view(request):
         return JsonResponse({'error': 'Acceso denegado'}, status=403)
 
     query = request.GET.get('q', '').strip()
-    resultado = {'estudiantes': [], 'casos': []}
+    resultado = {'estudiantes': [], 'casos': [], 'usuarios': []}
 
     if len(query) < 2:
         return JsonResponse(resultado)
 
+    # Se le quitan las tildes al término buscado, para que coincida sin importar
+    # si el usuario escribe "jose" o "josé" (el campo también se compara sin tildes,
+    # vía la extensión 'unaccent' de PostgreSQL con el lookup __unaccent).
+    query_normalizada = _quitar_tildes(query)
+
     # ---- Alumnos ----
     estudiantes = Estudiante.objects.select_related('curso').filter(
-        Q(estudiante_nombre__icontains=query) |
-        Q(estudiante_apaterno__icontains=query) |
-        Q(estudiante_amaterno__icontains=query)
+        Q(estudiante_nombre__unaccent__icontains=query_normalizada) |
+        Q(estudiante_apaterno__unaccent__icontains=query_normalizada) |
+        Q(estudiante_amaterno__unaccent__icontains=query_normalizada) |
+        Q(estudiante_identificador__icontains=query.upper())
     )[:8]
     for e in estudiantes:
         resultado['estudiantes'].append({
@@ -1925,7 +1932,9 @@ def busqueda_global_view(request):
         })
 
     # ---- Casos ----
-    casos = Caso.objects.filter(caso_descripcion__icontains=query).select_related('lugar').order_by('-caso_fecha')[:8]
+    casos = Caso.objects.filter(
+        caso_descripcion__unaccent__icontains=query_normalizada
+    ).select_related('lugar').order_by('-caso_fecha')[:8]
     for c in casos:
         texto = c.caso_descripcion or ""
         titulo = texto
@@ -1937,6 +1946,21 @@ def busqueda_global_view(request):
             'titulo': titulo if titulo else f"Caso #{c.caso_id}",
             'fecha': c.caso_fecha.strftime('%d/%m/%Y') if c.caso_fecha else '',
             'lugar': c.lugar.lugar_nombre if c.lugar else 'No especificado',
+        })
+
+    # ---- Funcionarios (Profesor Jefe, Inspector, Administrador, Convivencia) ----
+    usuarios = Usuario.objects.select_related('rol').filter(
+        Q(usuario_nombre__unaccent__icontains=query_normalizada) |
+        Q(usuario_apaterno__unaccent__icontains=query_normalizada) |
+        Q(usuario_amaterno__unaccent__icontains=query_normalizada) |
+        Q(usuario_correo__icontains=query)
+    )[:6]
+    for u in usuarios:
+        resultado['usuarios'].append({
+            'id': u.usuario_id,
+            'nombre_completo': f"{u.usuario_nombre} {u.usuario_apaterno} {u.usuario_amaterno}",
+            'correo': u.usuario_correo,
+            'rol': u.rol.rol_nombre if u.rol else '',
         })
 
     return JsonResponse(resultado)

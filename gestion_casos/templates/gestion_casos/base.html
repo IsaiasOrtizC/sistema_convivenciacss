@@ -68,6 +68,7 @@
     .search-result-icon { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .search-result-icon.alumno { background: rgba(30,132,73,.1); color: #1E8449; }
     .search-result-icon.caso { background: rgba(123,26,26,.1); color: var(--guinda); }
+    .search-result-icon.usuario { background: rgba(212,160,23,.15); color: #B7860B; }
     .search-result-title { font-weight: 700; font-size: .86rem; color: var(--text-dark); }
     .search-result-sub { font-size: .74rem; color: var(--text-lo); margin-top: 1px; }
     .search-empty-state { text-align: center; padding: 40px 20px; color: var(--text-lo); font-size: .85rem; }
@@ -280,8 +281,9 @@
       const contenedor = document.getElementById('searchModalResults');
       const hayAlumnos = data.estudiantes && data.estudiantes.length > 0;
       const hayCasos = data.casos && data.casos.length > 0;
+      const hayUsuarios = data.usuarios && data.usuarios.length > 0;
 
-      if (!hayAlumnos && !hayCasos) {
+      if (!hayAlumnos && !hayCasos && !hayUsuarios) {
         contenedor.innerHTML = '<div class="search-empty-state">No se encontraron resultados.</div>';
         return;
       }
@@ -320,12 +322,32 @@
         });
       }
 
+      if (hayUsuarios) {
+        html += '<div class="search-section-title">Funcionarios</div>';
+        data.usuarios.forEach(u => {
+          html += `
+            <div class="search-result-item" onclick="irAGestionUsuarios()">
+              <div class="search-result-icon usuario">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975M15 6.75a3 3 0 11-6 0 3 3 0 016 0zM21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+              <div>
+                <div class="search-result-title">${u.nombre_completo}</div>
+                <div class="search-result-sub">${u.rol} · ${u.correo}</div>
+              </div>
+            </div>`;
+        });
+      }
+
       contenedor.innerHTML = html;
     }
 
     function irAFichaAlumno(id) {
       const urlBase = "{% url 'detalle_estudiante' 0 %}";
       window.location.href = urlBase.replace('/0/', '/' + id + '/');
+    }
+
+    function irAGestionUsuarios() {
+      window.location.href = "{% url 'gestion_de_usuarios' %}";
     }
 
     function irADetalleCaso(id) {

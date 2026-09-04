@@ -36,7 +36,10 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'django.contrib.postgres',
+    'cloudinary_storage',
     'django.contrib.staticfiles',
+    'cloudinary',
     'gestion_casos',
 ]
 
@@ -128,9 +131,25 @@ STATICFILES_DIRS = [
 ]
 
 # Archivos subidos por los usuarios (ej: PDFs de Reglamento Interno / Protocolos)
-# https://docs.djangoproject.com/en/5.0/topics/files/
+# Se guardan en Cloudinary (nube) en vez del disco local, para que no se pierdan
+# cuando el servidor se reinicia o se vuelve a desplegar (ej: en Render).
+import cloudinary
+
+cloudinary.config(
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+    api_key=os.environ.get('CLOUDINARY_API_KEY', ''),
+    api_secret=os.environ.get('CLOUDINARY_API_SECRET', ''),
+    secure=True
+)
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+    'API_KEY': os.environ.get('CLOUDINARY_API_KEY', ''),
+    'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET', ''),
+}
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Límite de tamaño para subir archivos (20 MB) antes de que Django los pase a disco temporal
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024

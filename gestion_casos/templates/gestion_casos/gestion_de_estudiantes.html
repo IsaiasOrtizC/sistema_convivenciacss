@@ -187,9 +187,10 @@
       <div class="pane-title">📥 Importar Alumnos desde Excel</div>
       <p style="font-size: .78rem; color: var(--text-lo); margin-top: -10px; margin-bottom: 16px; line-height: 1.5;">
         Sube un archivo <strong>.xlsx</strong> con varios alumnos a la vez. Debe tener las columnas
-        <strong>Nombres, Apellido Paterno, Apellido Materno, Curso (Grado), Curso (Letra)</strong>,
+        <strong>Nombres, Apellido Paterno, Apellido Materno, Curso (Grado), Curso (Letra), N° Lista</strong>,
         en ese orden, con encabezados en la primera fila. En "Curso (Grado)" solo pon el número
-        (1, 2, 3 o 4) — el sistema arma automáticamente "1° Medio", "2° Medio", etc.
+        (1, 2, 3 o 4) — el sistema arma automáticamente "1° Medio", "2° Medio", etc. La columna
+        "N° Lista" es opcional, pero si la incluyes el alumno recibe su identificador único de inmediato.
       </p>
       <form action="{% url 'importar_estudiantes' %}" method="POST" enctype="multipart/form-data">
         {% csrf_token %}
