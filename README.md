@@ -84,7 +84,7 @@ sistema_convivenciacss/
 ## 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/Matias0752/Proyecto_Convidata-GRUPO-13.git
+git clone https://github.com/IsaiasOrtizC/sistema_convivenciacss.git
 ```
 
 Ingresar al directorio del proyecto:
