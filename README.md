@@ -2,7 +2,7 @@
 
 Sistema web para la **gestión, registro y seguimiento de casos de convivencia escolar**, desarrollado para centralizar la información de estudiantes, usuarios, casos, notificaciones y estadísticas dentro de un establecimiento educacional.
 
-El proyecto corresponde al desarrollo de la plataforma **ConviData**, realizada para la asignatura **Ingeniería de Software I – 2026**.
+El proyecto corresponde al desarrollo de la plataforma **ConviData**, realizada para la asignatura **Ingeniería de Software II – 2026**.
 
 ---
 
