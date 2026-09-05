@@ -1335,6 +1335,17 @@ def historial_usuarios_view(request):
     }
     return render(request, 'gestion_casos/historial_de_usuarios.html', context)
 
+def _numero_lista_ya_usado(curso, numero_lista, excluir_estudiante_id=None):
+    """Verifica si otro alumno del MISMO curso ya tiene ese número de lista.
+    'excluir_estudiante_id' se usa al editar, para no chocar contra sí mismo."""
+    if not numero_lista or not curso:
+        return False
+    qs = Estudiante.objects.filter(curso=curso, estudiante_numero_lista=numero_lista)
+    if excluir_estudiante_id:
+        qs = qs.exclude(pk=excluir_estudiante_id)
+    return qs.exists()
+
+
 def gestion_de_estudiantes_view(request):
     if 'usuario_id' not in request.session:
         return redirect('login')
@@ -1350,13 +1361,22 @@ def gestion_de_estudiantes_view(request):
 
         try:
             curso_instancia = Curso.objects.get(pk=curso_id)
-            
+            numero_lista_val = int(numero_lista) if numero_lista.isdigit() else None
+
+            if numero_lista_val and _numero_lista_ya_usado(curso_instancia, numero_lista_val):
+                messages.error(
+                    request,
+                    f"Ya existe un alumno con el N° de lista {numero_lista_val} en {curso_instancia}. "
+                    f"El número de lista debe ser único dentro del mismo curso."
+                )
+                return redirect('gestion_de_alumnos')
+
             nuevo_estudiante = Estudiante(
                 estudiante_nombre=nombre,
                 estudiante_apaterno=apaterno,
                 estudiante_amaterno=amaterno,
                 curso=curso_instancia,
-                estudiante_numero_lista=int(numero_lista) if numero_lista.isdigit() else None,
+                estudiante_numero_lista=numero_lista_val,
             )
             nuevo_estudiante.save()
 
@@ -1510,6 +1530,13 @@ def importar_estudiantes_view(request):
             elif isinstance(valor_numero_lista, str) and valor_numero_lista.strip().isdigit():
                 numero_lista = int(valor_numero_lista.strip())
 
+            if numero_lista and _numero_lista_ya_usado(curso_instancia, numero_lista):
+                errores.append(
+                    f"Fila {num_fila}: el N° de lista {numero_lista} ya está en uso por otro "
+                    f"alumno en {curso_instancia}. Se creó/actualizó sin número de lista asignado."
+                )
+                numero_lista = None  # se registra igual al alumno, pero sin el N° de lista repetido
+
             estudiante, creado = Estudiante.objects.get_or_create(
                 estudiante_nombre=nombre,
                 estudiante_apaterno=apaterno,
@@ -1559,11 +1586,21 @@ def editar_estudiante_view(request, estudiante_id):
 
         try:
             curso_instancia = Curso.objects.get(pk=curso_id)
+            numero_lista_val = int(numero_lista) if numero_lista.isdigit() else None
+
+            if numero_lista_val and _numero_lista_ya_usado(curso_instancia, numero_lista_val, excluir_estudiante_id=estudiante.estudiante_id):
+                messages.error(
+                    request,
+                    f"Ya existe OTRO alumno con el N° de lista {numero_lista_val} en {curso_instancia}. "
+                    f"El número de lista debe ser único dentro del mismo curso."
+                )
+                return redirect('gestion_de_alumnos')
+
             estudiante.estudiante_nombre = nombre
             estudiante.estudiante_apaterno = apaterno
             estudiante.estudiante_amaterno = amaterno
             estudiante.curso = curso_instancia
-            estudiante.estudiante_numero_lista = int(numero_lista) if numero_lista.isdigit() else None
+            estudiante.estudiante_numero_lista = numero_lista_val
             estudiante.save()  # recalcula el identificador automáticamente
             messages.success(request, f"Alumno(a) {nombre} {apaterno} actualizado(a) exitosamente.")
         except Exception as e:
