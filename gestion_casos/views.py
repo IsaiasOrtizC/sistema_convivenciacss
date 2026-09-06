@@ -93,6 +93,12 @@ def login_view(request):
                 
                 # Validamos credenciales directo con tu string de contraseña de la BD
                 if usuario.usuario_contrasena == contrasena_ingresada:
+
+                    # RF: no dejar entrar a cuentas marcadas como inactivas
+                    if not usuario.usuario_activo:
+                        messages.error(request, "Tu cuenta se encuentra inactiva. Contacta al Administrador del sistema.")
+                        return redirect('login')
+
                     usuario.usuario_ultimo_acceso=timezone.now()
                     usuario.save(update_fields=['usuario_ultimo_acceso'])
 
@@ -687,14 +693,53 @@ def gestion_de_usuarios_view(request):
             messages.error(request, "Ocurrió un error al intentar registrar al usuario.")
 
     
+    # RF: filtros combinables (nombre, rol, estado de cuenta, fecha de último acceso)
+    filtro_nombre = request.GET.get('nombre', '').strip()
+    filtro_rol_id = request.GET.get('rol', '').strip()
+    filtro_estado = request.GET.get('estado', '').strip()
+    filtro_fecha_desde = request.GET.get('fecha_desde', '').strip()
+    filtro_fecha_hasta = request.GET.get('fecha_hasta', '').strip()
+
     usuarios_registrados = Usuario.objects.select_related('rol', 'profesorjefe').all().order_by('usuario_apaterno')
+
+    if filtro_nombre:
+        nombre_normalizado = _quitar_tildes(filtro_nombre)
+        usuarios_registrados = usuarios_registrados.filter(
+            Q(usuario_nombre__unaccent__icontains=nombre_normalizado) |
+            Q(usuario_apaterno__unaccent__icontains=nombre_normalizado) |
+            Q(usuario_amaterno__unaccent__icontains=nombre_normalizado) |
+            Q(usuario_correo__icontains=filtro_nombre)
+        )
+
+    if filtro_rol_id:
+        usuarios_registrados = usuarios_registrados.filter(rol_id=filtro_rol_id)
+
+    if filtro_estado == 'activo':
+        usuarios_registrados = usuarios_registrados.filter(usuario_activo=True)
+    elif filtro_estado == 'inactivo':
+        usuarios_registrados = usuarios_registrados.filter(usuario_activo=False)
+
+    if filtro_fecha_desde:
+        usuarios_registrados = usuarios_registrados.filter(usuario_ultimo_acceso__date__gte=filtro_fecha_desde)
+
+    if filtro_fecha_hasta:
+        usuarios_registrados = usuarios_registrados.filter(usuario_ultimo_acceso__date__lte=filtro_fecha_hasta)
+
     roles_disponibles = Rol.objects.all().order_by('rol_nombre')
     cursos_disponibles = Curso.objects.all().order_by('curso_grado', 'curso_letra')
 
     context = {
         'usuarios': usuarios_registrados,
         'roles': roles_disponibles,
-        'cursos': cursos_disponibles
+        'cursos': cursos_disponibles,
+        'filtros': {
+            'nombre': filtro_nombre,
+            'rol': filtro_rol_id,
+            'estado': filtro_estado,
+            'fecha_desde': filtro_fecha_desde,
+            'fecha_hasta': filtro_fecha_hasta,
+        },
+        'hay_filtros_activos': bool(filtro_nombre or filtro_rol_id or filtro_estado or filtro_fecha_desde or filtro_fecha_hasta),
     }
     return render(request, 'gestion_casos/gestion_de_usuarios.html', context)
 
@@ -716,6 +761,7 @@ def editar_usuario_view(request, usuario_id):
         contrasena = request.POST.get('contrasena', '').strip()  # Vacío = mantener la actual
         rol_id = request.POST.get('rol')
         curso_id = request.POST.get('curso')  # Solo se usa si el rol es "Profesor Jefe"
+        cuenta_activa = request.POST.get('activo') == 'on'  # checkbox: presente = activo
 
         try:
             # Verifica que el correo no pertenezca a OTRO usuario (excluyéndose a sí mismo)
@@ -738,6 +784,7 @@ def editar_usuario_view(request, usuario_id):
                 usuario_editar.usuario_amaterno = amaterno
                 usuario_editar.usuario_correo = correo
                 usuario_editar.rol = rol_instancia
+                usuario_editar.usuario_activo = cuenta_activa
                 if contrasena:
                     usuario_editar.usuario_contrasena = contrasena
                 usuario_editar.save()
