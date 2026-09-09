@@ -95,7 +95,6 @@ class Usuario(models.Model):
     usuario_ultimo_acceso = models.DateTimeField(null=True, blank=True)
     
     usuario_primer_ingreso = models.BooleanField(default=True)
-    usuario_activo = models.BooleanField(default=True)
     
     rol = models.ForeignKey(Rol, on_delete=models.PROTECT, db_column='rol_id')
 
