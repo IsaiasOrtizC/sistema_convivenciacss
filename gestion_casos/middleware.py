@@ -37,3 +37,32 @@ class ForzarSesionUnicaMiddleware:
 
         response = self.get_response(request)
         return response
+
+
+class ExigirCambioContrasenaMiddleware:
+    """
+    RF: si el usuario inició sesión con una contraseña temporal (primer ingreso),
+    lo obliga a cambiarla antes de poder usar cualquier otra parte del sistema.
+    Cualquier página que intente visitar lo redirige de vuelta a Configuración,
+    donde se le muestra una ventana emergente pidiéndole el cambio.
+    """
+
+    RUTAS_PERMITIDAS = ('/mis-datos/configuracion/', '/logout/')
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.session.get('primer_ingreso'):
+            path = request.path
+            excluido = (
+                path in self.RUTAS_PERMITIDAS
+                or path.startswith('/static/')
+                or path.startswith('/media/')
+            )
+            if not excluido:
+                messages.error(request, "Debes cambiar tu contraseña temporal antes de continuar usando el sistema.")
+                return redirect('gestion_configuracion')
+
+        response = self.get_response(request)
+        return response

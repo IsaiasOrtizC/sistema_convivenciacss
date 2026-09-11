@@ -25,6 +25,17 @@
   
   .btn-save-profile { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 22px; border-radius: 6px; background: var(--guinda); color: #fff; font-size: .83rem; font-weight: 600; border: none; cursor: pointer; transition: all var(--transition); margin-top: 8px; width: 100%; }
   .btn-save-profile:hover { background: var(--guinda-mid); box-shadow: 0 4px 12px rgba(123,26,26,.2); }
+
+  /* 🌟 Ventana emergente: obliga a cambiar la contraseña temporal */
+  .pw-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(28,10,10,.65); z-index: 3000; align-items: center; justify-content: center; padding: 20px; }
+  .pw-modal-overlay.open { display: flex; }
+  .pw-modal-box { background: var(--white); border-radius: var(--radius); width: 100%; max-width: 420px; box-shadow: 0 24px 70px rgba(0,0,0,.4); border-top: 4px solid var(--gold); overflow: hidden; }
+  .pw-modal-icon { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 50%; background: #fef9e7; color: #B7860B; margin: 26px auto 0; }
+  .pw-modal-title { font-family: 'Merriweather', serif; font-weight: 900; font-size: 1.1rem; color: var(--guinda); text-align: center; margin: 14px 26px 6px; }
+  .pw-modal-text { font-size: .85rem; color: var(--text-mid); text-align: center; margin: 0 26px 24px; line-height: 1.55; }
+  .pw-modal-actions { padding: 18px 26px 26px; }
+  .pw-modal-btn { width: 100%; padding: 11px; border-radius: 8px; font-size: .85rem; font-weight: 700; cursor: pointer; border: none; background: var(--guinda); color: #fff; transition: all var(--transition); }
+  .pw-modal-btn:hover { background: var(--guinda-mid); box-shadow: 0 4px 12px rgba(123,26,26,.25); }
 </style>
 {% endblock %}
 
@@ -75,4 +86,32 @@
       </button>
     </form>
   </div>
+
+  {% if debe_cambiar_contrasena %}
+  <!-- 🌟 Ventana emergente obligatoria: contraseña temporal -->
+  <div class="pw-modal-overlay open" id="pwModalOverlay">
+    <div class="pw-modal-box">
+      <div class="pw-modal-icon">
+        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zM8 11v6M16 8h.01M16 11a4 4 0 100-8 4 4 0 000 8z"/></svg>
+      </div>
+      <div class="pw-modal-title">Debes cambiar tu contraseña</div>
+      <div class="pw-modal-text">
+        Iniciaste sesión con una contraseña temporal. Por seguridad, el sistema requiere que
+        definas una contraseña nueva y personal antes de poder continuar usando ConviData.
+      </div>
+      <div class="pw-modal-actions">
+        <button type="button" class="pw-modal-btn" onclick="cerrarModalCambioContrasena()">Entendido, la cambiaré ahora</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function cerrarModalCambioContrasena() {
+      document.getElementById('pwModalOverlay').classList.remove('open');
+      // Lleva el foco directo al campo de nueva contraseña para que la cambien de inmediato
+      const campoContrasena = document.querySelector('input[name="contrasena"]');
+      if (campoContrasena) campoContrasena.focus();
+    }
+  </script>
+  {% endif %}
 {% endblock %}

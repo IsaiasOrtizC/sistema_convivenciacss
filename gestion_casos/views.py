@@ -90,7 +90,12 @@ def login_view(request):
             try:
                 # Buscamos al funcionario por su correo real
                 usuario = Usuario.objects.get(usuario_correo=correo_ingresado)
-                
+
+                # RF: cuenta bloqueada por intentos fallidos -> ni siquiera se valida la contraseña
+                if usuario.usuario_bloqueado:
+                    messages.error(request, "Cuenta bloqueada. Contacta al Administrador del sistema para restablecer el acceso.")
+                    return redirect('login')
+
                 # Validamos credenciales directo con tu string de contraseña de la BD
                 if usuario.usuario_contrasena == contrasena_ingresada:
 
@@ -99,8 +104,9 @@ def login_view(request):
                         messages.error(request, "Tu cuenta se encuentra inactiva. Contacta al Administrador del sistema.")
                         return redirect('login')
 
+                    usuario.usuario_intentos_fallidos = 0
                     usuario.usuario_ultimo_acceso=timezone.now()
-                    usuario.save(update_fields=['usuario_ultimo_acceso'])
+                    usuario.save(update_fields=['usuario_intentos_fallidos', 'usuario_ultimo_acceso'])
 
 
                     # Inyectamos las variables obligatorias en la sesión web
@@ -129,7 +135,18 @@ def login_view(request):
 
                     return redirect('dashboard')
                 else:
-                    messages.error(request, "Contraseña incorrecta. Intente nuevamente.")
+                    # RF: contraseña incorrecta -> cuenta el intento y bloquea al llegar a 5
+                    usuario.usuario_intentos_fallidos += 1
+
+                    if usuario.usuario_intentos_fallidos >= 5:
+                        usuario.usuario_bloqueado = True
+                        usuario.save(update_fields=['usuario_intentos_fallidos', 'usuario_bloqueado'])
+                        messages.error(request, "Cuenta bloqueada. Se detectaron 5 intentos fallidos consecutivos. Contacta al Administrador del sistema.")
+                    else:
+                        usuario.save(update_fields=['usuario_intentos_fallidos'])
+                        intentos_restantes = 5 - usuario.usuario_intentos_fallidos
+                        messages.error(request, f"Contraseña incorrecta. Te quedan {intentos_restantes} intento(s) antes de que la cuenta se bloquee.")
+
                     return redirect('login')
                     
             except Usuario.DoesNotExist:
@@ -785,6 +802,10 @@ def editar_usuario_view(request, usuario_id):
                 usuario_editar.usuario_correo = correo
                 usuario_editar.rol = rol_instancia
                 usuario_editar.usuario_activo = cuenta_activa
+                # Si el Administrador edita y guarda al funcionario, se considera revisado:
+                # se desbloquea la cuenta y se reinicia el contador de intentos fallidos.
+                usuario_editar.usuario_bloqueado = False
+                usuario_editar.usuario_intentos_fallidos = 0
                 if contrasena:
                     usuario_editar.usuario_contrasena = contrasena
                 usuario_editar.save()
@@ -823,6 +844,24 @@ def editar_usuario_view(request, usuario_id):
         except Exception as e:
             messages.error(request, f"Ocurrió un error al actualizar al usuario: {str(e)}")
 
+    return redirect('gestion_de_usuarios')
+
+
+def desbloquear_usuario_view(request, usuario_id):
+    """RF: permite al Administrador desbloquear en un solo clic una cuenta
+    que quedó bloqueada por 5 intentos fallidos de inicio de sesión."""
+    if 'usuario_id' not in request.session:
+        return redirect('login')
+    if request.session.get('usuario_rol') != 'Administrador':
+        messages.error(request, "Acceso denegado: No tienes permisos de Administrador.")
+        return redirect('dashboard')
+
+    usuario_desbloquear = get_object_or_404(Usuario, pk=usuario_id)
+    usuario_desbloquear.usuario_bloqueado = False
+    usuario_desbloquear.usuario_intentos_fallidos = 0
+    usuario_desbloquear.save(update_fields=['usuario_bloqueado', 'usuario_intentos_fallidos'])
+
+    messages.success(request, f"La cuenta de {usuario_desbloquear.usuario_nombre} {usuario_desbloquear.usuario_apaterno} fue desbloqueada exitosamente.")
     return redirect('gestion_de_usuarios')
 
 #panel de estadisticas
@@ -1677,7 +1716,10 @@ def gestion_configuracion_view(request):
             
             if nueva_contrasena:
                 usuario_perfil.usuario_contrasena = nueva_contrasena
-                
+                # RF: ya cambió su contraseña temporal -> deja de estar obligado a hacerlo
+                usuario_perfil.usuario_primer_ingreso = False
+                request.session['primer_ingreso'] = False
+
             usuario_perfil.save()
             messages.success(request, "Tus credenciales y datos privados se actualizaron correctamente.")
             return redirect('gestion_configuracion')
@@ -1685,7 +1727,8 @@ def gestion_configuracion_view(request):
             messages.error(request, "Ocurrió un error al intentar actualizar la configuración.")
 
     context = {
-        'perfil': usuario_perfil
+        'perfil': usuario_perfil,
+        'debe_cambiar_contrasena': request.session.get('primer_ingreso', False),
     }
     return render(request, 'gestion_casos/gestion_configuracion.html', context)
 

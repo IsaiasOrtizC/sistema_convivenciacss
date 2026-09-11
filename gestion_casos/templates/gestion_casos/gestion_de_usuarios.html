@@ -45,6 +45,10 @@
   .badge-status { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: .65rem; font-weight: 700; text-transform: uppercase; }
   .status-active { background: #e8f8f5; color: #1e8449; border: 1px solid #a3e4d7; }
   .status-inactive { background: #fceae9; color: #c0392b; border: 1px solid #f5b7b1; }
+  .status-bloqueada { background: #2c2c2c; color: #fff; border: 1px solid #000; }
+
+  .btn-action-unlock { display: inline-flex; align-items: center; gap: 4px; background: #eaf3ea; color: #1e8449; border: 1px solid #cde8cd; padding: 4px 8px; border-radius: 4px; font-size: .72rem; font-weight: 600; text-decoration: none; transition: all var(--transition); cursor: pointer; }
+  .btn-action-unlock:hover { background: #d6ecd6; box-shadow: 0 2px 6px rgba(30,132,73,.15); }
 
   /* 🌟 Filtros combinables de usuarios */
   .filtros-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 18px 22px; margin-bottom: 20px; }
@@ -239,7 +243,9 @@
               </td>
               
               <td>
-                {% if u.usuario_activo %}
+                {% if u.usuario_bloqueado %}
+                  <span class="badge-status status-bloqueada">🔒 Bloqueada</span>
+                {% elif u.usuario_activo %}
                   <span class="badge-status status-active">Activo</span>
                 {% else %}
                   <span class="badge-status status-inactive">Inactivo</span>
@@ -258,6 +264,18 @@
                   </svg>
                   Editar
                 </button>
+                {% if u.usuario_bloqueado %}
+                  <button type="button" class="btn-action-unlock" style="margin-left: 4px;"
+                    onclick="if(confirm('¿Desbloquear la cuenta de {{ u.usuario_nombre|escapejs }} {{ u.usuario_apaterno|escapejs }}? Se reiniciará su contador de intentos fallidos.')){ document.getElementById('form-desbloquear-{{ u.usuario_id }}').submit(); }">
+                    <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6-2a2 2 0 002 2h8a2 2 0 002-2v-4a2 2 0 00-2-2H6a2 2 0 00-2 2v4z"/>
+                    </svg>
+                    Desbloquear
+                  </button>
+                  <form id="form-desbloquear-{{ u.usuario_id }}" method="POST" action="{% url 'desbloquear_usuario' u.usuario_id %}" style="display:none;">
+                    {% csrf_token %}
+                  </form>
+                {% endif %}
               </td>
             </tr>
           {% empty %}

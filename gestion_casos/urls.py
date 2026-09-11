@@ -20,6 +20,7 @@ urlpatterns = [
     # Módulos de Administración
     path('administracion/usuarios/', views.gestion_de_usuarios_view, name='gestion_de_usuarios'),
     path('administracion/usuarios/editar/<int:usuario_id>/', views.editar_usuario_view, name='editar_usuario'),
+    path('administracion/usuarios/desbloquear/<int:usuario_id>/', views.desbloquear_usuario_view, name='desbloquear_usuario'),
     path('administracion/alumnos/', views.gestion_de_estudiantes_view, name='gestion_de_alumnos'),
     path('administracion/alumnos/importar/', views.importar_estudiantes_view, name='importar_estudiantes'),
     path('administracion/alumnos/eliminar/<int:estudiante_id>/', views.eliminar_estudiante_view, name='eliminar_estudiante'),
