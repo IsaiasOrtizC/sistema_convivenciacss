@@ -11,10 +11,14 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import load_dotenv
+import os
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+load_dotenv(BASE_DIR / '.env')
+RESEND_API_KEY = os.getenv('RESEND_API_KEY')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
@@ -161,7 +165,6 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-RESEND_API_KEY = ""
 
 
 
@@ -174,3 +177,20 @@ CSRF_TRUSTED_ORIGINS = [
     'http://*.trycloudflare.com',
     'https://his-champagne-taste-comparable.trycloudflare.com',
 ]
+# Celery
+CELERY_BROKER_URL = os.getenv(
+    'CELERY_BROKER_URL',
+    'redis://127.0.0.1:6379/0'
+)
+
+CELERY_RESULT_BACKEND = os.getenv(
+    'CELERY_RESULT_BACKEND',
+    'redis://127.0.0.1:6379/0'
+)
+
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'America/Santiago'
+CELERY_ENABLE_UTC = True
+

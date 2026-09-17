@@ -14,6 +14,7 @@ from django.utils import timezone
 from django.db.models import Count
 from django.db.models.functions import ExtractMonth
 import json
+from .tasks import enviar_credenciales_usuario
 from datetime import timedelta
 from django.db.models import Count, Value, Q
 from django.db.models.functions import Concat
@@ -703,12 +704,26 @@ def gestion_de_usuarios_view(request):
                             profesor_amaterno=amaterno
                         )
 
-                messages.success(request, f"Funcionario {nombre} {apaterno} creado exitosamente.")
-                return redirect('gestion_de_usuarios')
+            messages.success(
+                request,
+                f"Funcionario {nombre} {apaterno} creado exitosamente. "
+                f"Las credenciales fueron enviadas al correo."
+            )
+
+            enviar_credenciales_usuario.delay(
+                correo,
+                nombre,
+                apaterno,
+                contrasena
+            )
+
+            return redirect('gestion_de_usuarios')
 
         except Exception as e:
-            messages.error(request, "Ocurrió un error al intentar registrar al usuario.")
-
+            messages.error(
+                request,
+                "Ocurrió un error al intentar registrar al usuario."
+            )
     
     # RF: filtros combinables (nombre, rol, estado de cuenta, fecha de último acceso)
     filtro_nombre = request.GET.get('nombre', '').strip()
