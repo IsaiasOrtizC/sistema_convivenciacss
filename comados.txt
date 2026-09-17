@@ -23,3 +23,6 @@ python -m pip install reportlab
 python -m pip install openpyxl
 
 
+venv 
+cd ~/GC\ 01-09/sistema_convivenciacss (Este es en mi caso (ISA))
+source venv/bin/activate

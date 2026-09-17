@@ -86,10 +86,10 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'convivencia_escolar', 
-        'USER': 'postgres',
-        'PASSWORD': 'admin123',
-        'HOST': 'localhost',
+        'NAME': 'postgres',
+        'USER': 'postgres.qdodfboqxpvtzhdycqzt',
+        'PASSWORD': 'Moncocolol12@',
+        'HOST': 'aws-0-us-west-2.pooler.supabase.com',
         'PORT': '5432',
     }
 }
