@@ -74,6 +74,15 @@
   .contador-casos-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(123,26,26,.08); border: 1px solid rgba(123,26,26,.18); color: var(--guinda); padding: 8px 16px; border-radius: 999px; font-size: .85rem; font-weight: 700; margin-bottom: 18px; }
   .contador-casos-badge .numero { font-family: 'Merriweather', serif; font-size: 1.05rem; }
 
+  /* 🌟 Paginación */
+  .pagination-bar { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
+  .pagination-info { font-size: .78rem; color: var(--text-lo); }
+  .pagination-controls { display: flex; align-items: center; gap: 8px; }
+  .pagination-btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 6px; background: var(--white); color: var(--guinda); border: 1.5px solid var(--guinda); font-size: .8rem; font-weight: 600; text-decoration: none; transition: all var(--transition); }
+  .pagination-btn:hover { background: var(--guinda); color: #fff; }
+  .pagination-btn.disabled { color: var(--text-lo); border-color: var(--border); pointer-events: none; opacity: .5; }
+  .pagination-current { font-size: .82rem; font-weight: 700; color: var(--text-dark); padding: 0 6px; white-space: nowrap; }
+
   /* Botón eliminar caso (RF-52/53) */
   .btn-delete-caso { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 6px; background: transparent; color: #C0392B; border: 1.5px solid #C0392B; font-size: .78rem; font-weight: 600; cursor: pointer; transition: all var(--transition); white-space: nowrap; }
   .btn-delete-caso:hover { background: #C0392B; color: #fff; box-shadow: 0 2px 6px rgba(192,57,43,.2); }
@@ -277,6 +286,41 @@
         </tbody>
       </table>
     </div>
+
+    {% if casos.paginator.num_pages > 1 %}
+    <div class="pagination-bar">
+      <div class="pagination-info">
+        Mostrando {{ casos.start_index }}–{{ casos.end_index }} de {{ casos.paginator.count }} casos
+      </div>
+      <div class="pagination-controls">
+        {% if casos.has_previous %}
+          <a href="?q={{ filtros.q }}&curso={{ filtros.curso }}&gravedad={{ filtros.gravedad }}&fecha_desde={{ filtros.fecha_desde }}&fecha_hasta={{ filtros.fecha_hasta }}&pagina={{ casos.previous_page_number }}" class="pagination-btn">
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            Anterior
+          </a>
+        {% else %}
+          <span class="pagination-btn disabled">
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            Anterior
+          </span>
+        {% endif %}
+
+        <span class="pagination-current">Página {{ casos.number }} de {{ casos.paginator.num_pages }}</span>
+
+        {% if casos.has_next %}
+          <a href="?q={{ filtros.q }}&curso={{ filtros.curso }}&gravedad={{ filtros.gravedad }}&fecha_desde={{ filtros.fecha_desde }}&fecha_hasta={{ filtros.fecha_hasta }}&pagina={{ casos.next_page_number }}" class="pagination-btn">
+            Siguiente
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        {% else %}
+          <span class="pagination-btn disabled">
+            Siguiente
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </span>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
   </div>
 
   <!-- 🌟 Modal propio de confirmación para eliminar caso (RF-52/53) -->

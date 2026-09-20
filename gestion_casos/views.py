@@ -1,6 +1,9 @@
 import os
 import io
+import secrets
+import string
 import resend
+from django.contrib.auth.hashers import make_password, check_password
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db import connection, transaction
@@ -14,7 +17,6 @@ from django.utils import timezone
 from django.db.models import Count
 from django.db.models.functions import ExtractMonth
 import json
-from .tasks import enviar_credenciales_usuario
 from datetime import timedelta
 from django.db.models import Count, Value, Q
 from django.db.models.functions import Concat
@@ -46,7 +48,19 @@ def login_view(request):
             #login
             try:
                 usuario = Usuario.objects.get(usuario_correo=correo_destino)
-                
+
+                # Se genera una contraseña TEMPORAL nueva y aleatoria (nunca se vuelve a
+                # mostrar/enviar la contraseña real, ya que ahora se guarda encriptada
+                # y ni el propio sistema puede leerla). Se obliga a cambiarla al entrar.
+                alfabeto = string.ascii_letters + string.digits
+                contrasena_temporal = ''.join(secrets.choice(alfabeto) for _ in range(10))
+
+                usuario.usuario_contrasena = make_password(contrasena_temporal)
+                usuario.usuario_primer_ingreso = True
+                usuario.usuario_bloqueado = False
+                usuario.usuario_intentos_fallidos = 0
+                usuario.save()
+
                 html_recuperacion_contraseña = f"""
                 <div style="font-family: 'Segoe UI', sans-serif; max-width: 550px; margin: 0 auto; border: 1px solid rgba(123,26,26,0.15); border-radius: 12px; overflow: hidden;">
                     <div style="background: linear-gradient(90deg, #5A1010 0%, #7B1A1A 100%); padding: 24px; text-align: center; border-bottom: 3px solid #D4A017;">
@@ -56,12 +70,13 @@ def login_view(request):
                     <div style="padding: 32px; background-color: #ffffff; color: #1C0A0A;">
                         <h2 style="font-size: 1.2rem; margin-top: 0; color: #7B1A1A;">Restablecimiento de Credenciales</h2>
                         <p style="font-size: 0.9rem;">Estimado(a) <strong>{usuario.usuario_nombre} {usuario.usuario_apaterno}</strong>,</p>
-                        <p style="font-size: 0.9rem;">Hemos recibido una solicitud para recuperar tus credenciales de acceso.</p>
+                        <p style="font-size: 0.9rem;">Hemos recibido una solicitud para recuperar tus credenciales de acceso. Se generó una <strong>contraseña temporal</strong> para que puedas volver a entrar.</p>
                         <div style="background-color: #F7F3ED; border-left: 4px solid #D4A017; padding: 14px; margin: 20px 0; border-radius: 4px;">
                             <p style="margin: 0; font-size: 0.85rem;">
-                                Tu contraseña registrada es: <strong style="font-size: 0.95rem; color: #7B1A1A; font-family: monospace;">{usuario.usuario_contrasena}</strong>
+                                Tu contraseña temporal es: <strong style="font-size: 0.95rem; color: #7B1A1A; font-family: monospace;">{contrasena_temporal}</strong>
                             </p>
                         </div>
+                        <p style="font-size: 0.82rem; color: #5C3A2A;">Por seguridad, el sistema te pedirá crear una contraseña nueva y personal apenas inicies sesión.</p>
                     </div>
                 </div>
                 """
@@ -73,7 +88,7 @@ def login_view(request):
                     "html": html_recuperacion_contraseña
                 })
                 
-                messages.success(request, f"Se ha enviado un correo con tus credenciales a {correo_destino}.")
+                messages.success(request, f"Se ha enviado un correo con una contraseña temporal a {correo_destino}.")
                 return redirect('login')
                 
             except Usuario.DoesNotExist:
@@ -98,7 +113,7 @@ def login_view(request):
                     return redirect('login')
 
                 # Validamos credenciales directo con tu string de contraseña de la BD
-                if usuario.usuario_contrasena == contrasena_ingresada:
+                if check_password(contrasena_ingresada, usuario.usuario_contrasena):
 
                     # RF: no dejar entrar a cuentas marcadas como inactivas
                     if not usuario.usuario_activo:
@@ -325,9 +340,16 @@ def historial_casos_view(request):
             'puede_eliminar': puede_eliminar,
         })
 
+    total_casos_filtrados = len(lista_casos_formateada)
+
+    # Paginación: 10 casos por página, con indicador y flechas Anterior/Siguiente
+    paginador = Paginator(lista_casos_formateada, 10)
+    numero_pagina = request.GET.get('pagina')
+    pagina_casos = paginador.get_page(numero_pagina)
+
     context = {
-        'casos': lista_casos_formateada,
-        'total_casos': len(lista_casos_formateada),  # RF-46
+        'casos': pagina_casos,  # Page object: iterable + .has_next, .has_previous, .number, etc.
+        'total_casos': total_casos_filtrados,  # RF-46 (cuenta TODOS los resultados, no solo los de esta página)
         'mostrar_contador': rol_usuario in ('Administrador', 'Inspector', 'PConvivencia'),
         'cursos': Curso.objects.all().order_by('curso_grado', 'curso_letra'),
         'filtros': {
@@ -676,7 +698,7 @@ def gestion_de_usuarios_view(request):
                         usuario_apaterno=apaterno,
                         usuario_amaterno=amaterno,
                         usuario_correo=correo,
-                        usuario_contrasena=contrasena,
+                        usuario_contrasena=make_password(contrasena),
                         rol=rol_instancia
                     )
                     nuevo_usuario.save()
@@ -704,26 +726,12 @@ def gestion_de_usuarios_view(request):
                             profesor_amaterno=amaterno
                         )
 
-            messages.success(
-                request,
-                f"Funcionario {nombre} {apaterno} creado exitosamente. "
-                f"Las credenciales fueron enviadas al correo."
-            )
-
-            enviar_credenciales_usuario.delay(
-                correo,
-                nombre,
-                apaterno,
-                contrasena
-            )
-
-            return redirect('gestion_de_usuarios')
+                messages.success(request, f"Funcionario {nombre} {apaterno} creado exitosamente.")
+                return redirect('gestion_de_usuarios')
 
         except Exception as e:
-            messages.error(
-                request,
-                "Ocurrió un error al intentar registrar al usuario."
-            )
+            messages.error(request, "Ocurrió un error al intentar registrar al usuario.")
+
     
     # RF: filtros combinables (nombre, rol, estado de cuenta, fecha de último acceso)
     filtro_nombre = request.GET.get('nombre', '').strip()
@@ -822,7 +830,7 @@ def editar_usuario_view(request, usuario_id):
                 usuario_editar.usuario_bloqueado = False
                 usuario_editar.usuario_intentos_fallidos = 0
                 if contrasena:
-                    usuario_editar.usuario_contrasena = contrasena
+                    usuario_editar.usuario_contrasena = make_password(contrasena)
                 usuario_editar.save()
 
                 # Se limpian los registros de subtipo anteriores (pudo haber cambiado de rol)
@@ -1730,7 +1738,7 @@ def gestion_configuracion_view(request):
                 request.session['usuario_nombre'] = f"{nombre} {apaterno}"
             
             if nueva_contrasena:
-                usuario_perfil.usuario_contrasena = nueva_contrasena
+                usuario_perfil.usuario_contrasena = make_password(nueva_contrasena)
                 # RF: ya cambió su contraseña temporal -> deja de estar obligado a hacerlo
                 usuario_perfil.usuario_primer_ingreso = False
                 request.session['primer_ingreso'] = False
