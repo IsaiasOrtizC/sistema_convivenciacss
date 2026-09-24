@@ -5,184 +5,2092 @@
 
 {% block extra_css %}
 <style>
-  .welcome-box { margin-bottom: 28px; }
-  .welcome-box h1 { font-family: 'Merriweather', serif; font-size: 1.6rem; font-weight: 900; color: var(--guinda); }
-  .welcome-box p { font-size: .88rem; color: var(--text-lo); margin-top: 4px; }
+  /* =========================================================
+     DASHBOARD — CONVIDATA
+     Refinamiento visual inspirado en FM / FC
+     ========================================================= */
 
-  /* Grilla de Tarjetas de Métricas */
-  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
-  
-  .metric-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 20px; display: flex; flex-direction: column; justify-content: space-between; transition: transform var(--transition); }
-  .metric-card:hover { transform: translateY(-2px); }
-  
-  .metric-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-mid); }
-  .metric-num { font-size: 2rem; font-weight: 900; color: var(--text-dark); margin-top: 8px; font-family: 'Inter', sans-serif; }
+  .dashboard-page {
+    position: relative;
+  }
 
-  /* Colores dinámicos por tipo de falta */
-  .card-total { border-top: 4px solid var(--text-mid); }
-  .card-leve { border-top: 4px solid #1e8449; }
-  .card-leve .metric-num { color: #1e8449; }
-  .card-grave { border-top: 4px solid #b7860b; }
-  .card-grave .metric-num { color: #b7860b; }
-  .card-gravisima { border-top: 4px solid var(--guinda); }
-  .card-gravisima .metric-num { color: var(--guinda); }
 
-  /* 🔄 Sección de contenido inferior: Ahora es de 1 sola columna para ocupar todo el ancho */
-  .dashboard-content { display: grid; grid-template-columns: 1fr; gap: 24px; }
+  /* =========================================================
+     ENCABEZADO
+     ========================================================= */
 
-  .pane-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 24px; }
-  .pane-title { font-family: 'Merriweather', serif; font-size: 1.1rem; font-weight: 900; color: var(--text-dark); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
-  
-  .btn-action { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 8px; background: var(--guinda); color: #fff; font-size: .82rem; font-weight: 600; text-decoration: none; transition: all var(--transition); border: none; cursor: pointer; }
-  .btn-action:hover { background: var(--guinda-mid); box-shadow: 0 4px 12px rgba(123,26,26,.2); }
+  .welcome-box {
+    position: relative;
 
-  /* Tabla de Casos Recientes */
-  .recent-table { width: 100%; border-collapse: collapse; text-align: left; font-size: .85rem; }
-  .recent-table th { padding: 10px 12px; font-weight: 700; text-transform: uppercase; font-size: .7rem; color: var(--text-lo); border-bottom: 1px solid var(--border); letter-spacing: .03em; }
-  .recent-table td { padding: 12px; border-bottom: 1px solid var(--border); color: var(--text-dark); vertical-align: middle; }
-  .recent-table tr:last-child td { border-bottom: none; }
-  .recent-table tr:hover td { background: var(--cream); }
-  
-  .lnk-detalles { color: var(--guinda); text-decoration: none; font-weight: 600; }
-  .lnk-detalles:hover { text-decoration: underline; }
+    margin-bottom: 26px;
+    padding: 28px 30px;
+
+    border: 1px solid var(--border);
+    border-radius: 18px;
+
+    background:
+      linear-gradient(
+        135deg,
+        rgba(123, 26, 26, .12),
+        transparent 58%
+      ),
+      var(--surface);
+
+    box-shadow: var(--shadow);
+
+    overflow: hidden;
+  }
+
+  .welcome-box::before {
+    content: "";
+
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+
+    width: 4px;
+
+    background:
+      linear-gradient(
+        180deg,
+        var(--gold),
+        var(--guinda)
+      );
+  }
+
+  .welcome-box::after {
+    content: "";
+
+    position: absolute;
+
+    width: 220px;
+    height: 220px;
+
+    right: -90px;
+    top: -125px;
+
+    border-radius: 50%;
+
+    background: rgba(212, 160, 23, .11);
+
+    filter: blur(24px);
+
+    pointer-events: none;
+  }
+
+  .welcome-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .welcome-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    margin-bottom: 8px;
+
+    color: var(--gold);
+
+    font-size: .67rem;
+    font-weight: 800;
+
+    letter-spacing: .13em;
+    text-transform: uppercase;
+  }
+
+  .welcome-eyebrow::before {
+    content: "";
+
+    width: 24px;
+    height: 2px;
+
+    border-radius: 99px;
+
+    background: var(--gold);
+  }
+
+  .welcome-box h1 {
+    margin: 0;
+
+    color: var(--text-dark);
+
+    font-family: 'Merriweather', serif;
+
+    font-size: clamp(1.35rem, 2vw, 1.8rem);
+    font-weight: 900;
+
+    line-height: 1.25;
+    letter-spacing: -.02em;
+  }
+
+  .welcome-box p {
+    margin: 8px 0 0;
+
+    color: var(--text-lo);
+
+    font-size: .84rem;
+    line-height: 1.6;
+  }
+
+  .welcome-box strong {
+    color: var(--text-dark);
+    font-weight: 750;
+  }
+
+
+  /* =========================================================
+     MÉTRICAS
+     ========================================================= */
+
+  .metrics-grid {
+    display: grid;
+
+    grid-template-columns:
+      repeat(4, minmax(0, 1fr));
+
+    gap: 15px;
+
+    margin-bottom: 24px;
+  }
+
+  .metric-card {
+    position: relative;
+
+    min-height: 145px;
+
+    padding: 19px 20px 18px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    background:
+      linear-gradient(
+        145deg,
+        rgba(255,255,255,.045),
+        transparent 68%
+      ),
+      var(--surface);
+
+    border: 1px solid var(--border);
+    border-radius: 16px;
+
+    box-shadow: var(--shadow);
+
+    overflow: hidden;
+
+    transition:
+      transform var(--transition),
+      border-color var(--transition),
+      box-shadow var(--transition);
+  }
+
+  .metric-card::before {
+    content: "";
+
+    position: absolute;
+
+    left: 0;
+    top: 0;
+    bottom: 0;
+
+    width: 4px;
+
+    background: var(
+      --metric-color,
+      var(--gold)
+    );
+  }
+
+  .metric-card::after {
+    content: "";
+
+    position: absolute;
+
+    width: 110px;
+    height: 110px;
+
+    right: -55px;
+    bottom: -60px;
+
+    border-radius: 50%;
+
+    background: var(
+      --metric-color,
+      var(--gold)
+    );
+
+    opacity: .08;
+
+    filter: blur(12px);
+
+    pointer-events: none;
+  }
+
+  .metric-card:hover {
+    transform: translateY(-3px);
+
+    border-color:
+      rgba(212,160,23,.28);
+
+    box-shadow: var(--shadow-lg);
+  }
+
+  .metric-top {
+    position: relative;
+    z-index: 1;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 12px;
+  }
+
+  .metric-label {
+    color: var(--text-mid);
+
+    font-size: .66rem;
+    font-weight: 800;
+
+    letter-spacing: .075em;
+
+    line-height: 1.4;
+
+    text-transform: uppercase;
+  }
+
+  .metric-icon {
+    width: 34px;
+    height: 34px;
+
+    flex: 0 0 34px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 9px;
+
+    color:
+      var(--metric-color, var(--gold));
+
+    background:
+      color-mix(
+        in srgb,
+        var(--metric-color, var(--gold)) 11%,
+        transparent
+      );
+
+    border: 1px solid
+      color-mix(
+        in srgb,
+        var(--metric-color, var(--gold)) 16%,
+        transparent
+      );
+  }
+
+  .metric-num {
+    position: relative;
+    z-index: 1;
+
+    margin-top: 12px;
+
+    color: var(--text-dark);
+
+    font-family: 'Inter', sans-serif;
+
+    font-size:
+      clamp(2rem, 3vw, 2.55rem);
+
+    font-weight: 900;
+
+    line-height: 1;
+
+    letter-spacing: -.045em;
+
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric-sub {
+    position: relative;
+    z-index: 1;
+
+    margin-top: 8px;
+
+    color: var(--text-lo);
+
+    font-size: .67rem;
+
+    line-height: 1.4;
+  }
+
+
+  /* =========================================================
+     COLORES DE MÉTRICAS
+     ========================================================= */
+
+  .card-total {
+    --metric-color: var(--gold);
+  }
+
+  .card-leve {
+    --metric-color: #65d391;
+  }
+
+  .card-grave {
+    --metric-color: #e3b84c;
+  }
+
+  .card-gravisima {
+    --metric-color: #d45b5b;
+  }
+
+  .card-leve .metric-num,
+  .card-grave .metric-num,
+  .card-gravisima .metric-num {
+    color: var(--metric-color);
+  }
+
+
+  /* =========================================================
+     PANELES
+     ========================================================= */
+
+  .dashboard-panel {
+    position: relative;
+
+    margin-bottom: 22px;
+    padding: 23px 24px;
+
+    border: 1px solid var(--border);
+    border-radius: 18px;
+
+    background:
+      linear-gradient(
+        145deg,
+        rgba(255,255,255,.035),
+        transparent 62%
+      ),
+      var(--surface);
+
+    box-shadow: var(--shadow);
+
+    overflow: hidden;
+  }
+
+  .dashboard-panel::before {
+    content: "";
+
+    position: absolute;
+
+    inset: 0;
+
+    pointer-events: none;
+
+    background:
+      radial-gradient(
+        circle at 100% 0%,
+        rgba(212,160,23,.055),
+        transparent 28%
+      );
+  }
+
+  .pane-header {
+    position: relative;
+    z-index: 1;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 16px;
+
+    margin-bottom: 18px;
+  }
+
+  .pane-title {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    margin: 0;
+
+    color: var(--text-dark);
+
+    font-family: 'Merriweather', serif;
+
+    font-size: 1rem;
+    font-weight: 900;
+
+    line-height: 1.35;
+  }
+
+  .pane-title-mark {
+    width: 7px;
+    height: 7px;
+
+    flex: 0 0 7px;
+
+    border-radius: 50%;
+
+    background: var(--gold);
+
+    box-shadow:
+      0 0 12px
+      rgba(212,160,23,.45);
+  }
+
+  .pane-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    color: var(--text-lo);
+
+    font-size: .7rem;
+    font-weight: 650;
+
+    white-space: nowrap;
+  }
+
+  .pane-meta::before {
+    content: "";
+
+    width: 6px;
+    height: 6px;
+
+    border-radius: 50%;
+
+    background: #65d391;
+
+    box-shadow:
+      0 0 7px
+      rgba(101,211,145,.4);
+  }
+
+
+  /* =========================================================
+     BOTÓN PRINCIPAL
+     ========================================================= */
+
+  .btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    min-height: 40px;
+
+    padding: 9px 15px;
+
+    border:
+      1px solid
+      rgba(212,160,23,.35);
+
+    border-radius: 10px;
+
+    background:
+      linear-gradient(
+        135deg,
+        var(--guinda),
+        var(--guinda-mid)
+      );
+
+    color: #fff;
+
+    font-size: .77rem;
+    font-weight: 750;
+
+    text-decoration: none;
+
+    box-shadow:
+      0 5px 16px
+      rgba(123,26,26,.18);
+
+    transition:
+      transform var(--transition),
+      box-shadow var(--transition),
+      filter var(--transition);
+  }
+
+  .btn-action:hover {
+    color: #fff;
+
+    transform:
+      translateY(-1px);
+
+    filter: brightness(1.08);
+
+    box-shadow:
+      0 8px 22px
+      rgba(123,26,26,.25);
+  }
+
+  .btn-action:active {
+    transform: translateY(0);
+  }
+
+
+  /* =========================================================
+     GRÁFICO
+     ========================================================= */
+
+  .chart-wrapper {
+    position: relative;
+    z-index: 1;
+
+    width: 100%;
+
+    padding-top: 2px;
+  }
+
+  #apexBarrasZonas {
+    position: relative;
+    z-index: 1;
+
+    width: 100%;
+    min-height: 280px;
+  }
+
+  .apexcharts-canvas {
+    margin: 0 auto;
+  }
+
+  .apexcharts-tooltip {
+    border:
+      1px solid
+      var(--border) !important;
+
+    border-radius:
+      10px !important;
+
+    background:
+      var(--surface) !important;
+
+    box-shadow:
+      var(--shadow-lg) !important;
+  }
+
+  .apexcharts-tooltip-title {
+    border-bottom:
+      1px solid
+      var(--border) !important;
+
+    background:
+      var(--surface-soft) !important;
+  }
+
+
+  /* =========================================================
+     TABLA
+     ========================================================= */
+
+  .table-scroll {
+    position: relative;
+    z-index: 1;
+
+    width: 100%;
+
+    overflow-x: auto;
+
+    scrollbar-width: thin;
+  }
+
+  .recent-table {
+    width: 100%;
+
+    min-width: 680px;
+
+    border-collapse:
+      separate;
+
+    border-spacing: 0;
+
+    text-align: left;
+
+    font-size: .81rem;
+  }
+
+  .recent-table th {
+    padding:
+      10px 13px;
+
+    color:
+      var(--text-lo);
+
+    background:
+      rgba(123,26,26,.035);
+
+    border-bottom:
+      1px solid
+      var(--border);
+
+    font-size: .62rem;
+
+    font-weight: 800;
+
+    letter-spacing: .075em;
+
+    text-transform:
+      uppercase;
+
+    white-space:
+      nowrap;
+  }
+
+  .recent-table th:first-child {
+    border-top-left-radius: 8px;
+  }
+
+  .recent-table th:last-child {
+    border-top-right-radius: 8px;
+  }
+
+  .recent-table td {
+    padding:
+      14px 13px;
+
+    color:
+      var(--text-dark);
+
+    border-bottom:
+      1px solid
+      var(--border);
+
+    vertical-align:
+      middle;
+  }
+
+  .recent-table tbody tr {
+    transition:
+      background var(--transition);
+  }
+
+  .recent-table tbody tr:hover {
+    background:
+      linear-gradient(
+        90deg,
+        rgba(123,26,26,.045),
+        rgba(212,160,23,.025)
+      );
+  }
+
+  .recent-table tbody tr:last-child td {
+    border-bottom:
+      none;
+  }
+
+
+  /* ---------------------------------------------------------
+     ID
+     --------------------------------------------------------- */
+
+  .case-id {
+    display: inline-flex;
+    align-items: center;
+
+    padding:
+      4px 7px;
+
+    border-radius:
+      6px;
+
+    color:
+      var(--text-lo);
+
+    background:
+      var(--surface-soft);
+
+    border:
+      1px solid
+      var(--border);
+
+    font-size: .69rem;
+
+    font-weight: 800;
+
+    font-variant-numeric:
+      tabular-nums;
+
+    white-space:
+      nowrap;
+  }
+
+
+  /* ---------------------------------------------------------
+     TÍTULO
+     --------------------------------------------------------- */
+
+  .case-title {
+    display: block;
+
+    max-width: 360px;
+
+    overflow: hidden;
+
+    color:
+      var(--text-dark);
+
+    font-weight: 750;
+
+    line-height: 1.45;
+
+    text-overflow:
+      ellipsis;
+
+    white-space:
+      nowrap;
+  }
+
+
+  /* ---------------------------------------------------------
+     FECHA
+     --------------------------------------------------------- */
+
+  .case-date {
+    color:
+      var(--text-mid);
+
+    font-size:
+      .76rem;
+
+    font-variant-numeric:
+      tabular-nums;
+
+    white-space:
+      nowrap;
+  }
+
+
+  /* ---------------------------------------------------------
+     LUGAR
+     --------------------------------------------------------- */
+
+  .case-place {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 6px;
+
+    color:
+      var(--text-mid);
+
+    font-size:
+      .76rem;
+  }
+
+  .case-place::before {
+    content: "";
+
+    width: 5px;
+    height: 5px;
+
+    flex: 0 0 5px;
+
+    border-radius: 50%;
+
+    background:
+      var(--gold);
+  }
+
+
+  /* ---------------------------------------------------------
+     ENLACE
+     --------------------------------------------------------- */
+
+  .lnk-detalles {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 5px;
+
+    color:
+      var(--guinda);
+
+    font-size:
+      .76rem;
+
+    font-weight:
+      750;
+
+    text-decoration:
+      none;
+
+    white-space:
+      nowrap;
+
+    transition:
+      color var(--transition),
+      transform var(--transition);
+  }
+
+  .lnk-detalles span {
+    transition:
+      transform var(--transition);
+  }
+
+  .lnk-detalles:hover {
+    color:
+      var(--gold);
+
+    text-decoration:
+      none;
+
+    transform:
+      translateX(2px);
+  }
+
+  .lnk-detalles:hover span {
+    transform:
+      translateX(2px);
+  }
+
+
+  /* =========================================================
+     ESTADO VACÍO
+     ========================================================= */
+
+  .empty-state {
+    position: relative;
+    z-index: 1;
+
+    display: flex;
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    min-height: 150px;
+
+    padding:
+      30px 20px;
+
+    color:
+      var(--text-lo);
+
+    text-align:
+      center;
+  }
+
+  .empty-state-icon {
+    width: 42px;
+    height: 42px;
+
+    display: grid;
+    place-items: center;
+
+    margin-bottom:
+      12px;
+
+    border:
+      1px solid
+      var(--border);
+
+    border-radius:
+      12px;
+
+    color:
+      var(--text-lo);
+
+    background:
+      var(--surface-soft);
+  }
+
+  .empty-state p {
+    margin: 0;
+
+    font-size:
+      .82rem;
+
+    font-style:
+      italic;
+  }
+
+
+  /* =========================================================
+     MODO OSCURO
+     ========================================================= */
+
+  html[data-theme="dark"]
+  .welcome-box,
+
+  html[data-theme="dark"]
+  .metric-card,
+
+  html[data-theme="dark"]
+  .dashboard-panel {
+    background:
+      linear-gradient(
+        145deg,
+        rgba(255,255,255,.025),
+        transparent 60%
+      ),
+      var(--surface);
+  }
+
+  html[data-theme="dark"]
+  .welcome-box h1,
+
+  html[data-theme="dark"]
+  .metric-num,
+
+  html[data-theme="dark"]
+  .pane-title,
+
+  html[data-theme="dark"]
+  .case-title,
+
+  html[data-theme="dark"]
+  .recent-table td {
+    color:
+      #ffffff;
+  }
+
+  html[data-theme="dark"]
+  .metric-label,
+
+  html[data-theme="dark"]
+  .case-date,
+
+  html[data-theme="dark"]
+  .case-place {
+    color:
+      #d8dee8;
+  }
+
+  html[data-theme="dark"]
+  .recent-table th,
+
+  html[data-theme="dark"]
+  .case-id,
+
+  html[data-theme="dark"]
+  .pane-meta,
+
+  html[data-theme="dark"]
+  .welcome-box p {
+    color:
+      #aeb7c5;
+  }
+
+  html[data-theme="dark"]
+  .recent-table th {
+    background:
+      rgba(255,255,255,.025);
+  }
+
+  html[data-theme="dark"]
+  .recent-table tbody tr:hover {
+    background:
+      linear-gradient(
+        90deg,
+        rgba(123,26,26,.12),
+        rgba(212,160,23,.045)
+      );
+  }
+
+  html[data-theme="dark"]
+  .btn-action {
+    color:
+      #ffffff;
+  }
+
+  html[data-theme="dark"]
+  .lnk-detalles {
+    color:
+      #f0c030;
+  }
+
+  html[data-theme="dark"]
+  .lnk-detalles:hover {
+    color:
+      #ffffff;
+  }
+
+
+  /* =========================================================
+     RESPONSIVE
+     ========================================================= */
+
+  @media (max-width: 1050px) {
+
+    .metrics-grid {
+      grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    }
+
+  }
+
+
+  @media (max-width: 700px) {
+
+    .welcome-box {
+      padding:
+        21px 20px;
+
+      margin-bottom:
+        20px;
+
+      border-radius:
+        15px;
+    }
+
+    .metrics-grid {
+      grid-template-columns:
+        1fr 1fr;
+
+      gap:
+        11px;
+
+      margin-bottom:
+        20px;
+    }
+
+    .metric-card {
+      min-height:
+        125px;
+
+      padding:
+        16px;
+
+      border-radius:
+        14px;
+    }
+
+    .metric-icon {
+      width:
+        29px;
+
+      height:
+        29px;
+
+      flex-basis:
+        29px;
+    }
+
+    .metric-num {
+      font-size:
+        1.85rem;
+    }
+
+    .dashboard-panel {
+      padding:
+        18px 15px;
+
+      margin-bottom:
+        18px;
+
+      border-radius:
+        15px;
+    }
+
+    .pane-header {
+      align-items:
+        flex-start;
+
+      flex-direction:
+        column;
+
+      gap:
+        12px;
+    }
+
+    .pane-header .btn-action {
+      width:
+        100%;
+    }
+
+    .pane-meta {
+      white-space:
+        normal;
+    }
+
+    .case-title {
+      max-width:
+        250px;
+    }
+
+    #apexBarrasZonas {
+      min-height:
+        250px;
+    }
+
+  }
+
+
+  @media (max-width: 430px) {
+
+    .metrics-grid {
+      grid-template-columns:
+        1fr;
+    }
+
+    .metric-card {
+      min-height:
+        112px;
+    }
+
+    .welcome-box h1 {
+      font-size:
+        1.25rem;
+    }
+
+    .welcome-box p {
+      font-size:
+        .78rem;
+    }
+
+    .pane-title {
+      font-size:
+        .94rem;
+    }
+
+    .case-title {
+      max-width:
+        200px;
+    }
+
+  }
+
+
+  /* =========================================================
+     REDUCCIÓN DE MOVIMIENTO
+     ========================================================= */
+
+  @media (prefers-reduced-motion: reduce) {
+
+    .metric-card,
+    .btn-action,
+    .lnk-detalles,
+    .lnk-detalles span {
+      transition:
+        none !important;
+    }
+
+  }
+
 </style>
 {% endblock %}
 
+
 {% block content %}
-  <!-- Mensaje de bienvenida -->
-  <div class="welcome-box">
-    <h1>Panel de Convivencia Escolar</h1>
-    <p>Bienvenido(a), <strong>{{ request.session.username|default:request.session.usuario_nombre }}</strong> · Bitácora oficial digitalizada</p>
-  </div>
 
-  <!-- Contadores reales desde Postgres -->
-  <div class="metrics-grid">
-    <div class="metric-card card-total">
-      <span class="metric-label">Total Casos</span>
-      <span class="metric-num">{{ total_casos }}</span>
-    </div>
-    <div class="metric-card card-leve">
-      <span class="metric-label">Faltas Leves</span>
-      <span class="metric-num">{{ casos_leves }}</span>
-    </div>
-    <div class="metric-card card-grave">
-      <span class="metric-label">Faltas Graves</span>
-      <span class="metric-num">{{ casos_graves }}</span>
-    </div>
-    <div class="metric-card card-gravisima">
-      <span class="metric-label">Faltas Gravísimas</span>
-      <span class="metric-num">{{ casos_gravisimas }}</span>
-    </div>
-  </div>
+<div class="dashboard-page">
 
-  <!-- 📍 COMPLEMENTO RF-10: Gráfico de Barras por Zona (Últimos 30 días) -->
-  <div class="pane-card" style="margin-bottom: 32px;">
-    <div class="pane-title" style="margin-bottom: 8px;">
-      <span> Incidentes por Zona del Establecimiento</span>
-      <span style="font-size: .75rem; color: var(--text-lo); font-weight: 500; font-family: 'Inter', sans-serif;">Últimos 30 días</span>
-    </div>
-    <div id="apexBarrasZonas" style="width: 100%; min-height: 260px;"></div>
-  </div>
+  <!-- =======================================================
+       ENCABEZADO
+       ======================================================= -->
 
-  <!-- Contenido Inferior -->
-  <div class="dashboard-content">
-    
-    <!-- Bloque Único: Últimas Bitácoras (Ahora al 100% de ancho) -->
-    <div class="pane-card">
-      <div class="pane-title">
-        <span>Últimas Bitácoras Registradas</span>
-        <a href="{% url 'registrar_caso' %}" class="btn-action">
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-          Nuevo Caso
-        </a>
+  <section class="welcome-box">
+
+    <div class="welcome-content">
+
+      <div class="welcome-eyebrow">
+        ConviData
       </div>
-      
-      {% if casos_recientes %}
-        <table class="recent-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Caso / Título</th>
-              <th>Fecha</th>
-              <th>Lugar</th>
-              <th style="text-align: right;">Acción</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for caso in casos_recientes %}
-              <tr>
-                <td style="font-weight: 700; color: var(--text-lo);">#{{ caso.id }}</td>
-                <td style="font-weight: 600;">{{ caso.titulo }}</td>
-                <td> {{ caso.fecha|date:"d M, Y" }}</td>
-                <td> {{ caso.lugar }}</td>
-                <td style="text-align: right;">
-                  <a href="{% url 'detalle_caso' caso.id %}" class="lnk-detalles">Ver ficha →</a>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <p style="font-size: .85rem; color: var(--text-lo); font-style: italic; padding: 20px 0;">No existen casos registrados en el sistema actualmente.</p>
-      {% endif %}
+
+      <h1>
+        Panel de Convivencia Escolar
+      </h1>
+
+      <p>
+        Bienvenido(a),
+        <strong>
+          {{ request.session.username|default:request.session.usuario_nombre }}
+        </strong>
+        · Bitácora oficial digitalizada
+      </p>
+
+    </div>
+
+  </section>
+
+
+  <!-- =======================================================
+       MÉTRICAS
+       ======================================================= -->
+
+  <div class="metrics-grid">
+
+    <!-- TOTAL -->
+
+    <div class="metric-card card-total">
+
+      <div class="metric-top">
+
+        <span class="metric-label">
+          Total Casos
+        </span>
+
+        <span
+          class="metric-icon"
+          aria-hidden="true"
+        >
+
+          <svg
+            width="16"
+            height="16"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9 5h6M9 9h6M9 13h4M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
+            />
+
+          </svg>
+
+        </span>
+
+      </div>
+
+      <span class="metric-num">
+        {{ total_casos }}
+      </span>
+
+      <span class="metric-sub">
+        Registros acumulados
+      </span>
+
+    </div>
+
+
+    <!-- LEVES -->
+
+    <div class="metric-card card-leve">
+
+      <div class="metric-top">
+
+        <span class="metric-label">
+          Faltas Leves
+        </span>
+
+        <span
+          class="metric-icon"
+          aria-hidden="true"
+        >
+
+          <svg
+            width="16"
+            height="16"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 9v4m0 4h.01M10.3 3.8 2.7 17a2 2 0 0 0 1.73 3h15.14a2 2 0 0 0 1.73-3L13.7 3.8a2 2 0 0 0-3.4 0Z"
+            />
+
+          </svg>
+
+        </span>
+
+      </div>
+
+      <span class="metric-num">
+        {{ casos_leves }}
+      </span>
+
+      <span class="metric-sub">
+        Clasificación leve
+      </span>
+
+    </div>
+
+
+    <!-- GRAVES -->
+
+    <div class="metric-card card-grave">
+
+      <div class="metric-top">
+
+        <span class="metric-label">
+          Faltas Graves
+        </span>
+
+        <span
+          class="metric-icon"
+          aria-hidden="true"
+        >
+
+          <svg
+            width="16"
+            height="16"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 3v12m0 4v.01M4.93 19h14.14a2 2 0 0 0 1.73-3L13.73 4a2 2 0 0 0-3.46 0L3.2 16a2 2 0 0 0 1.73 3Z"
+            />
+
+          </svg>
+
+        </span>
+
+      </div>
+
+      <span class="metric-num">
+        {{ casos_graves }}
+      </span>
+
+      <span class="metric-sub">
+        Clasificación grave
+      </span>
+
+    </div>
+
+
+    <!-- GRAVÍSIMAS -->
+
+    <div class="metric-card card-gravisima">
+
+      <div class="metric-top">
+
+        <span class="metric-label">
+          Faltas Gravísimas
+        </span>
+
+        <span
+          class="metric-icon"
+          aria-hidden="true"
+        >
+
+          <svg
+            width="16"
+            height="16"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 9v4m0 4h.01M10.29 3.86 2.82 17a2 2 0 0 0 1.74 3h14.88a2 2 0 0 0 1.74-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+            />
+
+          </svg>
+
+        </span>
+
+      </div>
+
+      <span class="metric-num">
+        {{ casos_gravisimas }}
+      </span>
+
+      <span class="metric-sub">
+        Clasificación gravísima
+      </span>
+
     </div>
 
   </div>
+
+
+  <!-- =======================================================
+       GRÁFICO POR ZONA
+       ======================================================= -->
+
+  <section class="dashboard-panel">
+
+    <div class="pane-header">
+
+      <h2 class="pane-title">
+
+        <span
+          class="pane-title-mark"
+          aria-hidden="true"
+        ></span>
+
+        <span>
+          Incidentes por Zona del Establecimiento
+        </span>
+
+      </h2>
+
+      <span class="pane-meta">
+        Últimos 30 días
+      </span>
+
+    </div>
+
+    <div class="chart-wrapper">
+
+      <div id="apexBarrasZonas"></div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =======================================================
+       ÚLTIMAS BITÁCORAS
+       ======================================================= -->
+
+  <section class="dashboard-panel">
+
+    <div class="pane-header">
+
+      <h2 class="pane-title">
+
+        <span
+          class="pane-title-mark"
+          aria-hidden="true"
+        ></span>
+
+        <span>
+          Últimas Bitácoras Registradas
+        </span>
+
+      </h2>
+
+
+      <a
+        href="{% url 'registrar_caso' %}"
+        class="btn-action"
+      >
+
+        <svg
+          width="15"
+          height="15"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2.5"
+        >
+
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M12 4v16m8-8H4"
+          />
+
+        </svg>
+
+        Nuevo Caso
+
+      </a>
+
+    </div>
+
+
+    {% if casos_recientes %}
+
+      <div class="table-scroll">
+
+        <table class="recent-table">
+
+          <thead>
+
+            <tr>
+
+              <th>
+                ID
+              </th>
+
+              <th>
+                Caso / Título
+              </th>
+
+              <th>
+                Fecha
+              </th>
+
+              <th>
+                Lugar
+              </th>
+
+              <th style="text-align:right;">
+                Acción
+              </th>
+
+            </tr>
+
+          </thead>
+
+
+          <tbody>
+
+            {% for caso in casos_recientes %}
+
+              <tr>
+
+                <td>
+
+                  <span class="case-id">
+                    #{{ caso.id }}
+                  </span>
+
+                </td>
+
+
+                <td>
+
+                  <span class="case-title">
+                    {{ caso.titulo }}
+                  </span>
+
+                </td>
+
+
+                <td>
+
+                  <span class="case-date">
+                    {{ caso.fecha|date:"d M, Y" }}
+                  </span>
+
+                </td>
+
+
+                <td>
+
+                  <span class="case-place">
+                    {{ caso.lugar }}
+                  </span>
+
+                </td>
+
+
+                <td style="text-align:right;">
+
+                  <a
+                    href="{% url 'detalle_caso' caso.id %}"
+                    class="lnk-detalles"
+                  >
+
+                    Ver ficha
+
+                    <span aria-hidden="true">
+                      →
+                    </span>
+
+                  </a>
+
+                </td>
+
+              </tr>
+
+            {% endfor %}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    {% else %}
+
+      <div class="empty-state">
+
+        <div class="empty-state-icon">
+
+          <svg
+            width="19"
+            height="19"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
+
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9 5h6M9 9h6M9 13h4M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
+            />
+
+          </svg>
+
+        </div>
+
+        <p>
+          No existen casos registrados en el sistema actualmente.
+        </p>
+
+      </div>
+
+    {% endif %}
+
+  </section>
+
+</div>
+
 {% endblock %}
 
+
 {% block extra_js %}
+
 <script>
-  // Parseo seguro de los datos procesados en la vista por la base de datos
-  const labelsZonas = JSON.parse('{{ zonas_labels_json|safe }}');
-  const dataZonas = JSON.parse('{{ zonas_data_json|safe }}');
 
-  const categoriasX = labelsZonas.length ? labelsZonas : ['Sin reportes recientes'];
-  const serieData = dataZonas.length ? dataZonas : [0];
+  /* =========================================================
+     DATOS DEL GRÁFICO
+     ========================================================= */
 
-  const opcionesZonas = {
-    series: [{
-      name: 'Casos Registrados',
-      data: serieData
-    }],
-    chart: { 
-      type: 'bar', 
-      height: 260, 
-      fontFamily: "'Inter', sans-serif",
-      toolbar: { show: false } 
-    },
-    colors: ['#7B1A1A'],
-    plotOptions: {
-      bar: {
-        horizontal: true,
-        borderRadius: 4,
-        barHeight: '45%',
-      }
-    },
-    dataLabels: {
-      enabled: true,
-      style: { colors: ['#fff'] },
-      formatter: function (val) { return val > 0 ? val : ''; }
-    },
-    xaxis: {
-      categories: categoriasX,
-      labels: { style: { colors: '#5C3A2A' } },
-      tickAmount: 5
-    },
-    yaxis: {
-      labels: { style: { colors: '#1C0A0A', fontWeight: 600 } }
-    },
-    grid: {
-      borderColor: 'rgba(123,26,26,0.06)',
-      xaxis: { lines: { show: true } }
-    },
-    tooltip: {
-      theme: 'light',
-      y: { title: { formatter: () => 'Total: ' } }
+  const labelsZonas = JSON.parse(
+    '{{ zonas_labels_json|safe }}'
+  );
+
+  const dataZonas = JSON.parse(
+    '{{ zonas_data_json|safe }}'
+  );
+
+
+  const categoriasX =
+    labelsZonas.length
+      ? labelsZonas
+      : ['Sin reportes recientes'];
+
+
+  const serieData =
+    dataZonas.length
+      ? dataZonas
+      : [0];
+
+
+  /* =========================================================
+     COLORES DINÁMICOS SEGÚN TEMA
+     ========================================================= */
+
+  function obtenerColoresDashboard() {
+
+    const oscuro =
+      document.documentElement.getAttribute(
+        'data-theme'
+      ) === 'dark';
+
+
+    return {
+
+      guinda:
+        oscuro
+          ? '#a93636'
+          : '#7B1A1A',
+
+      gold:
+        oscuro
+          ? '#F0C030'
+          : '#D4A017',
+
+      texto:
+        oscuro
+          ? '#FFFFFF'
+          : '#1C0A0A',
+
+      textoSecundario:
+        oscuro
+          ? '#D8DEE8'
+          : '#5C3A2A',
+
+      textoSuave:
+        oscuro
+          ? '#AEB7C5'
+          : '#9B7060',
+
+      grid:
+        oscuro
+          ? 'rgba(255,255,255,.08)'
+          : 'rgba(123,26,26,.08)',
+
+      tooltipTheme:
+        oscuro
+          ? 'dark'
+          : 'light'
+    };
+  }
+
+
+  /* =========================================================
+     CONSTRUCCIÓN DEL GRÁFICO
+     ========================================================= */
+
+  function renderizarGraficoZonas() {
+
+    const elemento =
+      document.querySelector(
+        '#apexBarrasZonas'
+      );
+
+
+    if (
+      !elemento ||
+      typeof ApexCharts === 'undefined'
+    ) {
+      return;
     }
-  };
 
-  document.addEventListener("DOMContentLoaded", function() {
-    new ApexCharts(document.querySelector("#apexBarrasZonas"), opcionesZonas).render();
-  });
+
+    const colores =
+      obtenerColoresDashboard();
+
+
+    elemento.innerHTML = '';
+
+
+    const opcionesZonas = {
+
+      series: [
+        {
+          name:
+            'Casos Registrados',
+
+          data:
+            serieData
+        }
+      ],
+
+
+      chart: {
+
+        type:
+          'bar',
+
+        height:
+          280,
+
+        fontFamily:
+          "'Inter', sans-serif",
+
+        background:
+          'transparent',
+
+        toolbar: {
+          show:
+            false
+        },
+
+        animations: {
+
+          enabled:
+            true,
+
+          easing:
+            'easeinout',
+
+          speed:
+            450
+        }
+      },
+
+
+      colors: [
+        colores.guinda
+      ],
+
+
+      plotOptions: {
+
+        bar: {
+
+          horizontal:
+            true,
+
+          borderRadius:
+            6,
+
+          borderRadiusApplication:
+            'end',
+
+          barHeight:
+            '48%'
+        }
+      },
+
+
+      dataLabels: {
+
+        enabled:
+          true,
+
+        style: {
+
+          colors: [
+            '#FFFFFF'
+          ],
+
+          fontSize:
+            '11px',
+
+          fontWeight:
+            700
+        },
+
+        formatter:
+          function (val) {
+
+            return val > 0
+              ? val
+              : '';
+
+          }
+      },
+
+
+      xaxis: {
+
+        categories:
+          categoriasX,
+
+        labels: {
+
+          style: {
+
+            colors:
+              colores.textoSuave,
+
+            fontSize:
+              '11px'
+          }
+        },
+
+        axisBorder: {
+          show:
+            false
+        },
+
+        axisTicks: {
+          show:
+            false
+        },
+
+        tickAmount:
+          5
+      },
+
+
+      yaxis: {
+
+        labels: {
+
+          style: {
+
+            colors:
+              colores.textoSecundario,
+
+            fontSize:
+              '11px',
+
+            fontWeight:
+              600
+          }
+        }
+      },
+
+
+      grid: {
+
+        borderColor:
+          colores.grid,
+
+        strokeDashArray:
+          3,
+
+        xaxis: {
+
+          lines: {
+
+            show:
+              true
+          }
+        },
+
+        yaxis: {
+
+          lines: {
+
+            show:
+              false
+          }
+        }
+      },
+
+
+      states: {
+
+        hover: {
+
+          filter: {
+
+            type:
+              'lighten',
+
+            value:
+              .08
+          }
+        },
+
+        active: {
+
+          filter: {
+
+            type:
+              'none'
+          }
+        }
+      },
+
+
+      tooltip: {
+
+        theme:
+          colores.tooltipTheme,
+
+        y: {
+
+          title: {
+
+            formatter:
+              function () {
+
+                return 'Total: ';
+
+              }
+          }
+        }
+      },
+
+
+      responsive: [
+
+        {
+
+          breakpoint:
+            700,
+
+          options: {
+
+            chart: {
+
+              height:
+                250
+            },
+
+            plotOptions: {
+
+              bar: {
+
+                barHeight:
+                  '52%'
+              }
+            },
+
+            yaxis: {
+
+              labels: {
+
+                style: {
+
+                  fontSize:
+                    '10px'
+                }
+              }
+            },
+
+            xaxis: {
+
+              labels: {
+
+                style: {
+
+                  fontSize:
+                    '10px'
+                }
+              }
+            }
+          }
+        }
+
+      ]
+
+    };
+
+
+    const chart =
+      new ApexCharts(
+        elemento,
+        opcionesZonas
+      );
+
+
+    chart.render();
+
+  }
+
+
+  /* =========================================================
+     INICIALIZACIÓN
+     ========================================================= */
+
+  document.addEventListener(
+    'DOMContentLoaded',
+    function () {
+
+      renderizarGraficoZonas();
+
+    }
+  );
+
+
+  /* =========================================================
+     ACTUALIZACIÓN AUTOMÁTICA DEL TEMA
+     ========================================================= */
+
+  const mediaQuery =
+    window.matchMedia(
+      '(prefers-color-scheme: dark)'
+    );
+
+
+  mediaQuery.addEventListener(
+    'change',
+    function () {
+
+      const aplicarTema =
+        () => {
+
+          document.documentElement.setAttribute(
+            'data-theme',
+            mediaQuery.matches
+              ? 'dark'
+              : 'light'
+          );
+
+        };
+
+
+      aplicarTema();
+
+
+      setTimeout(
+        function () {
+
+          renderizarGraficoZonas();
+
+        },
+        50
+      );
+
+    }
+  );
+
 </script>
+
 {% endblock %}

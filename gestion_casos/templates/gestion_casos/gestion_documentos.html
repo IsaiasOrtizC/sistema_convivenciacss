@@ -5,215 +5,2072 @@
 
 {% block extra_css %}
 <style>
-  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--text-lo); margin-bottom: 18px; }
-  .breadcrumb a { color: var(--guinda); text-decoration: none; font-weight: 500; }
-  .breadcrumb a:hover { text-decoration: underline; }
-  .breadcrumb-sep { opacity: .4; }
 
-  .page-header { margin-bottom: 24px; }
-  .page-header h1 { font-family: 'Merriweather', serif; font-size: 1.5rem; font-weight: 900; color: var(--guinda); }
-  .page-header p { font-size: .85rem; color: var(--text-lo); margin-top: 4px; }
+  /* ============================================================
+     PÁGINA
+     ============================================================ */
 
-  .admin-layout { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: start; }
-  @media (max-width: 1200px) { .admin-layout { grid-template-columns: 1fr; } }
+  .documents-page {
+    width: 100%;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
 
-  .pane-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 24px; }
-  .pane-title { font-family: 'Merriweather', serif; font-size: 1.1rem; font-weight: 900; color: var(--text-dark); margin-bottom: 18px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
 
-  .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-  .form-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; color: var(--text-mid); }
-  .form-control { padding: 9px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--white); color: var(--text-dark); font-size: .85rem; font-family: inherit; width: 100%; box-sizing: border-box; }
-  .form-control:focus { outline: none; border-color: var(--guinda); }
+  /* ============================================================
+     BREADCRUMB
+     ============================================================ */
 
-  .btn-submit { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 20px; border-radius: 8px; background: var(--guinda); color: #fff; font-size: .83rem; font-weight: 600; border: none; cursor: pointer; width: 100%; transition: all var(--transition); margin-top: 10px; }
-  .btn-submit:hover { background: var(--guinda-mid); box-shadow: 0 4px 12px rgba(123,26,26,.2); }
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 7px;
 
-  .no-permission-note { font-size: .82rem; color: var(--text-lo); background: var(--cream); border: 1px solid var(--border); border-radius: 8px; padding: 14px; line-height: 1.5; }
+    font-size: .76rem;
+    color: var(--text-lo);
 
-  .doc-section { margin-bottom: 28px; }
-  .doc-section:last-child { margin-bottom: 0; }
-  .doc-section-title { font-size: .95rem; font-weight: 800; color: var(--guinda); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    margin-bottom: 18px;
+  }
 
-  .doc-item { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; background: var(--cream); transition: all var(--transition); }
-  .doc-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.05); }
-  .doc-icon { width: 36px; height: 36px; flex-shrink: 0; border-radius: 6px; background: #fdedec; color: #c0392b; display: flex; align-items: center; justify-content: center; font-size: .68rem; font-weight: 800; }
-  .doc-info { flex: 1; min-width: 0; }
-  .doc-titulo { font-weight: 700; color: var(--text-dark); font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .doc-meta { font-size: .72rem; color: var(--text-lo); margin-top: 2px; }
-  .doc-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .breadcrumb a {
+    color: var(--guinda);
+    text-decoration: none;
+    font-weight: 600;
+  }
 
-  .btn-view-doc { display: inline-flex; align-items: center; gap: 4px; background: #eaf3ea; color: #1e8449; border: 1px solid #cde8cd; padding: 6px 10px; border-radius: 4px; font-size: .72rem; font-weight: 600; text-decoration: none; transition: all var(--transition); }
-  .btn-view-doc:hover { background: #d6ecd6; }
+  .breadcrumb a:hover {
+    text-decoration: underline;
+  }
 
-  .btn-delete-doc { display: inline-flex; align-items: center; gap: 4px; background: #fdedec; color: #c0392b; border: 1px solid #f5b7b1; padding: 6px 8px; border-radius: 4px; font-size: .72rem; font-weight: 600; cursor: pointer; transition: all var(--transition); }
-  .btn-delete-doc:hover { background: #fadbd8; }
+  .breadcrumb-sep {
+    opacity: .4;
+  }
 
-  .empty-note { text-align: center; padding: 24px; color: var(--text-lo); font-style: italic; font-size: .85rem; border: 1px dashed var(--border); border-radius: 8px; }
 
-  /* Visor de PDF incrustado en la página */
-  .pdf-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(28,10,10,.65); z-index: 2000; align-items: center; justify-content: center; padding: 24px; }
-  .pdf-modal-overlay.open { display: flex; }
-  .pdf-modal-box { background: var(--white); border-radius: var(--radius); width: 100%; max-width: 950px; height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
-  .pdf-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); background: var(--cream); }
-  .pdf-modal-title { font-weight: 700; font-size: .9rem; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .pdf-modal-close { background: none; border: none; cursor: pointer; color: var(--text-lo); padding: 4px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all var(--transition); }
-  .pdf-modal-close:hover { background: var(--border); color: var(--guinda); }
-  .pdf-modal-frame { flex: 1; border: none; width: 100%; }
+  /* ============================================================
+     HEADER
+     ============================================================ */
 
-  .btn-download-doc { display: inline-flex; align-items: center; gap: 4px; background: var(--cream); color: var(--text-mid); border: 1px solid var(--border); padding: 6px 8px; border-radius: 4px; font-size: .72rem; font-weight: 600; text-decoration: none; transition: all var(--transition); }
-  .btn-download-doc:hover { background: var(--border); }
+  .documents-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+
+    gap: 20px;
+
+    margin-bottom: 18px;
+  }
+
+  .documents-header-main {
+    position: relative;
+
+    padding-left: 13px;
+  }
+
+  .documents-header-main::before {
+    content: "";
+
+    position: absolute;
+
+    left: 0;
+    top: 2px;
+    bottom: 2px;
+
+    width: 4px;
+
+    border-radius: 999px;
+
+    background:
+      linear-gradient(
+        180deg,
+        var(--gold),
+        var(--guinda)
+      );
+  }
+
+  .documents-header h1 {
+    font-family: 'Merriweather', serif;
+
+    font-size: 1.45rem;
+
+    font-weight: 900;
+
+    color: var(--guinda);
+  }
+
+  .documents-header p {
+    margin-top: 4px;
+
+    font-size: .8rem;
+
+    color: var(--text-lo);
+  }
+
+  .documents-status {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 7px;
+
+    padding: 6px 10px;
+
+    border-radius: 999px;
+
+    background: var(--white);
+
+    border: 1px solid var(--border);
+
+    box-shadow: var(--shadow);
+
+    color: var(--text-mid);
+
+    font-size: .64rem;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+    letter-spacing: .05em;
+
+    white-space: nowrap;
+  }
+
+  .documents-status-dot {
+    width: 6px;
+    height: 6px;
+
+    border-radius: 50%;
+
+    background: #1E8449;
+  }
+
+
+  /* ============================================================
+     LAYOUT
+     ============================================================ */
+
+  .documents-layout {
+    display: grid;
+
+    grid-template-columns:
+      300px minmax(0, 1fr);
+
+    gap: 16px;
+
+    align-items: start;
+  }
+
+
+  /* ============================================================
+     PANE GENERAL
+     ============================================================ */
+
+  .pane-card {
+    background: var(--white);
+
+    border-radius: var(--radius);
+
+    border: 1px solid var(--border);
+
+    box-shadow: var(--shadow);
+
+    overflow: hidden;
+  }
+
+  .pane-header {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 16px 18px;
+
+    border-bottom: 1px solid var(--border);
+  }
+
+  .pane-header-icon {
+    width: 34px;
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 8px;
+
+    background: rgba(123,26,26,.08);
+
+    color: var(--guinda);
+
+    flex-shrink: 0;
+  }
+
+  .pane-title {
+    font-family: 'Merriweather', serif;
+
+    font-size: .88rem;
+
+    font-weight: 900;
+
+    color: var(--text-dark);
+  }
+
+  .pane-subtitle {
+    margin-top: 2px;
+
+    font-size: .65rem;
+
+    color: var(--text-lo);
+  }
+
+  .pane-inner {
+    padding: 18px;
+  }
+
+
+  /* ============================================================
+     FORMULARIO DE PUBLICACIÓN
+     ============================================================ */
+
+  .form-section-label {
+    display: flex;
+    align-items: center;
+
+    gap: 7px;
+
+    font-size: .66rem;
+
+    font-weight: 800;
+
+    text-transform: uppercase;
+
+    letter-spacing: .06em;
+
+    color: var(--text-mid);
+
+    margin-bottom: 14px;
+  }
+
+  .form-section-marker {
+    width: 21px;
+    height: 21px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 5px;
+
+    background: var(--guinda);
+
+    color: #fff;
+
+    font-size: .56rem;
+
+    font-weight: 800;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+
+    gap: 6px;
+
+    margin-bottom: 14px;
+  }
+
+  .form-group:last-of-type {
+    margin-bottom: 0;
+  }
+
+  .form-label {
+    font-size: .63rem;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: .04em;
+
+    color: var(--text-mid);
+  }
+
+  .form-control {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 10px 11px;
+
+    border-radius: 7px;
+
+    border: 1px solid var(--border);
+
+    background: var(--surface-soft);
+
+    color: var(--text-dark);
+
+    font-size: .77rem;
+
+    font-family: inherit;
+
+    outline: none;
+
+    transition:
+      border-color var(--transition),
+      box-shadow var(--transition),
+      background-color var(--transition);
+  }
+
+  .form-control:hover {
+    border-color: rgba(123,26,26,.25);
+  }
+
+  .form-control:focus {
+    border-color: var(--guinda);
+
+    background: var(--white);
+
+    box-shadow:
+      0 0 0 3px rgba(123,26,26,.08);
+  }
+
+  select.form-control {
+    cursor: pointer;
+  }
+
+  input[type="file"].form-control {
+    padding: 8px;
+    cursor: pointer;
+  }
+
+  input[type="file"].form-control::file-selector-button {
+    margin-right: 8px;
+
+    padding: 6px 9px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 5px;
+
+    background: var(--cream);
+
+    color: var(--text-mid);
+
+    font-family: inherit;
+
+    font-size: .66rem;
+
+    font-weight: 700;
+
+    cursor: pointer;
+  }
+
+  .form-hint {
+    font-size: .61rem;
+
+    color: var(--text-lo);
+
+    line-height: 1.4;
+  }
+
+  .btn-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    width: 100%;
+
+    margin-top: 17px;
+
+    padding: 11px 16px;
+
+    border-radius: 7px;
+
+    border: none;
+
+    background:
+      linear-gradient(
+        135deg,
+        var(--guinda-dark),
+        var(--guinda)
+      );
+
+    color: #fff;
+
+    font-size: .73rem;
+
+    font-weight: 800;
+
+    cursor: pointer;
+
+    box-shadow:
+      0 4px 12px rgba(123,26,26,.18);
+
+    transition:
+      transform var(--transition),
+      box-shadow var(--transition),
+      background var(--transition);
+  }
+
+  .btn-submit:hover {
+    background:
+      linear-gradient(
+        135deg,
+        var(--guinda),
+        var(--guinda-mid)
+      );
+
+    transform: translateY(-1px);
+
+    box-shadow:
+      0 7px 18px rgba(123,26,26,.24);
+  }
+
+
+  /* ============================================================
+     AVISO DE PERMISOS
+     ============================================================ */
+
+  .no-permission-note {
+    display: flex;
+    align-items: flex-start;
+
+    gap: 10px;
+
+    padding: 13px;
+
+    background:
+      rgba(212,160,23,.08);
+
+    border: 1px solid rgba(212,160,23,.22);
+
+    border-radius: 8px;
+
+    color: var(--text-mid);
+
+    font-size: .72rem;
+
+    line-height: 1.5;
+  }
+
+  .permission-icon {
+    width: 28px;
+    height: 28px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 7px;
+
+    background: rgba(212,160,23,.12);
+
+    color: #B7860B;
+
+    flex-shrink: 0;
+  }
+
+
+  /* ============================================================
+     REPOSITORIO
+     ============================================================ */
+
+  .repository-card {
+    min-width: 0;
+  }
+
+  .repository-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 15px;
+
+    padding: 16px 18px;
+
+    border-bottom: 1px solid var(--border);
+  }
+
+  .repository-header-main {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    min-width: 0;
+  }
+
+  .repository-icon {
+    width: 34px;
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 8px;
+
+    background: rgba(212,160,23,.10);
+
+    color: #B7860B;
+
+    flex-shrink: 0;
+  }
+
+  .repository-title {
+    font-family: 'Merriweather', serif;
+
+    font-size: .88rem;
+
+    font-weight: 900;
+
+    color: var(--text-dark);
+  }
+
+  .repository-subtitle {
+    margin-top: 2px;
+
+    font-size: .65rem;
+
+    color: var(--text-lo);
+  }
+
+
+  /* ============================================================
+     SECCIONES DOCUMENTALES
+     ============================================================ */
+
+  .doc-section {
+    padding: 18px;
+
+    border-bottom: 1px solid var(--border);
+  }
+
+  .doc-section:last-child {
+    border-bottom: none;
+  }
+
+  .doc-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 12px;
+
+    margin-bottom: 11px;
+  }
+
+  .doc-section-title {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    font-size: .74rem;
+
+    font-weight: 800;
+
+    color: var(--text-dark);
+
+    text-transform: uppercase;
+
+    letter-spacing: .04em;
+  }
+
+  .doc-section-icon {
+    width: 25px;
+    height: 25px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 6px;
+
+    background: rgba(123,26,26,.08);
+
+    color: var(--guinda);
+  }
+
+  .doc-count {
+    min-width: 22px;
+
+    padding: 3px 7px;
+
+    border-radius: 999px;
+
+    background: var(--cream);
+
+    border: 1px solid var(--border);
+
+    color: var(--text-lo);
+
+    text-align: center;
+
+    font-size: .61rem;
+
+    font-weight: 800;
+  }
+
+
+  /* ============================================================
+     DOCUMENTO
+     ============================================================ */
+
+  .doc-item {
+    display: flex;
+    align-items: center;
+
+    gap: 11px;
+
+    padding: 11px;
+
+    margin-bottom: 8px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 8px;
+
+    background: var(--surface-soft);
+
+    transition:
+      border-color var(--transition),
+      box-shadow var(--transition),
+      transform var(--transition);
+  }
+
+  .doc-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .doc-item:hover {
+    border-color:
+      rgba(123,26,26,.22);
+
+    box-shadow:
+      0 4px 13px rgba(0,0,0,.07);
+
+    transform: translateY(-1px);
+  }
+
+  .doc-icon {
+    width: 37px;
+    height: 40px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    border-radius: 6px;
+
+    background:
+      rgba(192,57,43,.10);
+
+    border: 1px solid rgba(192,57,43,.16);
+
+    color: #C0392B;
+
+    font-size: .62rem;
+
+    font-weight: 900;
+
+    position: relative;
+  }
+
+  .doc-icon::after {
+    content: "";
+
+    position: absolute;
+
+    right: 4px;
+    top: 4px;
+
+    width: 5px;
+    height: 5px;
+
+    border-top: 1px solid rgba(192,57,43,.4);
+
+    border-right: 1px solid rgba(192,57,43,.4);
+  }
+
+  .doc-info {
+    flex: 1;
+
+    min-width: 0;
+  }
+
+  .doc-titulo {
+    font-weight: 750;
+
+    color: var(--text-dark);
+
+    font-size: .78rem;
+
+    line-height: 1.3;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+  }
+
+  .doc-meta {
+    display: flex;
+    align-items: center;
+
+    gap: 5px;
+
+    margin-top: 3px;
+
+    color: var(--text-lo);
+
+    font-size: .61rem;
+
+    line-height: 1.35;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+  }
+
+  .doc-meta-dot {
+    width: 4px;
+    height: 4px;
+
+    border-radius: 50%;
+
+    background: var(--gold);
+
+    flex-shrink: 0;
+  }
+
+
+  /* ============================================================
+     ACCIONES DOCUMENTO
+     ============================================================ */
+
+  .doc-actions {
+    display: flex;
+    align-items: center;
+
+    gap: 5px;
+
+    flex-shrink: 0;
+  }
+
+  .btn-view-doc,
+  .btn-download-doc,
+  .btn-delete-doc {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 5px;
+
+    height: 30px;
+
+    border-radius: 6px;
+
+    font-family: inherit;
+
+    font-size: .64rem;
+
+    font-weight: 800;
+
+    cursor: pointer;
+
+    transition:
+      background var(--transition),
+      border-color var(--transition),
+      color var(--transition),
+      transform var(--transition);
+  }
+
+  .btn-view-doc {
+    padding: 0 9px;
+
+    background: rgba(30,132,73,.09);
+
+    color: #1E8449;
+
+    border: 1px solid rgba(30,132,73,.18);
+  }
+
+  .btn-view-doc:hover {
+    background: rgba(30,132,73,.15);
+
+    transform: translateY(-1px);
+  }
+
+  .btn-download-doc {
+    width: 30px;
+
+    padding: 0;
+
+    background: var(--cream);
+
+    color: var(--text-mid);
+
+    border: 1px solid var(--border);
+
+    text-decoration: none;
+  }
+
+  .btn-download-doc:hover {
+    background: var(--cream-dark);
+
+    color: var(--guinda);
+
+    transform: translateY(-1px);
+  }
+
+  .btn-delete-doc {
+    width: 30px;
+
+    padding: 0;
+
+    background: rgba(192,57,43,.08);
+
+    color: #C0392B;
+
+    border: 1px solid rgba(192,57,43,.18);
+  }
+
+  .btn-delete-doc:hover {
+    background: rgba(192,57,43,.15);
+
+    transform: translateY(-1px);
+  }
+
+
+  /* ============================================================
+     ESTADO VACÍO
+     ============================================================ */
+
+  .empty-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 60px;
+
+    padding: 15px;
+
+    border: 1px dashed var(--border);
+
+    border-radius: 8px;
+
+    color: var(--text-lo);
+
+    font-size: .68rem;
+
+    text-align: center;
+
+    background: var(--surface-soft);
+  }
+
+
+  /* ============================================================
+     VISOR PDF
+     ============================================================ */
+
+  .pdf-modal-overlay {
+    display: none;
+
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 3000;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    background:
+      rgba(20,8,8,.74);
+
+    backdrop-filter: blur(5px);
+
+    -webkit-backdrop-filter: blur(5px);
+  }
+
+  .pdf-modal-overlay.open {
+    display: flex;
+  }
+
+  .pdf-modal-box {
+    width: 100%;
+
+    max-width: 1050px;
+
+    height: 90vh;
+
+    display: flex;
+    flex-direction: column;
+
+    background: var(--white);
+
+    border: 1px solid var(--border);
+
+    border-top: 4px solid var(--gold);
+
+    border-radius: var(--radius);
+
+    overflow: hidden;
+
+    box-shadow:
+      0 25px 75px rgba(0,0,0,.45);
+  }
+
+  .pdf-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 15px;
+
+    padding: 12px 16px;
+
+    background: var(--white);
+
+    border-bottom: 1px solid var(--border);
+  }
+
+  .pdf-modal-header-main {
+    display: flex;
+    align-items: center;
+
+    gap: 9px;
+
+    min-width: 0;
+  }
+
+  .pdf-modal-file-icon {
+    width: 30px;
+    height: 30px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    border-radius: 6px;
+
+    background: rgba(192,57,43,.10);
+
+    color: #C0392B;
+
+    font-size: .55rem;
+
+    font-weight: 900;
+  }
+
+  .pdf-modal-title {
+    font-weight: 800;
+
+    font-size: .76rem;
+
+    color: var(--text-dark);
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+  }
+
+  .pdf-modal-close {
+    width: 31px;
+    height: 31px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    background: var(--cream);
+
+    border: 1px solid var(--border);
+
+    border-radius: 7px;
+
+    cursor: pointer;
+
+    color: var(--text-lo);
+
+    transition:
+      background var(--transition),
+      color var(--transition),
+      border-color var(--transition);
+  }
+
+  .pdf-modal-close:hover {
+    background: rgba(192,57,43,.09);
+
+    border-color: rgba(192,57,43,.18);
+
+    color: #C0392B;
+  }
+
+  .pdf-modal-frame {
+    flex: 1;
+
+    width: 100%;
+
+    border: none;
+
+    background: #202020;
+  }
+
+
+  /* ============================================================
+     DARK MODE
+     ============================================================ */
+
+  html[data-theme="dark"] .form-control {
+    background: #202020;
+
+    color: #F4F1EC;
+
+    border-color: rgba(255,255,255,.12);
+  }
+
+  html[data-theme="dark"] .form-control:focus {
+    background: #242424;
+  }
+
+  html[data-theme="dark"] input[type="file"].form-control::file-selector-button {
+    background: #292929;
+
+    color: #D0C5BC;
+
+    border-color: rgba(255,255,255,.12);
+  }
+
+  html[data-theme="dark"] .doc-item {
+    background: #202020;
+  }
+
+  html[data-theme="dark"] .empty-note {
+    background: #1D1D1D;
+  }
+
+  html[data-theme="dark"] .pdf-modal-box {
+    background: #1A1A1A;
+  }
+
+  html[data-theme="dark"] .pdf-modal-header {
+    background: #1A1A1A;
+  }
+
+
+  /* ============================================================
+     RESPONSIVE
+     ============================================================ */
+
+  @media (max-width: 1000px) {
+
+    .documents-layout {
+      grid-template-columns: 1fr;
+    }
+
+  }
+
+
+  @media (max-width: 700px) {
+
+    .documents-header {
+      flex-direction: column;
+
+      align-items: flex-start;
+
+      gap: 10px;
+    }
+
+    .documents-status {
+      align-self: flex-start;
+    }
+
+    .doc-item {
+      align-items: flex-start;
+    }
+
+    .doc-actions {
+      flex-wrap: wrap;
+    }
+
+    .btn-view-doc {
+      padding: 0 8px;
+    }
+
+  }
+
+
+  @media (max-width: 500px) {
+
+    .doc-item {
+      display: grid;
+
+      grid-template-columns: 37px minmax(0, 1fr);
+
+      gap: 9px;
+    }
+
+    .doc-actions {
+      grid-column: 1 / -1;
+
+      width: 100%;
+
+      padding-top: 7px;
+
+      border-top: 1px solid var(--border);
+
+      justify-content: flex-end;
+    }
+
+    .btn-view-doc {
+      flex: 1;
+    }
+
+    .documents-header h1 {
+      font-size: 1.25rem;
+    }
+
+    .pane-inner {
+      padding: 15px;
+    }
+
+    .doc-section {
+      padding: 15px;
+    }
+
+    .pdf-modal-overlay {
+      padding: 8px;
+    }
+
+    .pdf-modal-box {
+      height: 94vh;
+    }
+
+  }
+
+
+  /* ============================================================
+     REDUCCIÓN DE MOVIMIENTO
+     ============================================================ */
+
+  @media (prefers-reduced-motion: reduce) {
+
+    .doc-item,
+    .btn-submit,
+    .btn-view-doc,
+    .btn-download-doc,
+    .btn-delete-doc,
+    .form-control {
+      transition: none !important;
+    }
+
+  }
+
 </style>
 {% endblock %}
 
+
 {% block content %}
+
+<div class="documents-page">
+
+  <!-- ==========================================================
+       BREADCRUMB
+       ========================================================== -->
+
   <div class="breadcrumb">
-    <a href="{% url 'dashboard' %}">Inicio</a>
+
+    <a href="{% url 'dashboard' %}">
+      Inicio
+    </a>
+
     <span class="breadcrumb-sep">›</span>
-    <span>Documentos Institucionales</span>
+
+    <span>
+      Documentos Institucionales
+    </span>
+
   </div>
 
-  <div class="page-header">
-    <h1>Documentos Institucionales</h1>
-    <p>Reglamento Interno y Protocolos de Convivencia disponibles para toda la comunidad escolar</p>
+
+  <!-- ==========================================================
+       HEADER
+       ========================================================== -->
+
+  <div class="documents-header">
+
+    <div class="documents-header-main">
+
+      <h1>
+        Documentos Institucionales
+      </h1>
+
+      <p>
+        Reglamento Interno y Protocolos de Convivencia disponibles para toda la comunidad escolar.
+      </p>
+
+    </div>
+
+
+    <div class="documents-status">
+
+      <span class="documents-status-dot"></span>
+
+      Repositorio activo
+
+    </div>
+
   </div>
 
-  <div class="admin-layout">
-    <div class="pane-card">
-      <div class="pane-title">Publicar Documento</div>
 
-      {% if es_administrador %}
-      <form action="{% url 'gestion_documentos' %}" method="POST" enctype="multipart/form-data">
-        {% csrf_token %}
+  <!-- ==========================================================
+       CONTENIDO
+       ========================================================== -->
 
-        <div class="form-group">
-          <label class="form-label">Categoría</label>
-          <select name="tipo_documento" class="form-control" required>
-            <option value="" disabled selected>-- Seleccione categoría --</option>
-            <option value="Reglamento">Reglamento Interno</option>
-            <option value="Protocolo">Protocolo de Convivencia</option>
-          </select>
+  <div class="documents-layout">
+
+
+    <!-- ========================================================
+         PUBLICAR
+         ======================================================== -->
+
+    <section class="pane-card">
+
+      <div class="pane-header">
+
+        <div class="pane-header-icon">
+
+          <svg
+            width="16"
+            height="16"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"
+            />
+
+          </svg>
+
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Título del documento</label>
-          <input type="text" name="titulo" class="form-control" placeholder="Ej: Reglamento Interno 2026" required>
+
+        <div>
+
+          <div class="pane-title">
+            Publicar documento
+          </div>
+
+          <div class="pane-subtitle">
+            Incorporar documentación institucional
+          </div>
+
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Archivo (solo PDF, máx. 20 MB)</label>
-          <input type="file" name="archivo" class="form-control" accept="application/pdf" required>
+      </div>
+
+
+      <div class="pane-inner">
+
+        {% if es_administrador %}
+
+        <div class="form-section-label">
+
+          <div class="form-section-marker">
+            01
+          </div>
+
+          Información del documento
+
         </div>
 
-        <button type="submit" class="btn-submit">
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
-          Subir Documento
-        </button>
-      </form>
-      {% else %}
+
+        <form
+          action="{% url 'gestion_documentos' %}"
+          method="POST"
+          enctype="multipart/form-data"
+        >
+
+          {% csrf_token %}
+
+
+          <div class="form-group">
+
+            <label class="form-label">
+              Categoría
+            </label>
+
+            <select
+              name="tipo_documento"
+              class="form-control"
+              required
+            >
+
+              <option
+                value=""
+                disabled
+                selected
+              >
+                -- Seleccione categoría --
+              </option>
+
+              <option value="Reglamento">
+                Reglamento Interno
+              </option>
+
+              <option value="Protocolo">
+                Protocolo de Convivencia
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label class="form-label">
+              Título del documento
+            </label>
+
+            <input
+              type="text"
+              name="titulo"
+              class="form-control"
+              placeholder="Ej: Reglamento Interno 2026"
+              required
+            >
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label class="form-label">
+              Archivo
+            </label>
+
+            <input
+              type="file"
+              name="archivo"
+              class="form-control"
+              accept="application/pdf"
+              required
+            >
+
+            <div class="form-hint">
+              Solo PDF. Tamaño máximo: 20 MB.
+            </div>
+
+          </div>
+
+
+          <button
+            type="submit"
+            class="btn-submit"
+          >
+
+            <svg
+              width="14"
+              height="14"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"
+              />
+
+            </svg>
+
+            Subir documento
+
+          </button>
+
+        </form>
+
+        {% else %}
+
         <div class="no-permission-note">
-          🔒 Solo un usuario con rol <strong>Administrador</strong> puede publicar o eliminar documentos institucionales. Puedes ver y descargar los documentos ya disponibles a la derecha.
+
+          <div class="permission-icon">
+
+            <svg
+              width="15"
+              height="15"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+
+              <rect
+                x="5"
+                y="11"
+                width="14"
+                height="10"
+                rx="2"
+              />
+
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M8 11V8a4 4 0 018 0v3"
+              />
+
+            </svg>
+
+          </div>
+
+          <div>
+            Solo un usuario con rol
+            <strong>Administrador</strong>
+            puede publicar o eliminar documentos institucionales.
+            Puedes ver y descargar los documentos disponibles.
+          </div>
+
         </div>
-      {% endif %}
-    </div>
 
-    <div class="pane-card">
+        {% endif %}
+
+      </div>
+
+    </section>
+
+
+    <!-- ========================================================
+         REPOSITORIO
+         ======================================================== -->
+
+    <section class="pane-card repository-card">
+
+      <div class="repository-header">
+
+        <div class="repository-header-main">
+
+          <div class="repository-icon">
+
+            <svg
+              width="16"
+              height="16"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M4 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V6z"
+              />
+
+            </svg>
+
+          </div>
+
+
+          <div>
+
+            <div class="repository-title">
+              Repositorio institucional
+            </div>
+
+            <div class="repository-subtitle">
+              Documentación oficial disponible para consulta
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- ======================================================
+           REGLAMENTO
+           ====================================================== -->
+
       <div class="doc-section">
-        <div class="doc-section-title">📘 Reglamento Interno</div>
+
+        <div class="doc-section-heading">
+
+          <div class="doc-section-title">
+
+            <div class="doc-section-icon">
+
+              <svg
+                width="14"
+                height="14"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 4h12a2 2 0 012 2v14H4V6a2 2 0 012-2z"
+                />
+
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M8 8h8M8 12h8M8 16h5"
+                />
+
+              </svg>
+
+            </div>
+
+            Reglamento Interno
+
+          </div>
+
+
+          <div class="doc-count">
+            {{ reglamentos|length }}
+          </div>
+
+        </div>
+
+
         {% for doc in reglamentos %}
-          <div class="doc-item">
-            <div class="doc-icon">PDF</div>
-            <div class="doc-info">
-              <div class="doc-titulo">{{ doc.titulo }}</div>
-              <div class="doc-meta">Subido el {{ doc.fecha_subida|date:"d/m/Y" }}{% if doc.usuario %} por {{ doc.usuario.usuario_nombre }} {{ doc.usuario.usuario_apaterno }}{% endif %}</div>
-            </div>
-            <div class="doc-actions">
-              <button type="button" class="btn-view-doc"
-                onclick="abrirVisorPDF('{{ doc.archivo.url }}', '{{ doc.titulo|escapejs }}')">
-                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                Ver
-              </button>
-              <a href="{{ doc.archivo.url }}" download class="btn-download-doc" title="Descargar">
-                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
-              </a>
-              {% if es_administrador %}
-              <button type="button" class="btn-delete-doc"
-                onclick="if(confirm('¿Eliminar el documento «{{ doc.titulo }}»? Esta acción no se puede deshacer.')){ document.getElementById('form-eliminar-doc-{{ doc.documento_id }}').submit(); }">
-                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-              </button>
-              <form id="form-eliminar-doc-{{ doc.documento_id }}" method="POST" action="{% url 'eliminar_documento' doc.documento_id %}" style="display:none;">
-                {% csrf_token %}
-              </form>
-              {% endif %}
-            </div>
+
+        <div class="doc-item">
+
+          <div class="doc-icon">
+            PDF
           </div>
+
+
+          <div class="doc-info">
+
+            <div class="doc-titulo">
+              {{ doc.titulo }}
+            </div>
+
+            <div class="doc-meta">
+
+              <span>
+                Subido el {{ doc.fecha_subida|date:"d/m/Y" }}
+              </span>
+
+              {% if doc.usuario %}
+
+              <span class="doc-meta-dot"></span>
+
+              <span>
+                por {{ doc.usuario.usuario_nombre }}
+                {{ doc.usuario.usuario_apaterno }}
+              </span>
+
+              {% endif %}
+
+            </div>
+
+          </div>
+
+
+          <div class="doc-actions">
+
+            <button
+              type="button"
+              class="btn-view-doc"
+              onclick="abrirVisorPDF('{{ doc.archivo.url }}', '{{ doc.titulo|escapejs }}')"
+            >
+
+              <svg
+                width="11"
+                height="11"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2.5"
+              >
+
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                />
+
+              </svg>
+
+              Ver
+
+            </button>
+
+
+            <a
+              href="{{ doc.archivo.url }}"
+              download
+              class="btn-download-doc"
+              title="Descargar"
+              aria-label="Descargar documento"
+            >
+
+              <svg
+                width="11"
+                height="11"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2.5"
+              >
+
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"
+                />
+
+              </svg>
+
+            </a>
+
+
+            {% if es_administrador %}
+
+            <button
+              type="button"
+              class="btn-delete-doc"
+              title="Eliminar documento"
+              aria-label="Eliminar documento"
+              onclick="if(confirm('¿Eliminar el documento «{{ doc.titulo }}»? Esta acción no se puede deshacer.')){ document.getElementById('form-eliminar-doc-{{ doc.documento_id }}').submit(); }"
+            >
+
+              <svg
+                width="11"
+                height="11"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2.5"
+              >
+
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+
+              </svg>
+
+            </button>
+
+
+            <form
+              id="form-eliminar-doc-{{ doc.documento_id }}"
+              method="POST"
+              action="{% url 'eliminar_documento' doc.documento_id %}"
+              style="display:none;"
+            >
+
+              {% csrf_token %}
+
+            </form>
+
+            {% endif %}
+
+          </div>
+
+        </div>
+
         {% empty %}
-          <div class="empty-note">Aún no se ha publicado ningún Reglamento Interno.</div>
+
+        <div class="empty-note">
+          Aún no se ha publicado ningún Reglamento Interno.
+        </div>
+
         {% endfor %}
+
       </div>
+
+
+      <!-- ======================================================
+           PROTOCOLOS
+           ====================================================== -->
 
       <div class="doc-section">
-        <div class="doc-section-title">🛡️ Protocolos de Convivencia</div>
-        {% for doc in protocolos %}
-          <div class="doc-item">
-            <div class="doc-icon">PDF</div>
-            <div class="doc-info">
-              <div class="doc-titulo">{{ doc.titulo }}</div>
-              <div class="doc-meta">Subido el {{ doc.fecha_subida|date:"d/m/Y" }}{% if doc.usuario %} por {{ doc.usuario.usuario_nombre }} {{ doc.usuario.usuario_apaterno }}{% endif %}</div>
+
+        <div class="doc-section-heading">
+
+          <div class="doc-section-title">
+
+            <div class="doc-section-icon">
+
+              <svg
+                width="14"
+                height="14"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z"
+                />
+
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 12l2 2 4-4"
+                />
+
+              </svg>
+
             </div>
-            <div class="doc-actions">
-              <button type="button" class="btn-view-doc"
-                onclick="abrirVisorPDF('{{ doc.archivo.url }}', '{{ doc.titulo|escapejs }}')">
-                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                Ver
-              </button>
-              <a href="{{ doc.archivo.url }}" download class="btn-download-doc" title="Descargar">
-                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
-              </a>
-              {% if es_administrador %}
-              <button type="button" class="btn-delete-doc"
-                onclick="if(confirm('¿Eliminar el documento «{{ doc.titulo }}»? Esta acción no se puede deshacer.')){ document.getElementById('form-eliminar-doc-{{ doc.documento_id }}').submit(); }">
-                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-              </button>
-              <form id="form-eliminar-doc-{{ doc.documento_id }}" method="POST" action="{% url 'eliminar_documento' doc.documento_id %}" style="display:none;">
-                {% csrf_token %}
-              </form>
-              {% endif %}
-            </div>
+
+            Protocolos de Convivencia
+
           </div>
+
+
+          <div class="doc-count">
+            {{ protocolos|length }}
+          </div>
+
+        </div>
+
+
+        {% for doc in protocolos %}
+
+        <div class="doc-item">
+
+          <div class="doc-icon">
+            PDF
+          </div>
+
+
+          <div class="doc-info">
+
+            <div class="doc-titulo">
+              {{ doc.titulo }}
+            </div>
+
+            <div class="doc-meta">
+
+              <span>
+                Subido el {{ doc.fecha_subida|date:"d/m/Y" }}
+              </span>
+
+              {% if doc.usuario %}
+
+              <span class="doc-meta-dot"></span>
+
+              <span>
+                por {{ doc.usuario.usuario_nombre }}
+                {{ doc.usuario.usuario_apaterno }}
+              </span>
+
+              {% endif %}
+
+            </div>
+
+          </div>
+
+
+          <div class="doc-actions">
+
+            <button
+              type="button"
+              class="btn-view-doc"
+              onclick="abrirVisorPDF('{{ doc.archivo.url }}', '{{ doc.titulo|escapejs }}')"
+            >
+
+              <svg
+                width="11"
+                height="11"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2.5"
+              >
+
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                />
+
+              </svg>
+
+              Ver
+
+            </button>
+
+
+            <a
+              href="{{ doc.archivo.url }}"
+              download
+              class="btn-download-doc"
+              title="Descargar"
+              aria-label="Descargar documento"
+            >
+
+              <svg
+                width="11"
+                height="11"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2.5"
+              >
+
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"
+                />
+
+              </svg>
+
+            </a>
+
+
+            {% if es_administrador %}
+
+            <button
+              type="button"
+              class="btn-delete-doc"
+              title="Eliminar documento"
+              aria-label="Eliminar documento"
+              onclick="if(confirm('¿Eliminar el documento «{{ doc.titulo }}»? Esta acción no se puede deshacer.')){ document.getElementById('form-eliminar-doc-{{ doc.documento_id }}').submit(); }"
+            >
+
+              <svg
+                width="11"
+                height="11"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2.5"
+              >
+
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+
+              </svg>
+
+            </button>
+
+
+            <form
+              id="form-eliminar-doc-{{ doc.documento_id }}"
+              method="POST"
+              action="{% url 'eliminar_documento' doc.documento_id %}"
+              style="display:none;"
+            >
+
+              {% csrf_token %}
+
+            </form>
+
+            {% endif %}
+
+          </div>
+
+        </div>
+
         {% empty %}
-          <div class="empty-note">Aún no se ha publicado ningún Protocolo de Convivencia.</div>
+
+        <div class="empty-note">
+          Aún no se ha publicado ningún Protocolo de Convivencia.
+        </div>
+
         {% endfor %}
+
       </div>
-    </div>
+
+    </section>
+
   </div>
 
-  <!-- Visor de PDF incrustado -->
-  <div class="pdf-modal-overlay" id="pdfModalOverlay" onclick="if(event.target === this){ cerrarVisorPDF(); }">
+
+  <!-- ==========================================================
+       VISOR PDF
+       ========================================================== -->
+
+  <div
+    class="pdf-modal-overlay"
+    id="pdfModalOverlay"
+    onclick="if(event.target === this){ cerrarVisorPDF(); }"
+  >
+
     <div class="pdf-modal-box">
+
       <div class="pdf-modal-header">
-        <div class="pdf-modal-title" id="pdfModalTitle">Documento</div>
-        <button type="button" class="pdf-modal-close" onclick="cerrarVisorPDF()" title="Cerrar">
-          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+
+        <div class="pdf-modal-header-main">
+
+          <div class="pdf-modal-file-icon">
+            PDF
+          </div>
+
+          <div
+            class="pdf-modal-title"
+            id="pdfModalTitle"
+          >
+            Documento
+          </div>
+
+        </div>
+
+
+        <button
+          type="button"
+          class="pdf-modal-close"
+          onclick="cerrarVisorPDF()"
+          title="Cerrar"
+          aria-label="Cerrar visor"
+        >
+
+          <svg
+            width="16"
+            height="16"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2.5"
+          >
+
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 18L18 6M6 6l12 12"
+            />
+
+          </svg>
+
         </button>
+
       </div>
-      <iframe class="pdf-modal-frame" id="pdfModalFrame" src="" title="Visor de PDF"></iframe>
+
+
+      <iframe
+        class="pdf-modal-frame"
+        id="pdfModalFrame"
+        src=""
+        title="Visor de PDF"
+      ></iframe>
+
     </div>
+
   </div>
+
+
+  <!-- ==========================================================
+       JAVASCRIPT
+       ========================================================== -->
 
   <script>
+
     function abrirVisorPDF(url, titulo) {
-      document.getElementById('pdfModalFrame').src = url;
-      document.getElementById('pdfModalTitle').textContent = titulo;
-      document.getElementById('pdfModalOverlay').classList.add('open');
+
+      const frame =
+        document.getElementById('pdfModalFrame');
+
+      const modal =
+        document.getElementById('pdfModalOverlay');
+
+      const title =
+        document.getElementById('pdfModalTitle');
+
+      if (!frame || !modal) return;
+
+      frame.src = url;
+
+      if (title) {
+        title.textContent = titulo;
+      }
+
+      modal.classList.add('open');
+
       document.body.style.overflow = 'hidden';
+
     }
+
+
     function cerrarVisorPDF() {
-      document.getElementById('pdfModalOverlay').classList.remove('open');
-      document.getElementById('pdfModalFrame').src = '';
+
+      const modal =
+        document.getElementById('pdfModalOverlay');
+
+      const frame =
+        document.getElementById('pdfModalFrame');
+
+      if (modal) {
+        modal.classList.remove('open');
+      }
+
+      if (frame) {
+        frame.src = '';
+      }
+
       document.body.style.overflow = '';
+
     }
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') cerrarVisorPDF();
-    });
+
+
+    document.addEventListener(
+      'keydown',
+      function(e) {
+
+        if (e.key === 'Escape') {
+          cerrarVisorPDF();
+        }
+
+      }
+    );
+
   </script>
+
+</div>
+
 {% endblock %}

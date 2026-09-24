@@ -5,58 +5,706 @@
 
 {% block extra_css %}
 <style>
-  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--text-lo); margin-bottom: 18px; }
-  .breadcrumb a { color: var(--guinda); text-decoration: none; font-weight: 500; }
-  .breadcrumb a:hover { text-decoration: underline; }
-  .breadcrumb-sep { opacity: .4; }
 
-  .page-header { margin-bottom: 24px; }
-  .page-header h1 { font-family: 'Merriweather', serif; font-size: 1.5rem; font-weight: 900; color: var(--guinda); }
-  .page-header p { font-size: .85rem; color: var(--text-lo); margin-top: 4px; }
+  /* ============================================================
+     PÁGINA
+     ============================================================ */
 
-  .notif-container { display: flex; flex-direction: column; gap: 12px; max-width: 800px; }
-  .notif-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 18px; display: flex; gap: 16px; align-items: start; transition: all var(--transition); }
-  .notif-card:hover { border-color: var(--text-mid); }
-  .notif-unread { border-left: 4px solid var(--guinda); background: var(--cream); }
-  
-  .notif-icon { font-size: 1.4rem; padding-top: 2px; }
-  .notif-body { flex-grow: 1; }
-  .notif-title { font-weight: 700; color: var(--text-dark); font-size: .95rem; margin-bottom: 4px; }
-  .notif-text { font-size: .85rem; color: var(--text-mid); line-height: 1.4; }
-  .notif-meta { font-size: .75rem; color: var(--text-lo); margin-top: 8px; font-weight: 500; }
-  
-  .badge-unread { background: var(--guinda); color: white; font-size: .65rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; margin-left: 6px; vertical-align: middle; }
+  .notifications-page {
+    width: 100%;
+    max-width: 900px;
+  }
+
+
+  /* ============================================================
+     BREADCRUMB
+     ============================================================ */
+
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+
+    font-size: .76rem;
+
+    color: var(--text-lo);
+
+    margin-bottom: 18px;
+  }
+
+  .breadcrumb a {
+    color: var(--guinda);
+
+    text-decoration: none;
+
+    font-weight: 600;
+
+    transition:
+      color var(--transition);
+  }
+
+  .breadcrumb a:hover {
+    color: var(--guinda-dark);
+    text-decoration: underline;
+  }
+
+  .breadcrumb-sep {
+    opacity: .45;
+  }
+
+
+  /* ============================================================
+     ENCABEZADO
+     ============================================================ */
+
+  .page-header {
+    position: relative;
+
+    margin-bottom: 26px;
+
+    padding-left: 16px;
+  }
+
+  .page-header::before {
+    content: "";
+
+    position: absolute;
+
+    left: 0;
+    top: 2px;
+    bottom: 2px;
+
+    width: 4px;
+
+    border-radius: 999px;
+
+    background: linear-gradient(
+      180deg,
+      var(--guinda),
+      var(--gold)
+    );
+  }
+
+  .page-header h1 {
+    font-family: 'Merriweather', serif;
+
+    font-size: 1.5rem;
+    line-height: 1.25;
+
+    font-weight: 900;
+
+    color: var(--text-dark);
+  }
+
+  .page-header p {
+    font-size: .84rem;
+    line-height: 1.5;
+
+    color: var(--text-lo);
+
+    margin-top: 5px;
+  }
+
+
+  /* ============================================================
+     CONTENEDOR
+     ============================================================ */
+
+  .notif-container {
+    display: flex;
+    flex-direction: column;
+
+    gap: 10px;
+
+    width: 100%;
+  }
+
+
+  /* ============================================================
+     TARJETA DE NOTIFICACIÓN
+     ============================================================ */
+
+  .notif-card {
+    position: relative;
+
+    display: flex;
+    align-items: flex-start;
+
+    gap: 14px;
+
+    width: 100%;
+
+    padding: 16px 18px;
+
+    /*
+     * IMPORTANTE:
+     * Las notificaciones son sólidas.
+     * No usamos transparencia ni backdrop-filter.
+     */
+
+    background: #ffffff;
+
+    border: 1px solid #e2d9d3;
+
+    border-radius: var(--radius);
+
+    box-shadow:
+      0 3px 12px rgba(0, 0, 0, .07);
+
+    transition:
+      transform var(--transition),
+      border-color var(--transition),
+      box-shadow var(--transition);
+  }
+
+  .notif-card:hover {
+    transform: translateY(-1px);
+
+    border-color: rgba(123, 26, 26, .28);
+
+    box-shadow:
+      0 7px 20px rgba(0, 0, 0, .11);
+  }
+
+
+  /* ============================================================
+     NOTIFICACIÓN NO LEÍDA
+     ============================================================ */
+
+  .notif-unread {
+    border-left: 4px solid var(--guinda);
+
+    background: #fffdfa;
+
+    box-shadow:
+      0 4px 16px rgba(123, 26, 26, .09);
+  }
+
+  .notif-unread:hover {
+    border-left-color: var(--gold);
+  }
+
+
+  /* ============================================================
+     ICONO
+     ============================================================ */
+
+  .notif-icon {
+    width: 40px;
+    height: 40px;
+
+    min-width: 40px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background: rgba(123, 26, 26, .08);
+
+    border: 1px solid rgba(123, 26, 26, .10);
+
+    color: var(--guinda);
+
+    font-size: 1.25rem;
+
+    line-height: 1;
+
+    user-select: none;
+  }
+
+  .notif-unread .notif-icon {
+    background: rgba(123, 26, 26, .12);
+
+    border-color: rgba(123, 26, 26, .18);
+  }
+
+
+  /* ============================================================
+     CUERPO
+     ============================================================ */
+
+  .notif-body {
+    flex: 1;
+
+    min-width: 0;
+  }
+
+
+  /* ============================================================
+     TÍTULO
+     ============================================================ */
+
+  .notif-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+
+    gap: 6px;
+
+    font-size: .91rem;
+
+    line-height: 1.35;
+
+    font-weight: 750;
+
+    color: #1c0a0a;
+
+    margin-bottom: 5px;
+  }
+
+
+  /* ============================================================
+     MENSAJE
+     ============================================================ */
+
+  .notif-text {
+    font-size: .82rem;
+
+    line-height: 1.55;
+
+    color: #5c4c43;
+
+    overflow-wrap: anywhere;
+  }
+
+
+  /* ============================================================
+     FECHA
+     ============================================================ */
+
+  .notif-meta {
+    display: flex;
+    align-items: center;
+
+    gap: 6px;
+
+    margin-top: 9px;
+
+    font-size: .71rem;
+
+    line-height: 1.3;
+
+    color: #8b7a70;
+
+    font-weight: 600;
+  }
+
+  .notif-meta::before {
+    content: "";
+
+    width: 5px;
+    height: 5px;
+
+    border-radius: 50%;
+
+    background: var(--gold);
+
+    flex-shrink: 0;
+  }
+
+
+  /* ============================================================
+     BADGE NUEVA
+     ============================================================ */
+
+  .badge-unread {
+    display: inline-flex;
+    align-items: center;
+
+    padding: 3px 7px;
+
+    border-radius: 999px;
+
+    background: var(--guinda);
+
+    color: #ffffff;
+
+    font-size: .61rem;
+
+    line-height: 1;
+
+    font-weight: 800;
+
+    letter-spacing: .04em;
+
+    text-transform: uppercase;
+
+    white-space: nowrap;
+  }
+
+
+  /* ============================================================
+     ESTADO VACÍO
+     ============================================================ */
+
+  .notif-empty {
+    display: flex;
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+
+    min-height: 190px;
+
+    padding: 35px 20px;
+
+    background: #ffffff;
+
+    border: 1px dashed #d8ccc5;
+
+    border-radius: var(--radius);
+
+    box-shadow:
+      0 3px 12px rgba(0, 0, 0, .05);
+
+    color: #8b7a70;
+  }
+
+  .notif-empty-icon {
+    width: 46px;
+    height: 46px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 12px;
+
+    border-radius: 50%;
+
+    background: rgba(212, 160, 23, .12);
+
+    color: #a87800;
+
+    font-size: 1.25rem;
+  }
+
+  .notif-empty-text {
+    font-size: .82rem;
+
+    line-height: 1.5;
+
+    color: #7c6c63;
+  }
+
+
+  /* ============================================================
+     TEMA OSCURO
+     ============================================================ */
+
+  html[data-theme="dark"] .page-header h1 {
+    color: var(--text-dark);
+  }
+
+  html[data-theme="dark"] .notif-card {
+    /*
+     * También sólido en modo oscuro.
+     */
+    background: #21191b;
+
+    border-color: rgba(255, 255, 255, .11);
+
+    box-shadow:
+      0 5px 18px rgba(0, 0, 0, .38);
+  }
+
+  html[data-theme="dark"] .notif-card:hover {
+    border-color: rgba(255, 255, 255, .19);
+
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, .48);
+  }
+
+  html[data-theme="dark"] .notif-unread {
+    background: #281d20;
+
+    border-left-color: var(--gold);
+
+    box-shadow:
+      0 5px 20px rgba(0, 0, 0, .42);
+  }
+
+  html[data-theme="dark"] .notif-unread:hover {
+    border-left-color: var(--gold-bright);
+  }
+
+  html[data-theme="dark"] .notif-icon {
+    background: rgba(212, 160, 23, .10);
+
+    border-color: rgba(212, 160, 23, .16);
+
+    color: var(--gold-bright);
+  }
+
+  html[data-theme="dark"] .notif-unread .notif-icon {
+    background: rgba(123, 26, 26, .30);
+
+    border-color: rgba(212, 160, 23, .20);
+
+    color: var(--gold-bright);
+  }
+
+  html[data-theme="dark"] .notif-title {
+    color: #ffffff;
+  }
+
+  html[data-theme="dark"] .notif-text {
+    color: #d2c8c3;
+  }
+
+  html[data-theme="dark"] .notif-meta {
+    color: #a69b95;
+  }
+
+  html[data-theme="dark"] .notif-meta::before {
+    background: var(--gold-bright);
+  }
+
+  html[data-theme="dark"] .notif-empty {
+    background: #21191b;
+
+    border-color: rgba(255, 255, 255, .13);
+
+    color: #aaa09a;
+
+    box-shadow:
+      0 5px 18px rgba(0, 0, 0, .35);
+  }
+
+  html[data-theme="dark"] .notif-empty-icon {
+    background: rgba(212, 160, 23, .12);
+
+    color: var(--gold-bright);
+  }
+
+  html[data-theme="dark"] .notif-empty-text {
+    color: #aaa09a;
+  }
+
+
+  /* ============================================================
+     RESPONSIVE
+     ============================================================ */
+
+  @media (max-width: 600px) {
+
+    .notifications-page {
+      max-width: 100%;
+    }
+
+    .page-header {
+      margin-bottom: 20px;
+    }
+
+    .page-header h1 {
+      font-size: 1.25rem;
+    }
+
+    .page-header p {
+      font-size: .78rem;
+    }
+
+    .notif-card {
+      gap: 11px;
+
+      padding: 14px;
+    }
+
+    .notif-icon {
+      width: 36px;
+      height: 36px;
+
+      min-width: 36px;
+
+      font-size: 1.1rem;
+    }
+
+    .notif-title {
+      font-size: .84rem;
+    }
+
+    .notif-text {
+      font-size: .78rem;
+    }
+
+    .notif-meta {
+      font-size: .68rem;
+    }
+
+    .badge-unread {
+      font-size: .57rem;
+    }
+  }
+
+
+  @media (max-width: 380px) {
+
+    .notif-card {
+      padding: 12px;
+    }
+
+    .notif-icon {
+      width: 34px;
+      height: 34px;
+
+      min-width: 34px;
+    }
+
+    .notif-title {
+      font-size: .81rem;
+    }
+
+    .notif-text {
+      font-size: .75rem;
+    }
+  }
+
+
+  /* ============================================================
+     REDUCCIÓN DE MOVIMIENTO
+     ============================================================ */
+
+  @media (prefers-reduced-motion: reduce) {
+
+    .notif-card {
+      transition: none;
+    }
+
+    .notif-card:hover {
+      transform: none;
+    }
+  }
+
 </style>
 {% endblock %}
+
+
 {% block content %}
+
+<div class="notifications-page">
+
+  <!-- ==========================================================
+       BREADCRUMB
+       ========================================================== -->
+
   <div class="breadcrumb">
-    <a href="{% url 'dashboard' %}">Inicio</a>
-    <span class="breadcrumb-sep">›</span>
-    <span>Notificaciones</span>
+
+    <a href="{% url 'dashboard' %}">
+      Inicio
+    </a>
+
+    <span class="breadcrumb-sep">
+      ›
+    </span>
+
+    <span>
+      Notificaciones
+    </span>
+
   </div>
+
+
+  <!-- ==========================================================
+       ENCABEZADO
+       ========================================================== -->
+
   <div class="page-header">
-    <h1>Centro de Notificaciones</h1>
-    <p>Alertas del sistema y actualizaciones de bitácoras del Colegio San Sebastián</p>
+
+    <h1>
+      Centro de Notificaciones
+    </h1>
+
+    <p>
+      Alertas del sistema y actualizaciones de bitácoras del
+      Colegio San Sebastián
+    </p>
+
   </div>
+
+
+  <!-- ==========================================================
+       NOTIFICACIONES
+       ========================================================== -->
+
   <div class="notif-container">
+
     {% if notificaciones %}
+
       {% for n in notificaciones %}
-        <div class="notif-card {% if not n.notificacion_leido %}notif-unread{% endif %}">
-          <div class="notif-icon">{{ n.notificacion_icono }}</div>
-          <div class="notif-body">
-            <div class="notif-title">
-              {{ n.notificacion_titulo }}
-              {% if not n.notificacion_leido %}<span class="badge-unread">Nueva</span>{% endif %}
-            </div>
-            <div class="notif-text">{{ n.notificacion_mensaje }}</div>
-            <div class="notif-meta"> {{ n.notificacion_fecha|date:"d M, Y · H:i" }}</div>
+
+        <div
+          class="notif-card {% if not n.notificacion_leido %}notif-unread{% endif %}"
+        >
+
+          <!-- ICONO -->
+
+          <div class="notif-icon">
+            {{ n.notificacion_icono }}
           </div>
+
+
+          <!-- CONTENIDO -->
+
+          <div class="notif-body">
+
+            <div class="notif-title">
+
+              <span>
+                {{ n.notificacion_titulo }}
+              </span>
+
+              {% if not n.notificacion_leido %}
+
+                <span class="badge-unread">
+                  Nueva
+                </span>
+
+              {% endif %}
+
+            </div>
+
+
+            <div class="notif-text">
+              {{ n.notificacion_mensaje }}
+            </div>
+
+
+            <div class="notif-meta">
+              {{ n.notificacion_fecha|date:"d M, Y · H:i" }}
+            </div>
+
+          </div>
+
         </div>
+
       {% endfor %}
+
     {% else %}
-      <div class="notif-card" style="justify-content: center; padding: 40px; color: var(--text-lo); font-style: italic;">
-        No tienes notificaciones pendientes en este momento.
+
+      <!-- ======================================================
+           ESTADO VACÍO
+           ====================================================== -->
+
+      <div class="notif-empty">
+
+        <div class="notif-empty-icon">
+          ✓
+        </div>
+
+        <div class="notif-empty-text">
+          No tienes notificaciones pendientes en este momento.
+        </div>
+
       </div>
+
     {% endif %}
+
   </div>
+
+</div>
+
 {% endblock %}

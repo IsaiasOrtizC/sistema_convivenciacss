@@ -5,196 +5,1738 @@
 
 {% block extra_css %}
 <style>
-  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--text-lo); margin-bottom: 18px; }
-  .breadcrumb a { color: var(--guinda); text-decoration: none; font-weight: 500; }
-  .breadcrumb a:hover { text-decoration: underline; }
-  .breadcrumb-sep { opacity: .4; }
 
-  .profile-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); max-width: 700px; padding: 28px; margin-bottom: 24px; }
+  /* ============================================================
+     PÁGINA
+     ============================================================ */
 
-  .avatar-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-  .avatar-info { display: flex; align-items: center; gap: 16px; }
-  .badge-lista { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; background: var(--cream); border: 1px solid var(--border); font-size: .78rem; font-weight: 700; color: var(--text-mid); white-space: nowrap; }
-  .badge-lista strong { color: var(--guinda); font-family: 'Merriweather', serif; font-size: .95rem; }
-  .avatar-circle { width: 60px; height: 60px; border-radius: 50%; background: var(--cream); border: 2px solid var(--guinda); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; color: var(--guinda); font-weight: 700; flex-shrink: 0; }
-  .student-title { font-family: 'Merriweather', serif; font-size: 1.25rem; font-weight: 900; color: var(--text-dark); }
-  .badge-curso { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: .7rem; font-weight: 700; text-transform: uppercase; background: rgba(30,132,73,.1); color: #1E8449; border: 1px solid rgba(30,132,73,.2); margin-top: 4px; }
+  .student-page {
+    width: 100%;
+  }
 
-  .kpi-row { display: flex; gap: 16px; flex-wrap: wrap; }
-  .kpi-mini { background: var(--cream); border-radius: 8px; border: 1px solid var(--border); padding: 12px 18px; flex: 1; min-width: 120px; }
-  .kpi-mini-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; color: var(--text-lo); }
-  .kpi-mini-value { font-family: 'Merriweather', serif; font-size: 1.3rem; font-weight: 900; color: var(--guinda); margin-top: 2px; }
 
-  /* 🌟 Fila superior: KPIs a la izquierda, estado del alumno a la derecha */
-  .top-info-row { display: flex; gap: 16px; align-items: stretch; margin-bottom: 20px; flex-wrap: wrap; }
-  .top-info-row .kpi-row { flex: 0 0 220px; flex-direction: column; margin-bottom: 0; }
-  .top-info-row .estado-banner { flex: 1; min-width: 280px; margin-bottom: 0; }
+  /* ============================================================
+     BREADCRUMB
+     ============================================================ */
 
-  /* 🌟 Estado del alumno (semáforo automático) */
-  .estado-banner { display: flex; align-items: flex-start; gap: 14px; padding: 18px 20px; border-radius: 10px; margin-bottom: 20px; border: 1.5px solid; }
-  .estado-banner.alerta { background: #FDEDEC; border-color: #C0392B; }
-  .estado-banner.atencion { background: #FEF9E7; border-color: #B7860B; }
-  .estado-banner.seguimiento { background: #EAF3FB; border-color: #2874A6; }
-  .estado-banner.sin_incidencias { background: #EAF3EA; border-color: #1E8449; }
-  .estado-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1.5px solid; }
-  .estado-banner.alerta .estado-icon { background: #fff; border-color: #C0392B; color: #C0392B; }
-  .estado-banner.atencion .estado-icon { background: #fff; border-color: #B7860B; color: #B7860B; }
-  .estado-banner.seguimiento .estado-icon { background: #fff; border-color: #2874A6; color: #2874A6; }
-  .estado-banner.sin_incidencias .estado-icon { background: #fff; border-color: #1E8449; color: #1E8449; }
-  .estado-titulo { font-family: 'Merriweather', serif; font-weight: 900; font-size: 1.05rem; }
-  .estado-banner.alerta .estado-titulo { color: #922B21; }
-  .estado-banner.atencion .estado-titulo { color: #7D5A00; }
-  .estado-banner.seguimiento .estado-titulo { color: #1A5276; }
-  .estado-banner.sin_incidencias .estado-titulo { color: #196F3D; }
-  .estado-desc { font-size: .82rem; color: var(--text-mid); margin-top: 3px; line-height: 1.5; }
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 7px;
 
-  .gravedad-breakdown { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
-  .gravedad-mini { flex: 1; min-width: 100px; text-align: center; padding: 10px; border-radius: 8px; border: 1px solid var(--border); }
-  .gravedad-mini.leve { background: rgba(30,132,73,.06); }
-  .gravedad-mini.grave { background: rgba(212,160,23,.08); }
-  .gravedad-mini.gravisima { background: rgba(192,57,43,.06); }
-  .gravedad-mini-num { font-family: 'Merriweather', serif; font-size: 1.4rem; font-weight: 900; }
-  .gravedad-mini.leve .gravedad-mini-num { color: #1E8449; }
-  .gravedad-mini.grave .gravedad-mini-num { color: #B7860B; }
-  .gravedad-mini.gravisima .gravedad-mini-num { color: #C0392B; }
-  .gravedad-mini-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; color: var(--text-lo); margin-top: 2px; }
+    font-size: .76rem;
+    color: var(--text-lo);
 
-  .table-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
-  .table-topbar { padding: 18px 24px 14px; border-bottom: 1px solid var(--border); }
-  .table-topbar-title { font-family: 'Merriweather', serif; font-size: .95rem; font-weight: 900; color: var(--text-dark); }
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
-  thead tr { border-bottom: 2px solid var(--border); }
-  thead th { padding: 11px 16px; text-align: left; color: var(--text-lo); font-weight: 600; font-size: .71rem; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
-  tbody tr { border-bottom: 1px solid var(--border); transition: background var(--transition); }
-  tbody tr:hover { background: var(--cream); }
-  tbody td { padding: 13px 16px; color: var(--text-dark); vertical-align: middle; }
-  .td-id { font-weight: 700; color: var(--guinda); font-family: monospace; font-size: .9rem; }
+    margin-bottom: 18px;
+  }
 
-  .badge-severidad { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: .68rem; font-weight: 700; text-transform: uppercase; }
-  .badge-severidad.leve { background: rgba(30,132,73,.1); color: #1E8449; border: 1px solid rgba(30,132,73,.2); }
-  .badge-severidad.grave { background: rgba(212,160,23,.12); color: #B7860B; border: 1px solid rgba(212,160,23,.25); }
-  .badge-severidad.gravisima { background: rgba(192,57,43,.1); color: #C0392B; border: 1px solid rgba(192,57,43,.2); }
+  .breadcrumb a {
+    color: var(--guinda);
+    text-decoration: none;
+    font-weight: 600;
+  }
 
-  .btn-ver-caso { display: inline-flex; align-items: center; gap: 5px; padding: 6px 14px; border-radius: 6px; background: transparent; color: var(--guinda); border: 1.5px solid var(--guinda); font-size: .78rem; font-weight: 600; text-decoration: none; transition: all var(--transition); }
-  .btn-ver-caso:hover { background: var(--guinda); color: #fff; }
+  .breadcrumb a:hover {
+    text-decoration: underline;
+  }
+
+  .breadcrumb-sep {
+    opacity: .4;
+  }
+
+
+  /* ============================================================
+     HEADER DE FICHA
+     ============================================================ */
+
+  .student-hero {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 24px;
+
+    padding: 26px 28px;
+
+    margin-bottom: 18px;
+
+    border-radius: var(--radius);
+
+    background:
+      linear-gradient(
+        135deg,
+        var(--guinda-dark) 0%,
+        var(--guinda) 62%,
+        #8F2020 100%
+      );
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    box-shadow:
+      0 10px 30px rgba(0,0,0,.16);
+
+    overflow: hidden;
+  }
+
+  .student-hero::after {
+    content: "";
+
+    position: absolute;
+
+    width: 280px;
+    height: 280px;
+
+    right: -90px;
+    top: -150px;
+
+    border-radius: 50%;
+
+    background:
+      radial-gradient(
+        circle,
+        rgba(212,160,23,.18),
+        transparent 68%
+      );
+
+    pointer-events: none;
+  }
+
+  .student-hero-main {
+    position: relative;
+    z-index: 1;
+
+    display: flex;
+    align-items: center;
+
+    gap: 17px;
+
+    min-width: 0;
+  }
+
+  .student-avatar {
+    width: 68px;
+    height: 68px;
+
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    background: rgba(255,255,255,.12);
+
+    border: 2px solid rgba(240,192,48,.8);
+
+    color: #fff;
+
+    font-family: 'Merriweather', serif;
+    font-size: 1.25rem;
+    font-weight: 900;
+
+    box-shadow:
+      0 5px 18px rgba(0,0,0,.22);
+  }
+
+  .student-overline {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+
+    font-size: .67rem;
+    font-weight: 700;
+
+    letter-spacing: .11em;
+    text-transform: uppercase;
+
+    color: rgba(255,255,255,.62);
+
+    margin-bottom: 5px;
+  }
+
+  .student-overline-dot {
+    width: 6px;
+    height: 6px;
+
+    border-radius: 50%;
+
+    background: var(--gold-bright);
+
+    box-shadow:
+      0 0 0 3px rgba(240,192,48,.12);
+  }
+
+  .student-name {
+    font-family: 'Merriweather', serif;
+
+    font-size: 1.45rem;
+    line-height: 1.2;
+
+    font-weight: 900;
+
+    color: #fff;
+
+    overflow-wrap: anywhere;
+  }
+
+  .student-course {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 6px;
+
+    margin-top: 7px;
+
+    padding: 4px 9px;
+
+    border-radius: 5px;
+
+    background: rgba(255,255,255,.10);
+
+    border: 1px solid rgba(255,255,255,.13);
+
+    color: rgba(255,255,255,.88);
+
+    font-size: .7rem;
+    font-weight: 700;
+
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+
+  .student-hero-side {
+    position: relative;
+    z-index: 1;
+
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+
+    gap: 7px;
+
+    flex-shrink: 0;
+  }
+
+  .student-number-label {
+    font-size: .64rem;
+    font-weight: 700;
+
+    text-transform: uppercase;
+    letter-spacing: .08em;
+
+    color: rgba(255,255,255,.55);
+  }
+
+  .student-number {
+    min-width: 70px;
+
+    padding: 8px 13px;
+
+    border-radius: 8px;
+
+    background: rgba(255,255,255,.10);
+
+    border: 1px solid rgba(255,255,255,.13);
+
+    text-align: center;
+
+    color: #fff;
+
+    font-family: 'Merriweather', serif;
+    font-size: 1.05rem;
+    font-weight: 900;
+  }
+
+
+  /* ============================================================
+     KPIs
+     ============================================================ */
+
+  .dashboard-grid {
+    display: grid;
+
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+
+    gap: 14px;
+
+    margin-bottom: 18px;
+  }
+
+  .metric-card {
+    position: relative;
+
+    background: var(--white);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius);
+
+    box-shadow: var(--shadow);
+
+    padding: 17px 18px;
+
+    overflow: hidden;
+
+    transition:
+      transform var(--transition),
+      border-color var(--transition),
+      box-shadow var(--transition);
+  }
+
+  .metric-card:hover {
+    transform: translateY(-2px);
+
+    border-color:
+      rgba(123,26,26,.24);
+
+    box-shadow:
+      0 8px 24px rgba(0,0,0,.11);
+  }
+
+  .metric-card::before {
+    content: "";
+
+    position: absolute;
+
+    left: 0;
+    top: 0;
+    bottom: 0;
+
+    width: 3px;
+
+    background: var(--guinda);
+  }
+
+  .metric-card.gold::before {
+    background: var(--gold);
+  }
+
+  .metric-card.green::before {
+    background: #1E8449;
+  }
+
+  .metric-label {
+    font-size: .66rem;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+    letter-spacing: .07em;
+
+    color: var(--text-lo);
+  }
+
+  .metric-value {
+    margin-top: 4px;
+
+    font-family: 'Merriweather', serif;
+
+    font-size: 1.55rem;
+    line-height: 1.15;
+
+    font-weight: 900;
+
+    color: var(--guinda);
+
+    overflow-wrap: anywhere;
+  }
+
+  .metric-card.gold .metric-value {
+    color: #B7860B;
+  }
+
+  .metric-card.green .metric-value {
+    color: #1E8449;
+  }
+
+  .metric-sub {
+    margin-top: 4px;
+
+    font-size: .7rem;
+
+    color: var(--text-lo);
+  }
+
+
+  /* ============================================================
+     ESTADO
+     ============================================================ */
+
+  .status-panel {
+    display: flex;
+
+    align-items: center;
+
+    gap: 16px;
+
+    margin-bottom: 18px;
+
+    padding: 17px 19px;
+
+    border-radius: var(--radius);
+
+    border: 1px solid;
+
+    box-shadow: var(--shadow);
+  }
+
+  .status-panel.alerta {
+    background: #FDEDEC;
+    border-color: #C0392B;
+  }
+
+  .status-panel.atencion {
+    background: #FEF9E7;
+    border-color: #B7860B;
+  }
+
+  .status-panel.seguimiento {
+    background: #EAF3FB;
+    border-color: #2874A6;
+  }
+
+  .status-panel.sin_incidencias {
+    background: #EAF3EA;
+    border-color: #1E8449;
+  }
+
+  .status-icon {
+    width: 44px;
+    height: 44px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    border-radius: 10px;
+
+    background: #fff;
+
+    border: 1px solid currentColor;
+  }
+
+  .status-panel.alerta .status-icon {
+    color: #C0392B;
+  }
+
+  .status-panel.atencion .status-icon {
+    color: #B7860B;
+  }
+
+  .status-panel.seguimiento .status-icon {
+    color: #2874A6;
+  }
+
+  .status-panel.sin_incidencias .status-icon {
+    color: #1E8449;
+  }
+
+  .status-content {
+    min-width: 0;
+  }
+
+  .status-label {
+    font-size: .63rem;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+    letter-spacing: .08em;
+
+    color: var(--text-lo);
+
+    margin-bottom: 2px;
+  }
+
+  .status-title {
+    font-family: 'Merriweather', serif;
+
+    font-size: 1rem;
+
+    font-weight: 900;
+  }
+
+  .status-panel.alerta .status-title {
+    color: #922B21;
+  }
+
+  .status-panel.atencion .status-title {
+    color: #7D5A00;
+  }
+
+  .status-panel.seguimiento .status-title {
+    color: #1A5276;
+  }
+
+  .status-panel.sin_incidencias .status-title {
+    color: #196F3D;
+  }
+
+  .status-description {
+    margin-top: 3px;
+
+    font-size: .78rem;
+
+    line-height: 1.45;
+
+    color: var(--text-mid);
+  }
+
+
+  /* ============================================================
+     DESGLOSE DE GRAVEDAD
+     ============================================================ */
+
+  .severity-strip {
+    display: grid;
+
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+
+    gap: 10px;
+
+    margin-bottom: 18px;
+  }
+
+  .severity-card {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 10px;
+
+    padding: 13px 15px;
+
+    border-radius: 9px;
+
+    background: var(--white);
+
+    border: 1px solid var(--border);
+
+    box-shadow: var(--shadow);
+  }
+
+  .severity-info {
+    min-width: 0;
+  }
+
+  .severity-name {
+    font-size: .67rem;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+    letter-spacing: .06em;
+
+    color: var(--text-lo);
+  }
+
+  .severity-count {
+    margin-top: 2px;
+
+    font-family: 'Merriweather', serif;
+
+    font-size: 1.3rem;
+
+    font-weight: 900;
+  }
+
+  .severity-marker {
+    width: 8px;
+    height: 32px;
+
+    border-radius: 999px;
+
+    flex-shrink: 0;
+  }
+
+  .severity-card.leve .severity-count {
+    color: #1E8449;
+  }
+
+  .severity-card.leve .severity-marker {
+    background: #1E8449;
+  }
+
+  .severity-card.grave .severity-count {
+    color: #B7860B;
+  }
+
+  .severity-card.grave .severity-marker {
+    background: #D4A017;
+  }
+
+  .severity-card.gravisima .severity-count {
+    color: #C0392B;
+  }
+
+  .severity-card.gravisima .severity-marker {
+    background: #C0392B;
+  }
+
+
+  /* ============================================================
+     PANEL HISTORIAL
+     ============================================================ */
+
+  .cases-panel {
+    background: var(--white);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius);
+
+    box-shadow: var(--shadow);
+
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 14px;
+
+    padding: 17px 20px;
+
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .panel-heading-icon {
+    width: 34px;
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 8px;
+
+    background: rgba(123,26,26,.08);
+
+    color: var(--guinda);
+
+    flex-shrink: 0;
+  }
+
+  .panel-title {
+    font-family: 'Merriweather', serif;
+
+    font-size: .94rem;
+
+    font-weight: 900;
+
+    color: var(--text-dark);
+  }
+
+  .panel-subtitle {
+    margin-top: 2px;
+
+    font-size: .7rem;
+
+    color: var(--text-lo);
+  }
+
+  .panel-count {
+    min-width: 30px;
+
+    padding: 5px 9px;
+
+    border-radius: 999px;
+
+    background: var(--cream);
+
+    border: 1px solid var(--border);
+
+    color: var(--guinda);
+
+    font-size: .7rem;
+
+    font-weight: 800;
+
+    text-align: center;
+  }
+
+
+  /* ============================================================
+     TABLA
+     ============================================================ */
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+
+    min-width: 760px;
+
+    border-collapse: collapse;
+
+    font-size: .82rem;
+  }
+
+  thead {
+    background: var(--cream);
+  }
+
+  thead tr {
+    border-bottom: 1px solid var(--border);
+  }
+
+  thead th {
+    padding: 11px 15px;
+
+    text-align: left;
+
+    color: var(--text-lo);
+
+    font-size: .65rem;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: .07em;
+
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+
+    transition:
+      background var(--transition);
+  }
+
+  tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  tbody tr:hover {
+    background: var(--cream);
+  }
+
+  tbody td {
+    padding: 13px 15px;
+
+    color: var(--text-dark);
+
+    vertical-align: middle;
+  }
+
+
+  /* ============================================================
+     ID
+     ============================================================ */
+
+  .case-id {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    min-width: 48px;
+
+    padding: 4px 7px;
+
+    border-radius: 5px;
+
+    background: rgba(123,26,26,.08);
+
+    color: var(--guinda);
+
+    font-family: monospace;
+
+    font-size: .72rem;
+
+    font-weight: 800;
+  }
+
+
+  /* ============================================================
+     TÍTULO DEL CASO
+     ============================================================ */
+
+  .case-title {
+    max-width: 280px;
+
+    font-weight: 700;
+
+    color: var(--text-dark);
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+  }
+
+
+  /* ============================================================
+     LUGAR
+     ============================================================ */
+
+  .case-place {
+    display: flex;
+
+    align-items: center;
+
+    gap: 7px;
+
+    color: var(--text-mid);
+
+    white-space: nowrap;
+  }
+
+  .case-place-dot {
+    width: 6px;
+    height: 6px;
+
+    border-radius: 50%;
+
+    background: var(--gold);
+
+    flex-shrink: 0;
+  }
+
+
+  /* ============================================================
+     FECHA
+     ============================================================ */
+
+  .case-date {
+    color: var(--text-mid);
+
+    white-space: nowrap;
+
+    font-variant-numeric: tabular-nums;
+  }
+
+
+  /* ============================================================
+     BADGES DE SEVERIDAD
+     ============================================================ */
+
+  .severity-badge {
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    padding: 4px 8px;
+
+    border-radius: 5px;
+
+    font-size: .64rem;
+
+    font-weight: 800;
+
+    text-transform: uppercase;
+
+    white-space: nowrap;
+  }
+
+  .severity-badge::before {
+    content: "";
+
+    width: 5px;
+    height: 5px;
+
+    border-radius: 50%;
+
+    background: currentColor;
+  }
+
+  .severity-badge.leve {
+    background: rgba(30,132,73,.09);
+
+    color: #1E8449;
+
+    border: 1px solid rgba(30,132,73,.18);
+  }
+
+  .severity-badge.grave {
+    background: rgba(212,160,23,.11);
+
+    color: #B7860B;
+
+    border: 1px solid rgba(212,160,23,.22);
+  }
+
+  .severity-badge.gravisima {
+    background: rgba(192,57,43,.09);
+
+    color: #C0392B;
+
+    border: 1px solid rgba(192,57,43,.18);
+  }
+
+
+  /* ============================================================
+     BOTÓN VER CASO
+     ============================================================ */
+
+  .btn-case {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 5px;
+
+    padding: 6px 10px;
+
+    border-radius: 6px;
+
+    background: transparent;
+
+    color: var(--guinda);
+
+    border: 1px solid rgba(123,26,26,.35);
+
+    font-size: .7rem;
+
+    font-weight: 700;
+
+    text-decoration: none;
+
+    white-space: nowrap;
+
+    transition:
+      background var(--transition),
+      color var(--transition),
+      border-color var(--transition);
+  }
+
+  .btn-case:hover {
+    background: var(--guinda);
+
+    border-color: var(--guinda);
+
+    color: #fff;
+  }
+
+
+  /* ============================================================
+     EMPTY STATE
+     ============================================================ */
+
+  .empty-state {
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 8px;
+
+    padding: 48px 20px;
+
+    color: var(--text-lo);
+
+    text-align: center;
+  }
+
+  .empty-state-icon {
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background: var(--cream);
+
+    color: var(--text-lo);
+
+    margin-bottom: 3px;
+  }
+
+  .empty-state-title {
+    font-weight: 700;
+
+    color: var(--text-mid);
+
+    font-size: .82rem;
+  }
+
+  .empty-state-text {
+    font-size: .72rem;
+  }
+
+
+  /* ============================================================
+     DARK MODE
+     ============================================================ */
+
+  html[data-theme="dark"] .student-hero {
+    box-shadow:
+      0 12px 38px rgba(0,0,0,.42);
+  }
+
+  html[data-theme="dark"] .metric-card,
+  html[data-theme="dark"] .cases-panel,
+  html[data-theme="dark"] .severity-card {
+    background: #1A1A1A;
+  }
+
+  html[data-theme="dark"] .metric-card:hover {
+    border-color:
+      rgba(255,255,255,.16);
+
+    box-shadow:
+      0 10px 28px rgba(0,0,0,.42);
+  }
+
+  html[data-theme="dark"] .status-panel.alerta {
+    background: #29191A;
+  }
+
+  html[data-theme="dark"] .status-panel.atencion {
+    background: #292516;
+  }
+
+  html[data-theme="dark"] .status-panel.seguimiento {
+    background: #18242D;
+  }
+
+  html[data-theme="dark"] .status-panel.sin_incidencias {
+    background: #17251B;
+  }
+
+  html[data-theme="dark"] .status-icon {
+    background: #211F1F;
+  }
+
+  html[data-theme="dark"] thead {
+    background: #202020;
+  }
+
+  html[data-theme="dark"] tbody tr:hover {
+    background: #202020;
+  }
+
+  html[data-theme="dark"] .panel-heading-icon {
+    background: rgba(255,255,255,.07);
+  }
+
+
+  /* ============================================================
+     RESPONSIVE
+     ============================================================ */
+
+  @media (max-width: 900px) {
+
+    .student-hero {
+      padding: 22px;
+
+      align-items: flex-start;
+    }
+
+    .student-hero-side {
+      align-items: flex-start;
+    }
+
+    .dashboard-grid {
+      grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+    }
+
+  }
+
+
+  @media (max-width: 680px) {
+
+    .student-hero {
+      flex-direction: column;
+
+      gap: 18px;
+    }
+
+    .student-hero-side {
+      width: 100%;
+
+      flex-direction: row;
+
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .student-name {
+      font-size: 1.2rem;
+    }
+
+    .dashboard-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .metric-card:first-child {
+      grid-column: 1 / -1;
+    }
+
+    .severity-strip {
+      grid-template-columns: 1fr;
+    }
+
+    .status-panel {
+      align-items: flex-start;
+    }
+
+  }
+
+
+  @media (max-width: 430px) {
+
+    .student-hero {
+      padding: 18px;
+    }
+
+    .student-avatar {
+      width: 58px;
+      height: 58px;
+
+      font-size: 1.05rem;
+    }
+
+    .student-name {
+      font-size: 1.05rem;
+    }
+
+    .student-hero-main {
+      gap: 12px;
+    }
+
+    .dashboard-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .metric-card:first-child {
+      grid-column: auto;
+    }
+
+    .panel-header {
+      padding: 15px;
+    }
+
+    .status-panel {
+      padding: 15px;
+    }
+
+  }
+
+
+  /* ============================================================
+     REDUCCIÓN DE MOVIMIENTO
+     ============================================================ */
+
+  @media (prefers-reduced-motion: reduce) {
+
+    .metric-card,
+    .btn-case,
+    tbody tr {
+      transition: none !important;
+    }
+
+  }
+
 </style>
 {% endblock %}
 
+
 {% block content %}
+
+<div class="student-page">
+
+  <!-- ==========================================================
+       BREADCRUMB
+       ========================================================== -->
+
   <div class="breadcrumb">
-    <a href="{% url 'dashboard' %}">Inicio</a>
+
+    <a href="{% url 'dashboard' %}">
+      Inicio
+    </a>
+
     <span class="breadcrumb-sep">›</span>
-    <span>Ficha de Alumno</span>
+
+    <span>
+      Ficha de Alumno
+    </span>
+
   </div>
 
-  <div class="profile-card">
-    <div class="avatar-row">
-      <div class="avatar-info">
-        <div class="avatar-circle">{{ estudiante.estudiante_nombre|slice:":1" }}{{ estudiante.estudiante_apaterno|slice:":1" }}</div>
+
+  <!-- ==========================================================
+       HERO
+       ========================================================== -->
+
+  <section class="student-hero">
+
+    <div class="student-hero-main">
+
+      <div class="student-avatar">
+        {{ estudiante.estudiante_nombre|slice:":1" }}{{ estudiante.estudiante_apaterno|slice:":1" }}
+      </div>
+
+      <div>
+
+        <div class="student-overline">
+          <span class="student-overline-dot"></span>
+          Expediente del estudiante
+        </div>
+
+        <div class="student-name">
+          {{ estudiante.estudiante_nombre }}
+          {{ estudiante.estudiante_apaterno }}
+          {{ estudiante.estudiante_amaterno }}
+        </div>
+
+        <div class="student-course">
+          📚
+          {{ estudiante.curso.curso_grado|default:"Sin" }}
+          {{ estudiante.curso.curso_letra }}
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="student-hero-side">
+
+      <div>
+
+        <div class="student-number-label">
+          Número de lista
+        </div>
+
+        <div class="student-number">
+          {{ estudiante.estudiante_numero_lista|default:"—" }}
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ==========================================================
+       KPIs
+       ========================================================== -->
+
+  <section class="dashboard-grid">
+
+    <div class="metric-card">
+
+      <div class="metric-label">
+        Total de casos
+      </div>
+
+      <div class="metric-value">
+        {{ total_casos }}
+      </div>
+
+      <div class="metric-sub">
+        Registros asociados
+      </div>
+
+    </div>
+
+
+    <div class="metric-card gold">
+
+      <div class="metric-label">
+        Identificador
+      </div>
+
+      <div
+        class="metric-value"
+        style="
+          font-family: monospace;
+          font-size: 1rem;
+          letter-spacing: .02em;
+        "
+      >
+        {{ estudiante.estudiante_identificador|default:"Sin asignar" }}
+      </div>
+
+      <div class="metric-sub">
+        Identificador institucional
+      </div>
+
+    </div>
+
+
+    <div class="metric-card green">
+
+      <div class="metric-label">
+        Curso actual
+      </div>
+
+      <div
+        class="metric-value"
+        style="font-size: 1.05rem;"
+      >
+        {{ estudiante.curso.curso_grado|default:"Sin" }}
+        {{ estudiante.curso.curso_letra }}
+      </div>
+
+      <div class="metric-sub">
+        Nivel académico
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ==========================================================
+       ESTADO
+       ========================================================== -->
+
+  <section class="status-panel {{ estado_clave }}">
+
+    <div class="status-icon">
+
+      {% if estado_clave == 'alerta' %}
+
+        <svg
+          width="22"
+          height="22"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+          />
+        </svg>
+
+      {% elif estado_clave == 'atencion' %}
+
+        <svg
+          width="22"
+          height="22"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+          />
+        </svg>
+
+      {% elif estado_clave == 'seguimiento' %}
+
+        <svg
+          width="22"
+          height="22"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+          />
+
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+          />
+        </svg>
+
+      {% else %}
+
+        <svg
+          width="22"
+          height="22"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M9 12.75L11.25 15 15 9.75"
+          />
+
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+
+      {% endif %}
+
+    </div>
+
+
+    <div class="status-content">
+
+      <div class="status-label">
+        Estado actual
+      </div>
+
+      <div class="status-title">
+        {{ estado_texto }}
+      </div>
+
+      <div class="status-description">
+        {{ estado_detalle }}
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ==========================================================
+       DESGLOSE DE CASOS
+       ========================================================== -->
+
+  {% if total_casos > 0 %}
+
+  <section class="severity-strip">
+
+    <div class="severity-card leve">
+
+      <div class="severity-info">
+
+        <div class="severity-name">
+          Leves
+        </div>
+
+        <div class="severity-count">
+          {{ conteo_gravedad.Leve }}
+        </div>
+
+      </div>
+
+      <div class="severity-marker"></div>
+
+    </div>
+
+
+    <div class="severity-card grave">
+
+      <div class="severity-info">
+
+        <div class="severity-name">
+          Graves
+        </div>
+
+        <div class="severity-count">
+          {{ conteo_gravedad.Grave }}
+        </div>
+
+      </div>
+
+      <div class="severity-marker"></div>
+
+    </div>
+
+
+    <div class="severity-card gravisima">
+
+      <div class="severity-info">
+
+        <div class="severity-name">
+          Gravísimas
+        </div>
+
+        <div class="severity-count">
+          {{ conteo_gravedad.Gravísima }}
+        </div>
+
+      </div>
+
+      <div class="severity-marker"></div>
+
+    </div>
+
+  </section>
+
+  {% endif %}
+
+
+  <!-- ==========================================================
+       HISTORIAL DE CASOS
+       ========================================================== -->
+
+  <section class="cases-panel">
+
+    <div class="panel-header">
+
+      <div class="panel-heading">
+
+        <div class="panel-heading-icon">
+
+          <svg
+            width="17"
+            height="17"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+
+        </div>
+
         <div>
-          <div class="student-title">{{ estudiante.estudiante_nombre }} {{ estudiante.estudiante_apaterno }} {{ estudiante.estudiante_amaterno }}</div>
-          <span class="badge-curso">📚 {{ estudiante.curso.curso_grado|default:"Sin" }} {{ estudiante.curso.curso_letra }}</span>
-        </div>
-      </div>
-      <div class="badge-lista">
-        N° Lista: <strong>{{ estudiante.estudiante_numero_lista|default:"Sin asignar" }}</strong>
-      </div>
-    </div>
 
-    <div class="top-info-row">
-      <div class="kpi-row">
-        <div class="kpi-mini">
-          <div class="kpi-mini-label">Total de Casos</div>
-          <div class="kpi-mini-value">{{ total_casos }}</div>
+          <div class="panel-title">
+            Historial de casos
+          </div>
+
+          <div class="panel-subtitle">
+            Registros de convivencia asociados al estudiante
+          </div>
+
         </div>
-        <div class="kpi-mini">
-          <div class="kpi-mini-label">Identificador</div>
-          <div class="kpi-mini-value" style="font-family: monospace; font-size: 1.1rem;">{{ estudiante.estudiante_identificador|default:"Sin asignar" }}</div>
-        </div>
+
       </div>
 
-      <!-- 🌟 Estado automático del alumno -->
-      <div class="estado-banner {{ estado_clave }}">
-        <div class="estado-icon">
-          {% if estado_clave == 'alerta' %}
-            <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
-          {% elif estado_clave == 'atencion' %}
-            <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
-          {% elif estado_clave == 'seguimiento' %}
-            <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-          {% else %}
-            <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          {% endif %}
-        </div>
-        <div>
-          <div class="estado-titulo">{{ estado_texto }}</div>
-          <div class="estado-desc">{{ estado_detalle }}</div>
-        </div>
+
+      <div class="panel-count">
+        {{ total_casos }}
       </div>
+
     </div>
 
-    {% if total_casos > 0 %}
-    <div class="gravedad-breakdown">
-      <div class="gravedad-mini leve">
-        <div class="gravedad-mini-num">{{ conteo_gravedad.Leve }}</div>
-        <div class="gravedad-mini-label">Leves</div>
-      </div>
-      <div class="gravedad-mini grave">
-        <div class="gravedad-mini-num">{{ conteo_gravedad.Grave }}</div>
-        <div class="gravedad-mini-label">Graves</div>
-      </div>
-      <div class="gravedad-mini gravisima">
-        <div class="gravedad-mini-num">{{ conteo_gravedad.Gravísima }}</div>
-        <div class="gravedad-mini-label">Gravísimas</div>
-      </div>
-    </div>
-    {% endif %}
-  </div>
 
-  <div class="table-card">
-    <div class="table-topbar">
-      <div class="table-topbar-title">Casos en los que ha estado involucrado(a)</div>
-    </div>
     <div class="table-wrap">
+
       <table>
+
         <thead>
+
           <tr>
-            <th>ID</th>
-            <th>Título</th>
-            <th>Fecha</th>
-            <th>Lugar</th>
-            <th>Gravedad</th>
-            <th style="text-align: center;">Acción</th>
+
+            <th>
+              ID
+            </th>
+
+            <th>
+              Título
+            </th>
+
+            <th>
+              Fecha
+            </th>
+
+            <th>
+              Lugar
+            </th>
+
+            <th>
+              Gravedad
+            </th>
+
+            <th style="text-align:center;">
+              Acción
+            </th>
+
           </tr>
+
         </thead>
+
+
         <tbody>
+
           {% for c in casos %}
+
           <tr>
-            <td class="td-id">#{{ c.caso_id }}</td>
-            <td style="font-weight: 600;">{{ c.titulo }}</td>
-            <td style="white-space: nowrap;">{{ c.fecha|date:"d/m/Y" }}</td>
-            <td>{{ c.lugar }}</td>
+
             <td>
+
+              <span class="case-id">
+                #{{ c.caso_id }}
+              </span>
+
+            </td>
+
+
+            <td>
+
+              <div
+                class="case-title"
+                title="{{ c.titulo }}"
+              >
+                {{ c.titulo }}
+              </div>
+
+            </td>
+
+
+            <td>
+
+              <span class="case-date">
+                {{ c.fecha|date:"d/m/Y" }}
+              </span>
+
+            </td>
+
+
+            <td>
+
+              <div class="case-place">
+
+                <span class="case-place-dot"></span>
+
+                {{ c.lugar }}
+
+              </div>
+
+            </td>
+
+
+            <td>
+
               {% if c.gravedad == "Leve" %}
-                <span class="badge-severidad leve">{{ c.gravedad }}</span>
+
+                <span class="severity-badge leve">
+                  {{ c.gravedad }}
+                </span>
+
               {% elif c.gravedad == "Grave" %}
-                <span class="badge-severidad grave">{{ c.gravedad }}</span>
+
+                <span class="severity-badge grave">
+                  {{ c.gravedad }}
+                </span>
+
               {% else %}
-                <span class="badge-severidad gravisima">{{ c.gravedad }}</span>
+
+                <span class="severity-badge gravisima">
+                  {{ c.gravedad }}
+                </span>
+
               {% endif %}
+
             </td>
-            <td style="text-align: center;">
-              <a href="{% url 'detalle_caso' c.caso_id %}" class="btn-ver-caso">Ver caso</a>
+
+
+            <td style="text-align:center;">
+
+              <a
+                href="{% url 'detalle_caso' c.caso_id %}"
+                class="btn-case"
+              >
+
+                Ver caso
+
+                <svg
+                  width="12"
+                  height="12"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+
+              </a>
+
             </td>
+
           </tr>
+
           {% empty %}
+
           <tr>
-            <td colspan="6" style="text-align:center; padding:40px; color:var(--text-lo); font-style: italic;">Este alumno no tiene casos registrados en el sistema.</td>
+
+            <td colspan="6">
+
+              <div class="empty-state">
+
+                <div class="empty-state-icon">
+
+                  <svg
+                    width="19"
+                    height="19"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+
+                </div>
+
+                <div class="empty-state-title">
+                  Sin casos registrados
+                </div>
+
+                <div class="empty-state-text">
+                  Este alumno no tiene casos registrados en el sistema.
+                </div>
+
+              </div>
+
+            </td>
+
           </tr>
+
           {% endfor %}
+
         </tbody>
+
       </table>
+
     </div>
-  </div>
+
+  </section>
+
+</div>
+
 {% endblock %}

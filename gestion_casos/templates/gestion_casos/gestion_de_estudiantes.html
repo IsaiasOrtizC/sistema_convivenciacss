@@ -5,79 +5,1187 @@
 
 {% block extra_css %}
 <style>
-  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--text-lo); margin-bottom: 18px; }
-  .breadcrumb a { color: var(--guinda); text-decoration: none; font-weight: 500; }
-  .breadcrumb a:hover { text-decoration: underline; }
-  .breadcrumb-sep { opacity: .4; }
+  /* =========================================================
+     GESTIÓN DE ALUMNOS — CONVIDATA
+     ========================================================= */
 
-  .page-header { margin-bottom: 24px; }
-  .page-header h1 { font-family: 'Merriweather', serif; font-size: 1.5rem; font-weight: 900; color: var(--guinda); }
-  .page-header p { font-size: .85rem; color: var(--text-lo); margin-top: 4px; }
+  .students-page {
+    position: relative;
+  }
 
-  /* Layout split de dos bloques idéntico a Usuarios */
-  .admin-layout { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: start; }
-  @media (max-width: 1200px) { .admin-layout { grid-template-columns: 1fr; } }
+  /* ---------------------------------------------------------
+     Breadcrumb
+     --------------------------------------------------------- */
 
-  .pane-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 24px; overflow-x: auto; }
-  .pane-title { font-family: 'Merriweather', serif; font-size: 1.1rem; font-weight: 900; color: var(--text-dark); margin-bottom: 18px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-  
-  .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-  .form-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; color: var(--text-mid); }
-  .form-control { padding: 9px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--white); color: var(--text-dark); font-size: .85rem; font-family: inherit; width: 100%; box-sizing: border-box; }
-  .form-control:focus { outline: none; border-color: var(--guinda); }
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-bottom: 18px;
+    color: var(--text-lo);
+    font-size: .76rem;
+  }
 
-  .btn-submit { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 20px; border-radius: 8px; background: var(--guinda); color: #fff; font-size: .83rem; font-weight: 600; border: none; cursor: pointer; width: 100%; transition: all var(--transition); margin-top: 10px; }
-  .btn-submit:hover { background: var(--guinda-mid); box-shadow: 0 4px 12px rgba(123,26,26,.2); }
+  .breadcrumb a {
+    color: var(--guinda);
+    font-weight: 700;
+    text-decoration: none;
+    transition: color var(--transition);
+  }
 
-  /* Tabla de registros */
-  .user-table { width: 100%; border-collapse: collapse; text-align: left; font-size: .85rem; }
-  .user-table th { padding: 10px 12px; font-weight: 700; text-transform: uppercase; font-size: .68rem; color: var(--text-lo); border-bottom: 1px solid var(--border); letter-spacing: .03em; }
-  .user-table td { padding: 12px; border-bottom: 1px solid var(--border); color: var(--text-dark); vertical-align: middle; }
-  .user-table tr:last-child td { border-bottom: none; }
-  .user-table tr:hover td { background: var(--cream); }
+  .breadcrumb a:hover {
+    color: var(--gold);
+  }
 
-  /* 🌟 Paginación */
-  .pagination-bar { display: flex; align-items: center; justify-content: space-between; padding: 16px 4px 4px; flex-wrap: wrap; gap: 10px; }
-  .pagination-info { font-size: .78rem; color: var(--text-lo); }
-  .pagination-controls { display: flex; align-items: center; gap: 8px; }
-  .pagination-btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 6px; background: var(--white); color: var(--guinda); border: 1.5px solid var(--guinda); font-size: .8rem; font-weight: 600; text-decoration: none; transition: all var(--transition); }
-  .pagination-btn:hover { background: var(--guinda); color: #fff; }
-  .pagination-btn.disabled { color: var(--text-lo); border-color: var(--border); pointer-events: none; opacity: .5; }
-  .pagination-current { font-size: .82rem; font-weight: 700; color: var(--text-dark); padding: 0 6px; white-space: nowrap; }
+  .breadcrumb-sep {
+    opacity: .4;
+  }
 
-  .badge-student-course { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: .68rem; font-weight: 700; text-transform: uppercase; background: rgba(30,132,73,.1); color: #1E8449; border: 1px solid rgba(30,132,73,.2); }
-  
-  .btn-action-edit { display: inline-flex; align-items: center; gap: 4px; background: #fef9e7; color: #b7860b; border: 1px solid #f9e79f; padding: 4px 8px; border-radius: 4px; font-size: .72rem; font-weight: 600; text-decoration: none; transition: all var(--transition); }
-  .btn-action-edit:hover { background: #fcf3cf; box-shadow: 0 2px 6px rgba(183,134,11,.15); }
 
-  .btn-action-delete { display: inline-flex; align-items: center; gap: 4px; background: #fdedec; color: #c0392b; border: 1px solid #f5b7b1; padding: 4px 8px; border-radius: 4px; font-size: .72rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: all var(--transition); margin-left: 6px; }
-  .btn-action-delete:hover { background: #fadbd8; box-shadow: 0 2px 6px rgba(192,57,43,.15); }
+  /* ---------------------------------------------------------
+     Encabezado
+     --------------------------------------------------------- */
 
-  /* 🌟 Modal propio de confirmación (reemplaza al confirm() nativo del navegador) */
-  .confirm-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(28,10,10,.55); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
-  .confirm-modal-overlay.open { display: flex; }
-  .confirm-modal-box { background: var(--white); border-radius: var(--radius); width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,.35); border-top: 4px solid #C0392B; overflow: hidden; }
-  .confirm-modal-icon { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; background: #fdedec; color: #c0392b; margin: 24px auto 0; }
-  .confirm-modal-title { font-family: 'Merriweather', serif; font-weight: 900; font-size: 1.05rem; color: var(--text-dark); text-align: center; margin: 14px 24px 6px; }
-  .confirm-modal-text { font-size: .85rem; color: var(--text-lo); text-align: center; margin: 0 24px 22px; line-height: 1.5; }
-  .confirm-modal-actions { display: flex; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--border); background: var(--cream); }
-  .confirm-modal-btn { flex: 1; padding: 10px; border-radius: 8px; font-size: .83rem; font-weight: 700; cursor: pointer; border: none; transition: all var(--transition); }
-  .confirm-modal-btn.cancelar { background: var(--white); color: var(--text-mid); border: 1px solid var(--border); }
-  .confirm-modal-btn.cancelar:hover { background: var(--border); }
-  .confirm-modal-btn.eliminar { background: #C0392B; color: #fff; }
-  .confirm-modal-btn.eliminar:hover { background: #A93226; box-shadow: 0 4px 12px rgba(192,57,43,.25); }
+  .page-header {
+    position: relative;
+    margin-bottom: 26px;
+    padding: 22px 24px;
 
-  /* 🌟 Modal de edición de alumno */
-  .edit-modal-box { background: var(--white); border-radius: var(--radius); width: 100%; max-width: 440px; box-shadow: 0 20px 60px rgba(0,0,0,.35); border-top: 4px solid var(--guinda); overflow: hidden; }
-  .edit-modal-header { padding: 20px 24px 0; }
-  .edit-modal-title { font-family: 'Merriweather', serif; font-weight: 900; font-size: 1.1rem; color: var(--guinda); margin-bottom: 4px; }
-  .edit-modal-subtitle { font-size: .78rem; color: var(--text-lo); margin-bottom: 16px; }
-  .edit-modal-body { padding: 0 24px 20px; }
-  .edit-modal-actions { display: flex; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--border); background: var(--cream); }
+    border: 1px solid var(--border);
+    border-radius: 17px;
+
+    background:
+      linear-gradient(
+        135deg,
+        rgba(123,26,26,.09),
+        transparent 60%
+      ),
+      var(--surface);
+
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .page-header::after {
+    content: "";
+    position: absolute;
+    width: 170px;
+    height: 170px;
+    right: -80px;
+    top: -100px;
+    border-radius: 50%;
+    background: rgba(212,160,23,.09);
+    filter: blur(22px);
+    pointer-events: none;
+  }
+
+  .page-header h1 {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    color: var(--text-dark);
+    font-family: 'Merriweather', serif;
+    font-size: clamp(1.25rem, 2vw, 1.55rem);
+    font-weight: 900;
+    line-height: 1.3;
+  }
+
+  .page-header p {
+    position: relative;
+    z-index: 1;
+    margin: 7px 0 0;
+    color: var(--text-lo);
+    font-size: .82rem;
+    line-height: 1.55;
+  }
+
+
+  /* ---------------------------------------------------------
+     Layout principal
+     --------------------------------------------------------- */
+
+  .admin-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, .82fr) minmax(0, 2fr);
+    gap: 22px;
+    align-items: start;
+  }
+
+  .admin-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  @media (max-width: 1200px) {
+    .admin-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+
+  /* ---------------------------------------------------------
+     Paneles
+     --------------------------------------------------------- */
+
+  .pane-card {
+    position: relative;
+    padding: 22px;
+
+    border: 1px solid var(--border);
+    border-radius: 17px;
+
+    background:
+      linear-gradient(
+        145deg,
+        rgba(255,255,255,.035),
+        transparent 60%
+      ),
+      var(--surface);
+
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .pane-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+
+    background:
+      radial-gradient(
+        circle at 100% 0%,
+        rgba(212,160,23,.045),
+        transparent 30%
+      );
+  }
+
+  .pane-title {
+    position: relative;
+    z-index: 1;
+
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    margin-bottom: 19px;
+    padding-bottom: 12px;
+
+    color: var(--text-dark);
+    border-bottom: 1px solid var(--border);
+
+    font-family: 'Merriweather', serif;
+    font-size: 1rem;
+    font-weight: 900;
+  }
+
+  .pane-title::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    flex: 0 0 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 10px rgba(212,160,23,.4);
+  }
+
+
+  /* ---------------------------------------------------------
+     Formularios
+     --------------------------------------------------------- */
+
+  .form-group {
+    position: relative;
+    z-index: 1;
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .form-label {
+    color: var(--text-mid);
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  .form-control {
+    width: 100%;
+    min-height: 40px;
+    box-sizing: border-box;
+
+    padding: 9px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background:
+      rgba(255,255,255,.025);
+
+    color: var(--text-dark);
+
+    font-family: inherit;
+    font-size: .82rem;
+
+    transition:
+      border-color var(--transition),
+      box-shadow var(--transition),
+      background var(--transition);
+  }
+
+  .form-control::placeholder {
+    color: var(--text-lo);
+    opacity: .75;
+  }
+
+  .form-control:hover {
+    border-color: rgba(123,26,26,.25);
+  }
+
+  .form-control:focus {
+    outline: none;
+    border-color: var(--gold);
+
+    box-shadow:
+      0 0 0 3px rgba(212,160,23,.10);
+  }
+
+  select.form-control {
+    cursor: pointer;
+  }
+
+  input[type="file"].form-control {
+    padding: 7px 9px;
+    cursor: pointer;
+  }
+
+  input[type="file"].form-control::file-selector-button {
+    margin-right: 10px;
+    padding: 6px 10px;
+
+    border: 1px solid var(--border);
+    border-radius: 7px;
+
+    background: var(--surface-soft);
+    color: var(--text-mid);
+
+    font-family: inherit;
+    font-size: .72rem;
+    font-weight: 700;
+
+    cursor: pointer;
+  }
+
+  .form-help {
+    color: var(--text-lo);
+    font-size: .67rem;
+    line-height: 1.5;
+  }
+
+
+  /* ---------------------------------------------------------
+     Botones
+     --------------------------------------------------------- */
+
+  .btn-submit {
+    position: relative;
+    z-index: 1;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    width: 100%;
+    min-height: 42px;
+
+    margin-top: 8px;
+    padding: 10px 18px;
+
+    border: 1px solid rgba(212,160,23,.28);
+    border-radius: 10px;
+
+    background:
+      linear-gradient(
+        135deg,
+        var(--guinda),
+        var(--guinda-mid)
+      );
+
+    color: #fff;
+
+    font-size: .78rem;
+    font-weight: 750;
+
+    cursor: pointer;
+
+    box-shadow:
+      0 5px 16px rgba(123,26,26,.17);
+
+    transition:
+      transform var(--transition),
+      box-shadow var(--transition),
+      filter var(--transition);
+  }
+
+  .btn-submit:hover {
+    color: #fff;
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+
+    box-shadow:
+      0 8px 22px rgba(123,26,26,.24);
+  }
+
+  .btn-submit:active {
+    transform: translateY(0);
+  }
+
+  .btn-submit.btn-import {
+    background:
+      linear-gradient(
+        135deg,
+        #247a49,
+        #2e9a5d
+      );
+    border-color: rgba(101,211,145,.25);
+  }
+
+  .btn-submit.btn-import:hover {
+    filter: brightness(1.08);
+    box-shadow:
+      0 8px 22px rgba(46,125,80,.22);
+  }
+
+
+  /* ---------------------------------------------------------
+     Información de importación
+     --------------------------------------------------------- */
+
+  .import-description {
+    position: relative;
+    z-index: 1;
+
+    margin: -6px 0 17px;
+
+    color: var(--text-lo);
+    font-size: .75rem;
+    line-height: 1.6;
+  }
+
+  .import-description strong {
+    color: var(--text-mid);
+    font-weight: 750;
+  }
+
+
+  /* ---------------------------------------------------------
+     Tabla
+     --------------------------------------------------------- */
+
+  .table-scroll {
+    position: relative;
+    z-index: 1;
+
+    width: 100%;
+    overflow-x: auto;
+
+    scrollbar-width: thin;
+  }
+
+  .user-table {
+    width: 100%;
+    min-width: 760px;
+
+    border-collapse: separate;
+    border-spacing: 0;
+
+    text-align: left;
+    font-size: .81rem;
+  }
+
+  .user-table th {
+    padding: 11px 12px;
+
+    color: var(--text-lo);
+    background: rgba(123,26,26,.035);
+
+    border-bottom: 1px solid var(--border);
+
+    font-size: .63rem;
+    font-weight: 800;
+    letter-spacing: .065em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .user-table th:first-child {
+    border-top-left-radius: 8px;
+  }
+
+  .user-table th:last-child {
+    border-top-right-radius: 8px;
+  }
+
+  .user-table td {
+    padding: 13px 12px;
+
+    color: var(--text-dark);
+    border-bottom: 1px solid var(--border);
+
+    vertical-align: middle;
+  }
+
+  .user-table tbody tr {
+    transition: background var(--transition);
+  }
+
+  .user-table tbody tr:hover {
+    background:
+      linear-gradient(
+        90deg,
+        rgba(123,26,26,.045),
+        rgba(212,160,23,.025)
+      );
+  }
+
+  .user-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .student-id {
+    color: var(--text-lo);
+    font-size: .72rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .student-name {
+    color: var(--text-dark);
+    font-weight: 700;
+  }
+
+  .student-identifier {
+    display: inline-flex;
+    align-items: center;
+
+    padding: 4px 8px;
+
+    border: 1px solid var(--border);
+    border-radius: 6px;
+
+    background: var(--surface-soft);
+    color: var(--guinda);
+
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: .72rem;
+    font-weight: 800;
+
+    white-space: nowrap;
+  }
+
+  .student-identifier.missing {
+    padding: 0;
+
+    border: none;
+    background: transparent;
+
+    color: var(--text-lo);
+
+    font-family: inherit;
+    font-size: .69rem;
+    font-style: italic;
+    font-weight: 500;
+  }
+
+
+  /* ---------------------------------------------------------
+     Badge curso
+     --------------------------------------------------------- */
+
+  .badge-student-course {
+    display: inline-flex;
+    align-items: center;
+
+    padding: 4px 8px;
+
+    border: 1px solid rgba(101,211,145,.22);
+    border-radius: 6px;
+
+    background: rgba(101,211,145,.09);
+    color: #4fc77d;
+
+    font-size: .64rem;
+    font-weight: 800;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+
+  /* ---------------------------------------------------------
+     Acciones tabla
+     --------------------------------------------------------- */
+
+  .student-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  .btn-action-edit,
+  .btn-action-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+
+    min-height: 30px;
+    padding: 5px 9px;
+
+    border-radius: 7px;
+
+    font-size: .68rem;
+    font-weight: 750;
+
+    cursor: pointer;
+    text-decoration: none;
+
+    transition:
+      transform var(--transition),
+      background var(--transition),
+      box-shadow var(--transition),
+      border-color var(--transition);
+  }
+
+  .btn-action-edit {
+    border: 1px solid rgba(212,160,23,.25);
+    background: rgba(212,160,23,.08);
+    color: var(--gold);
+  }
+
+  .btn-action-edit:hover {
+    transform: translateY(-1px);
+    background: rgba(212,160,23,.15);
+    border-color: rgba(212,160,23,.42);
+    box-shadow: 0 3px 10px rgba(212,160,23,.10);
+  }
+
+  .btn-action-delete {
+    margin-left: 0;
+
+    border: 1px solid rgba(192,57,43,.24);
+    background: rgba(192,57,43,.07);
+    color: #d96a5e;
+  }
+
+  .btn-action-delete:hover {
+    transform: translateY(-1px);
+    background: rgba(192,57,43,.14);
+    border-color: rgba(192,57,43,.42);
+    box-shadow: 0 3px 10px rgba(192,57,43,.10);
+  }
+
+
+  /* ---------------------------------------------------------
+     Paginación
+     --------------------------------------------------------- */
+
+  .pagination-bar {
+    position: relative;
+    z-index: 1;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 14px;
+
+    padding: 17px 2px 2px;
+
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+
+    flex-wrap: wrap;
+  }
+
+  .pagination-info {
+    color: var(--text-lo);
+    font-size: .72rem;
+  }
+
+  .pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+  }
+
+  .pagination-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+
+    min-height: 32px;
+    padding: 6px 11px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    background: var(--surface-soft);
+    color: var(--guinda);
+
+    font-size: .71rem;
+    font-weight: 750;
+    text-decoration: none;
+
+    transition:
+      background var(--transition),
+      color var(--transition),
+      border-color var(--transition),
+      transform var(--transition);
+  }
+
+  .pagination-btn:hover {
+    transform: translateY(-1px);
+    border-color: var(--guinda);
+    background: var(--guinda);
+    color: #fff;
+  }
+
+  .pagination-btn.disabled {
+    color: var(--text-lo);
+    border-color: var(--border);
+    opacity: .45;
+    pointer-events: none;
+  }
+
+  .pagination-current {
+    padding: 0 4px;
+
+    color: var(--text-dark);
+
+    font-size: .73rem;
+    font-weight: 800;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+
+  /* ---------------------------------------------------------
+     Mensajes del sistema
+     --------------------------------------------------------- */
+
+  #alerta-sistema {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin-bottom: 20px;
+  }
+
+  .alerta-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+
+    padding: 13px 14px;
+
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    border-radius: 10px;
+
+    box-shadow: var(--shadow);
+
+    font-size: .78rem;
+    line-height: 1.5;
+
+    transition: opacity .5s ease-out;
+  }
+
+  .alerta-contenido {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+  }
+
+  .alerta-icono {
+    flex: 0 0 auto;
+    font-size: 1rem;
+  }
+
+  .alerta-cerrar {
+    flex: 0 0 auto;
+
+    padding: 0;
+
+    border: none;
+    background: transparent;
+
+    color: inherit;
+    opacity: .5;
+
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1;
+
+    cursor: pointer;
+  }
+
+  .alerta-cerrar:hover {
+    opacity: 1;
+  }
+
+  .alerta-error {
+    border-left-color: #d45b5b;
+    background: rgba(192,57,43,.09);
+    color: #e98b81;
+  }
+
+  .alerta-warning {
+    border-left-color: var(--gold);
+    background: rgba(212,160,23,.09);
+    color: #e5c467;
+  }
+
+  .alerta-success {
+    border-left-color: #65d391;
+    background: rgba(101,211,145,.08);
+    color: #76d99b;
+  }
+
+  .alerta-item strong {
+    color: inherit;
+  }
+
+
+  /* ---------------------------------------------------------
+     Modales
+     --------------------------------------------------------- */
+
+  .confirm-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+
+    z-index: 2000;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    background: rgba(12,7,8,.68);
+
+    backdrop-filter: blur(9px) saturate(120%);
+    -webkit-backdrop-filter: blur(9px) saturate(120%);
+  }
+
+  .confirm-modal-overlay.open {
+    display: flex;
+  }
+
+  .confirm-modal-box,
+  .edit-modal-box {
+    position: relative;
+
+    width: 100%;
+
+    border: 1px solid var(--border);
+    border-radius: 17px;
+
+    background:
+      linear-gradient(
+        145deg,
+        rgba(255,255,255,.035),
+        transparent 60%
+      ),
+      var(--surface);
+
+    box-shadow: 0 25px 80px rgba(0,0,0,.45);
+
+    overflow: hidden;
+
+    animation: modalEntrada .18s ease-out;
+  }
+
+  .confirm-modal-box {
+    max-width: 410px;
+    border-top: 3px solid #c0392b;
+  }
+
+  .edit-modal-box {
+    max-width: 460px;
+    border-top: 3px solid var(--gold);
+  }
+
+  @keyframes modalEntrada {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(.985);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .confirm-modal-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 48px;
+    height: 48px;
+
+    margin: 25px auto 0;
+
+    border: 1px solid rgba(192,57,43,.20);
+    border-radius: 50%;
+
+    background: rgba(192,57,43,.10);
+    color: #d96a5e;
+  }
+
+  .confirm-modal-title {
+    margin: 15px 24px 7px;
+
+    color: var(--text-dark);
+
+    font-family: 'Merriweather', serif;
+    font-size: 1.03rem;
+    font-weight: 900;
+
+    text-align: center;
+  }
+
+  .confirm-modal-text {
+    margin: 0 24px 22px;
+
+    color: var(--text-lo);
+
+    font-size: .8rem;
+    line-height: 1.55;
+    text-align: center;
+  }
+
+  .confirm-modal-text strong {
+    color: var(--text-dark);
+  }
+
+  .confirm-modal-actions,
+  .edit-modal-actions {
+    display: flex;
+    gap: 9px;
+
+    padding: 15px 22px;
+
+    border-top: 1px solid var(--border);
+    background: var(--surface-soft);
+  }
+
+  .confirm-modal-btn {
+    flex: 1;
+
+    min-height: 40px;
+
+    padding: 9px 12px;
+
+    border-radius: 9px;
+
+    font-family: inherit;
+    font-size: .76rem;
+    font-weight: 750;
+
+    cursor: pointer;
+
+    transition:
+      transform var(--transition),
+      background var(--transition),
+      box-shadow var(--transition);
+  }
+
+  .confirm-modal-btn:hover {
+    transform: translateY(-1px);
+  }
+
+  .confirm-modal-btn.cancelar {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-mid);
+  }
+
+  .confirm-modal-btn.cancelar:hover {
+    background: var(--surface-soft);
+  }
+
+  .confirm-modal-btn.eliminar {
+    border: 1px solid rgba(192,57,43,.25);
+    background: #b83e32;
+    color: #fff;
+  }
+
+  .confirm-modal-btn.eliminar:hover {
+    background: #a93226;
+    box-shadow: 0 5px 15px rgba(192,57,43,.20);
+  }
+
+
+  /* ---------------------------------------------------------
+     Modal edición
+     --------------------------------------------------------- */
+
+  .edit-modal-header {
+    position: relative;
+    padding: 21px 23px 0;
+  }
+
+  .edit-modal-title {
+    color: var(--text-dark);
+
+    font-family: 'Merriweather', serif;
+    font-size: 1.08rem;
+    font-weight: 900;
+  }
+
+  .edit-modal-title-mark {
+    color: var(--gold);
+  }
+
+  .edit-modal-subtitle {
+    margin: 5px 0 17px;
+
+    color: var(--text-lo);
+
+    font-size: .75rem;
+    line-height: 1.5;
+  }
+
+  .edit-modal-body {
+    padding: 0 23px 19px;
+  }
+
+  .edit-modal-body .form-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .edit-modal-actions .confirm-modal-btn.eliminar {
+    background: var(--guinda);
+    border-color: rgba(212,160,23,.22);
+  }
+
+  .edit-modal-actions .confirm-modal-btn.eliminar:hover {
+    background: var(--guinda-mid);
+  }
+
+
+  /* ---------------------------------------------------------
+     Estado vacío
+     --------------------------------------------------------- */
+
+  .empty-table {
+    padding: 42px 20px !important;
+
+    color: var(--text-lo) !important;
+
+    text-align: center !important;
+    font-style: italic;
+  }
+
+  .empty-table-icon {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-lo);
+    font-style: normal;
+  }
+
+
+  /* ---------------------------------------------------------
+     Dark mode — contraste
+     --------------------------------------------------------- */
+
+  html[data-theme="dark"] .page-header,
+  html[data-theme="dark"] .pane-card {
+    background:
+      linear-gradient(
+        145deg,
+        rgba(255,255,255,.025),
+        transparent 60%
+      ),
+      var(--surface);
+  }
+
+  html[data-theme="dark"] .page-header h1,
+  html[data-theme="dark"] .pane-title,
+  html[data-theme="dark"] .student-name,
+  html[data-theme="dark"] .student-id,
+  html[data-theme="dark"] .user-table td,
+  html[data-theme="dark"] .pagination-current {
+    color: #fff;
+  }
+
+  html[data-theme="dark"] .page-header p,
+  html[data-theme="dark"] .pagination-info,
+  html[data-theme="dark"] .form-help,
+  html[data-theme="dark"] .import-description {
+    color: #aeb7c5;
+  }
+
+  html[data-theme="dark"] .form-label {
+    color: #d8dee8;
+  }
+
+  html[data-theme="dark"] .form-control {
+    background: rgba(0,0,0,.18);
+    color: #fff;
+  }
+
+  html[data-theme="dark"] .form-control::placeholder {
+    color: #8f99a8;
+  }
+
+  html[data-theme="dark"] .form-control option {
+    background: #1a1416;
+    color: #fff;
+  }
+
+  html[data-theme="dark"] .import-description strong {
+    color: #fff;
+  }
+
+  html[data-theme="dark"] .user-table th {
+    color: #aeb7c5;
+    background: rgba(255,255,255,.025);
+  }
+
+  html[data-theme="dark"] .user-table tbody tr:hover {
+    background:
+      linear-gradient(
+        90deg,
+        rgba(123,26,26,.12),
+        rgba(212,160,23,.04)
+      );
+  }
+
+  html[data-theme="dark"] .student-identifier {
+    background: rgba(255,255,255,.035);
+    color: #f0c030;
+  }
+
+  html[data-theme="dark"] .pagination-btn {
+    background: rgba(255,255,255,.025);
+  }
+
+
+  /* ---------------------------------------------------------
+     Responsive
+     --------------------------------------------------------- */
+
+  @media (max-width: 700px) {
+
+    .page-header {
+      padding: 19px;
+      border-radius: 15px;
+      margin-bottom: 19px;
+    }
+
+    .pane-card {
+      padding: 17px 15px;
+      border-radius: 15px;
+    }
+
+    .admin-layout {
+      gap: 17px;
+    }
+
+    .pane-title {
+      font-size: .93rem;
+    }
+
+    .pagination-bar {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .pagination-controls {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .pagination-btn {
+      flex: 1;
+    }
+
+    .pagination-current {
+      order: 2;
+      width: 100%;
+      text-align: center;
+    }
+
+    .confirm-modal-overlay {
+      padding: 14px;
+    }
+
+    .confirm-modal-actions,
+    .edit-modal-actions {
+      padding: 13px 16px;
+    }
+
+    .edit-modal-header {
+      padding-left: 18px;
+      padding-right: 18px;
+    }
+
+    .edit-modal-body {
+      padding-left: 18px;
+      padding-right: 18px;
+    }
+  }
+
+  @media (max-width: 430px) {
+
+    .breadcrumb {
+      font-size: .7rem;
+    }
+
+    .page-header h1 {
+      font-size: 1.18rem;
+    }
+
+    .page-header p {
+      font-size: .76rem;
+    }
+
+    .btn-action-edit,
+    .btn-action-delete {
+      padding: 6px 8px;
+    }
+
+    .student-actions {
+      gap: 5px;
+    }
+  }
 </style>
 {% endblock %}
 
+
 {% block content %}
+<div class="students-page">
+
+  <!-- =======================================================
+       BREADCRUMB
+       ======================================================= -->
+
   <div class="breadcrumb">
     <a href="{% url 'dashboard' %}">Inicio</a>
     <span class="breadcrumb-sep">›</span>
@@ -86,324 +1194,1141 @@
     <span>Alumnos</span>
   </div>
 
+
+  <!-- =======================================================
+       ENCABEZADO
+       ======================================================= -->
+
   <div class="page-header">
     <h1>Gestión de Alumnos del Establecimiento</h1>
-    <p>Panel exclusivo de control, incorporación institucional y asignación de cursos de estudiantes</p>
+    <p>
+      Panel de control, incorporación institucional y asignación
+      de cursos de estudiantes.
+    </p>
   </div>
+
+
+  <!-- =======================================================
+       MENSAJES DEL SISTEMA
+       ======================================================= -->
 
   {% if messages %}
-    <div id="alerta-sistema" style="margin-bottom: 20px; width: 100%; display: flex; flex-direction: column; gap: 10px;">
+
+    <div id="alerta-sistema">
+
       {% for message in messages %}
+
         {% if message.tags == 'error' %}
-          {% with bg="#FDEDEC" border="#C0392B" text="#7B241C" icono="⚠️" %}
-            <div class="alerta-item" style="background-color: {{ bg }}; border-left: 5px solid {{ border }}; color: {{ text }}; padding: 14px; border-radius: 6px; font-family: 'Segoe UI', sans-serif; box-shadow: var(--shadow); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
-              <div style="display: flex; align-items: flex-start; gap: 8px;">
-                <span style="font-size: 1.1rem;">{{ icono }}</span>
-                <span style="line-height: 1.5;">{{ message }}</span>
-              </div>
-              <span style="cursor: pointer; font-weight: bold; opacity: 0.5; font-size: 1.2rem; flex-shrink: 0;" onclick="this.closest('.alerta-item').remove();">&times;</span>
+
+          <div class="alerta-item alerta-error">
+
+            <div class="alerta-contenido">
+              <span class="alerta-icono">⚠️</span>
+              <span>{{ message }}</span>
             </div>
-          {% endwith %}
+
+            <button
+              type="button"
+              class="alerta-cerrar"
+              onclick="this.closest('.alerta-item').remove();"
+              aria-label="Cerrar mensaje"
+            >
+              &times;
+            </button>
+
+          </div>
+
         {% elif message.tags == 'warning' %}
-          {% with bg="#FEF9E7" border="#B7860B" text="#7D5A00" icono="⚡" %}
-            <div class="alerta-item" style="background-color: {{ bg }}; border-left: 5px solid {{ border }}; color: {{ text }}; padding: 14px; border-radius: 6px; font-family: 'Segoe UI', sans-serif; box-shadow: var(--shadow); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
-              <div style="display: flex; align-items: flex-start; gap: 8px;">
-                <span style="font-size: 1.1rem;">{{ icono }}</span>
-                <span style="line-height: 1.5;">{{ message }}</span>
-              </div>
-              <span style="cursor: pointer; font-weight: bold; opacity: 0.5; font-size: 1.2rem; flex-shrink: 0;" onclick="this.closest('.alerta-item').remove();">&times;</span>
+
+          <div class="alerta-item alerta-warning">
+
+            <div class="alerta-contenido">
+              <span class="alerta-icono">⚡</span>
+              <span>{{ message }}</span>
             </div>
-          {% endwith %}
+
+            <button
+              type="button"
+              class="alerta-cerrar"
+              onclick="this.closest('.alerta-item').remove();"
+              aria-label="Cerrar mensaje"
+            >
+              &times;
+            </button>
+
+          </div>
+
         {% else %}
-          {% with bg="#E8F5E9" border="#2E7D32" text="#1B5E20" icono="🔹" %}
-            <div class="alerta-item alerta-exito" style="background-color: {{ bg }}; border-left: 5px solid {{ border }}; color: {{ text }}; padding: 14px; border-radius: 6px; font-family: 'Segoe UI', sans-serif; box-shadow: var(--shadow); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; transition: opacity 0.5s ease-out;">
-              <div style="display: flex; align-items: flex-start; gap: 8px;">
-                <span style="font-size: 1.1rem;">{{ icono }}</span>
-                <span style="line-height: 1.5;"><strong>{{ message }}</strong></span>
-              </div>
-              <span style="cursor: pointer; font-weight: bold; opacity: 0.5; font-size: 1.2rem; flex-shrink: 0;" onclick="this.closest('.alerta-item').remove();">&times;</span>
+
+          <div class="alerta-item alerta-success alerta-exito">
+
+            <div class="alerta-contenido">
+              <span class="alerta-icono">✓</span>
+              <span><strong>{{ message }}</strong></span>
             </div>
-          {% endwith %}
+
+            <button
+              type="button"
+              class="alerta-cerrar"
+              onclick="this.closest('.alerta-item').remove();"
+              aria-label="Cerrar mensaje"
+            >
+              &times;
+            </button>
+
+          </div>
+
         {% endif %}
+
       {% endfor %}
+
     </div>
+
     <script>
-      // Solo los mensajes de ÉXITO se desvanecen solos; los de error/advertencia se quedan hasta que los cierres manualmente
+      /*
+       * Solo los mensajes de éxito desaparecen automáticamente.
+       * Errores y advertencias permanecen hasta cerrarlos.
+       */
+
       setTimeout(function () {
-        document.querySelectorAll('.alerta-exito').forEach(function (alerta) {
-          alerta.style.opacity = '0';
-          setTimeout(() => alerta.remove(), 500);
-        });
+
+        document
+          .querySelectorAll('.alerta-exito')
+          .forEach(function (alerta) {
+
+            alerta.style.opacity = '0';
+
+            setTimeout(function () {
+              alerta.remove();
+            }, 500);
+
+          });
+
       }, 4000);
     </script>
+
   {% endif %}
 
+
+  <!-- =======================================================
+       CONTENIDO PRINCIPAL
+       ======================================================= -->
+
   <div class="admin-layout">
-    <div>
-    <div class="pane-card">
-      <div class="pane-title">Registrar Alumno</div>
-      <form action="{% url 'gestion_de_alumnos' %}" method="POST">
-        {% csrf_token %}
-        
-        <div class="form-group">
-          <label class="form-label">Nombres</label>
-          <input type="text" name="nombre" class="form-control" placeholder="Ej: Constanza Belén" required>
-        </div>
 
-        <div class="form-group">
-          <label class="form-label">Apellido Paterno</label>
-          <input type="text" name="apaterno" class="form-control" placeholder="Ej: Morales" required>
-        </div>
 
-        <div class="form-group">
-          <label class="form-label">Apellido Materno</label>
-          <input type="text" name="amaterno" class="form-control" placeholder="Ej: Jara" required>
-        </div>
+    <!-- =====================================================
+         COLUMNA IZQUIERDA
+         ===================================================== -->
 
-        <div class="form-group">
-          <label class="form-label">Curso Asignado</label>
-          <select name="curso" class="form-control" required>
-            <option value="" disabled selected>-- Seleccione Curso --</option>
-            {% for c in cursos %}
-              <option value="{{ c.curso_id }}">{{ c.curso_grado }} {{ c.curso_letra }}</option>
-            {% endfor %}
-          </select>
-        </div>
+    <div class="admin-sidebar">
 
-        <div class="form-group">
-          <label class="form-label">N° de Lista</label>
-          <input type="number" min="1" max="99" name="numero_lista" class="form-control" placeholder="Ej: 5">
-          <span style="font-size: .68rem; color: var(--text-lo);">Se usa para generar el identificador único del alumno. Es por curso + paralelo, no global.</span>
-        </div>
 
-        <button type="submit" class="btn-submit">
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+      <!-- ---------------------------------------------------
+           REGISTRAR ALUMNO
+           --------------------------------------------------- -->
+
+      <div class="pane-card">
+
+        <div class="pane-title">
           Registrar Alumno
-        </button>
-      </form>
+        </div>
+
+        <form
+          action="{% url 'gestion_de_alumnos' %}"
+          method="POST"
+        >
+
+          {% csrf_token %}
+
+
+          <div class="form-group">
+
+            <label class="form-label">
+              Nombres
+            </label>
+
+            <input
+              type="text"
+              name="nombre"
+              class="form-control"
+              placeholder="Ej: Constanza Belén"
+              required
+            >
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label class="form-label">
+              Apellido Paterno
+            </label>
+
+            <input
+              type="text"
+              name="apaterno"
+              class="form-control"
+              placeholder="Ej: Morales"
+              required
+            >
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label class="form-label">
+              Apellido Materno
+            </label>
+
+            <input
+              type="text"
+              name="amaterno"
+              class="form-control"
+              placeholder="Ej: Jara"
+              required
+            >
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label class="form-label">
+              Curso Asignado
+            </label>
+
+            <select
+              name="curso"
+              class="form-control"
+              required
+            >
+
+              <option
+                value=""
+                disabled
+                selected
+              >
+                -- Seleccione Curso --
+              </option>
+
+              {% for c in cursos %}
+
+                <option value="{{ c.curso_id }}">
+                  {{ c.curso_grado }} {{ c.curso_letra }}
+                </option>
+
+              {% endfor %}
+
+            </select>
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label class="form-label">
+              N° de Lista
+            </label>
+
+            <input
+              type="number"
+              min="1"
+              max="99"
+              name="numero_lista"
+              class="form-control"
+              placeholder="Ej: 5"
+            >
+
+            <span class="form-help">
+              Se usa para generar el identificador único del alumno.
+              Es por curso + paralelo, no global.
+            </span>
+
+          </div>
+
+
+          <button
+            type="submit"
+            class="btn-submit"
+          >
+
+            <svg
+              width="14"
+              height="14"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+              />
+            </svg>
+
+            Registrar Alumno
+
+          </button>
+
+        </form>
+
+      </div>
+
+
+      <!-- ---------------------------------------------------
+           IMPORTAR EXCEL
+           --------------------------------------------------- -->
+
+      <div class="pane-card">
+
+        <div class="pane-title">
+          Importar Alumnos desde Excel
+        </div>
+
+        <p class="import-description">
+
+          Sube un archivo <strong>.xlsx</strong> con varios alumnos
+          a la vez. Debe tener las columnas
+          <strong>Nombres, Apellido Paterno, Apellido Materno,
+          Curso (Grado), Curso (Letra), N° Lista</strong>,
+          en ese orden, con encabezados en la primera fila.
+
+          En "Curso (Grado)" solo pon el número
+          (1, 2, 3 o 4). El sistema arma automáticamente
+          "1° Medio", "2° Medio", etc.
+
+          La columna "N° Lista" es opcional, pero si la incluyes
+          el alumno recibe su identificador único de inmediato.
+
+        </p>
+
+
+        <form
+          action="{% url 'importar_estudiantes' %}"
+          method="POST"
+          enctype="multipart/form-data"
+        >
+
+          {% csrf_token %}
+
+
+          <div class="form-group">
+
+            <input
+              type="file"
+              name="archivo_excel"
+              class="form-control"
+              accept=".xlsx"
+              required
+            >
+
+          </div>
+
+
+          <button
+            type="submit"
+            class="btn-submit btn-import"
+          >
+
+            <svg
+              width="14"
+              height="14"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"
+              />
+            </svg>
+
+            Importar Alumnos
+
+          </button>
+
+        </form>
+
+      </div>
+
     </div>
 
-    <div class="pane-card" style="margin-top: 20px;">
-      <div class="pane-title">📥 Importar Alumnos desde Excel</div>
-      <p style="font-size: .78rem; color: var(--text-lo); margin-top: -10px; margin-bottom: 16px; line-height: 1.5;">
-        Sube un archivo <strong>.xlsx</strong> con varios alumnos a la vez. Debe tener las columnas
-        <strong>Nombres, Apellido Paterno, Apellido Materno, Curso (Grado), Curso (Letra), N° Lista</strong>,
-        en ese orden, con encabezados en la primera fila. En "Curso (Grado)" solo pon el número
-        (1, 2, 3 o 4) — el sistema arma automáticamente "1° Medio", "2° Medio", etc. La columna
-        "N° Lista" es opcional, pero si la incluyes el alumno recibe su identificador único de inmediato.
-      </p>
-      <form action="{% url 'importar_estudiantes' %}" method="POST" enctype="multipart/form-data">
-        {% csrf_token %}
-        <div class="form-group">
-          <input type="file" name="archivo_excel" class="form-control" accept=".xlsx" required>
-        </div>
-        <button type="submit" class="btn-submit" style="background: #1E8449;" onmouseover="this.style.background='#186a3b'" onmouseout="this.style.background='#1E8449'">
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
-          Importar Alumnos
-        </button>
-      </form>
-    </div>
-    </div>
+
+    <!-- =====================================================
+         COLUMNA DERECHA — TABLA
+         ===================================================== -->
 
     <div class="pane-card">
-      <div class="pane-title">Estudiantes Registrados en la Base de Datos</div>
-      
-      <table class="user-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Nombre Completo</th>
-            <th>Curso Actual</th>
-            <th>Identificador</th>
-            <th style="text-align: center;">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for e in estudiantes %}
+
+      <div class="pane-title">
+        Estudiantes Registrados en la Base de Datos
+      </div>
+
+
+      <div class="table-scroll">
+
+        <table class="user-table">
+
+          <thead>
+
             <tr>
-              <td style="font-weight: 700; color: var(--text-lo);">#{{ e.estudiante_id }}</td>
-              <td style="font-weight: 600;">{{ e.estudiante_apaterno }} {{ e.estudiante_amaterno }}, {{ e.estudiante_nombre }}</td>
-              <td>
-                <span class="badge-student-course">
-                  {{ e.curso.curso_grado }} {{ e.curso.curso_letra }}
-                </span>
-              </td>
-              <td>
-                {% if e.estudiante_identificador %}
-                  <span style="font-family: monospace; font-weight: 700; color: var(--guinda); background: var(--cream); padding: 2px 8px; border-radius: 4px; font-size: .8rem;">{{ e.estudiante_identificador }}</span>
-                {% else %}
-                  <span style="font-size: .72rem; color: var(--text-lo); font-style: italic;">Falta N° lista</span>
-                {% endif %}
-              </td>
-              <td style="text-align: center; white-space: nowrap;">
-                <button type="button" class="btn-action-edit"
-                  onclick="abrirEdicionAlumno({{ e.estudiante_id }}, '{{ e.estudiante_nombre|escapejs }}', '{{ e.estudiante_apaterno|escapejs }}', '{{ e.estudiante_amaterno|escapejs }}', {{ e.curso_id|default:"null" }}, {{ e.estudiante_numero_lista|default:"null" }})">
-                  <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                  </svg>
-                  Editar
-                </button>
-                <button type="button" class="btn-action-delete"
-                  onclick="abrirConfirmacionEliminar('{{ e.estudiante_id }}', '{{ e.estudiante_nombre|escapejs }} {{ e.estudiante_apaterno|escapejs }}')">
-                  <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                  </svg>
-                  Eliminar
-                </button>
-                <form id="form-eliminar-{{ e.estudiante_id }}" method="POST"
-                      action="{% url 'eliminar_estudiante' e.estudiante_id %}" style="display:none;">
-                  {% csrf_token %}
-                </form>
-              </td>
+
+              <th>
+                ID
+              </th>
+
+              <th>
+                Nombre Completo
+              </th>
+
+              <th>
+                Curso Actual
+              </th>
+
+              <th>
+                Identificador
+              </th>
+
+              <th style="text-align:center;">
+                Acciones
+              </th>
+
             </tr>
-          {% empty %}
-            <tr>
-              <td colspan="5" style="text-align: center; padding: 32px; color: var(--text-lo); font-style: italic;">No hay estudiantes registrados en el sistema actualmente.</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+
+          </thead>
+
+
+          <tbody>
+
+            {% for e in estudiantes %}
+
+              <tr>
+
+                <td>
+
+                  <span class="student-id">
+                    #{{ e.estudiante_id }}
+                  </span>
+
+                </td>
+
+
+                <td>
+
+                  <span class="student-name">
+                    {{ e.estudiante_apaterno }}
+                    {{ e.estudiante_amaterno }},
+                    {{ e.estudiante_nombre }}
+                  </span>
+
+                </td>
+
+
+                <td>
+
+                  <span class="badge-student-course">
+                    {{ e.curso.curso_grado }}
+                    {{ e.curso.curso_letra }}
+                  </span>
+
+                </td>
+
+
+                <td>
+
+                  {% if e.estudiante_identificador %}
+
+                    <span class="student-identifier">
+                      {{ e.estudiante_identificador }}
+                    </span>
+
+                  {% else %}
+
+                    <span class="student-identifier missing">
+                      Falta N° lista
+                    </span>
+
+                  {% endif %}
+
+                </td>
+
+
+                <td>
+
+                  <div class="student-actions">
+
+                    <button
+                      type="button"
+                      class="btn-action-edit"
+
+                      onclick="abrirEdicionAlumno(
+                        {{ e.estudiante_id }},
+                        '{{ e.estudiante_nombre|escapejs }}',
+                        '{{ e.estudiante_apaterno|escapejs }}',
+                        '{{ e.estudiante_amaterno|escapejs }}',
+                        {{ e.curso_id|default:"null" }},
+                        {{ e.estudiante_numero_lista|default:"null" }}
+                      )"
+                    >
+
+                      <svg
+                        width="11"
+                        height="11"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+
+                      Editar
+
+                    </button>
+
+
+                    <button
+                      type="button"
+                      class="btn-action-delete"
+
+                      onclick="abrirConfirmacionEliminar(
+                        '{{ e.estudiante_id }}',
+                        '{{ e.estudiante_nombre|escapejs }} {{ e.estudiante_apaterno|escapejs }}'
+                      )"
+                    >
+
+                      <svg
+                        width="11"
+                        height="11"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+
+                      Eliminar
+
+                    </button>
+
+
+                    <form
+                      id="form-eliminar-{{ e.estudiante_id }}"
+                      method="POST"
+                      action="{% url 'eliminar_estudiante' e.estudiante_id %}"
+                      style="display:none;"
+                    >
+
+                      {% csrf_token %}
+
+                    </form>
+
+                  </div>
+
+                </td>
+
+              </tr>
+
+
+            {% empty %}
+
+              <tr>
+
+                <td
+                  colspan="5"
+                  class="empty-table"
+                >
+
+                  <span class="empty-table-icon">
+                    No hay estudiantes registrados
+                  </span>
+
+                  Actualmente no existen estudiantes
+                  registrados en el sistema.
+
+                </td>
+
+              </tr>
+
+            {% endfor %}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+
+      <!-- =================================================
+           PAGINACIÓN
+           ================================================= -->
 
       {% if estudiantes.paginator.num_pages > 1 %}
-      <div class="pagination-bar">
-        <div class="pagination-info">
-          Mostrando {{ estudiantes.start_index }}–{{ estudiantes.end_index }} de {{ estudiantes.paginator.count }} alumnos
-        </div>
-        <div class="pagination-controls">
-          {% if estudiantes.has_previous %}
-            <a href="?pagina={{ estudiantes.previous_page_number }}" class="pagination-btn">
-              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-              Anterior
-            </a>
-          {% else %}
-            <span class="pagination-btn disabled">
-              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-              Anterior
-            </span>
-          {% endif %}
 
-          <span class="pagination-current">Página {{ estudiantes.number }} de {{ estudiantes.paginator.num_pages }}</span>
+        <div class="pagination-bar">
 
-          {% if estudiantes.has_next %}
-            <a href="?pagina={{ estudiantes.next_page_number }}" class="pagination-btn">
-              Siguiente
-              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-            </a>
-          {% else %}
-            <span class="pagination-btn disabled">
-              Siguiente
-              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          <div class="pagination-info">
+
+            Mostrando
+            {{ estudiantes.start_index }}–{{ estudiantes.end_index }}
+            de
+            {{ estudiantes.paginator.count }}
+            alumnos
+
+          </div>
+
+
+          <div class="pagination-controls">
+
+            {% if estudiantes.has_previous %}
+
+              <a
+                href="?pagina={{ estudiantes.previous_page_number }}"
+                class="pagination-btn"
+              >
+
+                <svg
+                  width="12"
+                  height="12"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+
+                Anterior
+
+              </a>
+
+            {% else %}
+
+              <span class="pagination-btn disabled">
+
+                <svg
+                  width="12"
+                  height="12"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+
+                Anterior
+
+              </span>
+
+            {% endif %}
+
+
+            <span class="pagination-current">
+
+              Página
+              {{ estudiantes.number }}
+              de
+              {{ estudiantes.paginator.num_pages }}
+
             </span>
-          {% endif %}
+
+
+            {% if estudiantes.has_next %}
+
+              <a
+                href="?pagina={{ estudiantes.next_page_number }}"
+                class="pagination-btn"
+              >
+
+                Siguiente
+
+                <svg
+                  width="12"
+                  height="12"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+
+              </a>
+
+            {% else %}
+
+              <span class="pagination-btn disabled">
+
+                Siguiente
+
+                <svg
+                  width="12"
+                  height="12"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+
+              </span>
+
+            {% endif %}
+
+          </div>
+
         </div>
-      </div>
+
       {% endif %}
+
     </div>
 
   </div>
 
-  <!-- 🌟 Modal propio de confirmación para eliminar alumno -->
-  <div class="confirm-modal-overlay" id="confirmModalOverlay" onclick="if(event.target === this){ cerrarConfirmacionEliminar(); }">
-    <div class="confirm-modal-box">
-      <div class="confirm-modal-icon">
-        <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-      </div>
-      <div class="confirm-modal-title">¿Eliminar alumno?</div>
-      <div class="confirm-modal-text">Estás a punto de eliminar a <strong id="confirmModalNombre"></strong> del sistema. Esta acción no se puede deshacer.</div>
-      <div class="confirm-modal-actions">
-        <button type="button" class="confirm-modal-btn cancelar" onclick="cerrarConfirmacionEliminar()">Cancelar</button>
-        <button type="button" class="confirm-modal-btn eliminar" onclick="confirmarEliminarAlumno()">Sí, eliminar</button>
-      </div>
-    </div>
-  </div>
 
-  <!-- 🌟 Modal de edición de alumno -->
-  <div class="confirm-modal-overlay" id="editModalOverlay" onclick="if(event.target === this){ cerrarEdicionAlumno(); }">
-    <div class="edit-modal-box">
-      <form id="formEditarAlumno" method="POST" action="">
-        {% csrf_token %}
-        <div class="edit-modal-header">
-          <div class="edit-modal-title">✏️ Editar Alumno</div>
-          <div class="edit-modal-subtitle">Actualiza los datos del estudiante y su curso asignado.</div>
-        </div>
-        <div class="edit-modal-body">
-          <div class="form-group">
-            <label class="form-label">Nombres</label>
-            <input type="text" name="nombre" id="editNombre" class="form-control" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Apellido Paterno</label>
-            <input type="text" name="apaterno" id="editApaterno" class="form-control" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Apellido Materno</label>
-            <input type="text" name="amaterno" id="editAmaterno" class="form-control" required>
-          </div>
-          <div class="form-group" style="margin-bottom: 14px;">
-            <label class="form-label">Curso Asignado</label>
-            <select name="curso" id="editCurso" class="form-control" required>
-              <option value="" disabled>-- Seleccione Curso --</option>
-              {% for c in cursos %}
-                <option value="{{ c.curso_id }}">{{ c.curso_grado }} {{ c.curso_letra }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">N° de Lista</label>
-            <input type="number" min="1" max="99" name="numero_lista" id="editNumeroLista" class="form-control" placeholder="Ej: 5">
-            <span style="font-size: .68rem; color: var(--text-lo);">Se usa para generar el identificador único del alumno.</span>
-          </div>
-        </div>
-        <div class="edit-modal-actions">
-          <button type="button" class="confirm-modal-btn cancelar" onclick="cerrarEdicionAlumno()">Cancelar</button>
-          <button type="submit" class="confirm-modal-btn eliminar" style="background: var(--guinda);" onmouseover="this.style.background='var(--guinda-mid)'" onmouseout="this.style.background='var(--guinda)'">Guardar Cambios</button>
-        </div>
-      </form>
-    </div>
-  </div>
+  <!-- =======================================================
+       MODAL — CONFIRMAR ELIMINACIÓN
+       ======================================================= -->
 
-  <script>
-    function abrirEdicionAlumno(id, nombre, apaterno, amaterno, cursoId, numeroLista) {
-      const urlBase = "{% url 'editar_estudiante' 0 %}"; // termina en ".../editar/0/"
-      document.getElementById('formEditarAlumno').action = urlBase.replace('/0/', '/' + id + '/');
-      document.getElementById('editNombre').value = nombre;
-      document.getElementById('editApaterno').value = apaterno;
-      document.getElementById('editAmaterno').value = amaterno;
-      document.getElementById('editCurso').value = cursoId ? cursoId : '';
-      document.getElementById('editNumeroLista').value = numeroLista ? numeroLista : '';
-      document.getElementById('editModalOverlay').classList.add('open');
-    }
+  <div
+    class="confirm-modal-overlay"
+    id="confirmModalOverlay"
 
-    function cerrarEdicionAlumno() {
-      document.getElementById('editModalOverlay').classList.remove('open');
-    }
-  </script>
-
-  <script>
-    let estudianteIdAEliminar = null;
-
-    function abrirConfirmacionEliminar(estudianteId, nombreCompleto) {
-      estudianteIdAEliminar = estudianteId;
-      document.getElementById('confirmModalNombre').textContent = nombreCompleto;
-      document.getElementById('confirmModalOverlay').classList.add('open');
-    }
-
-    function cerrarConfirmacionEliminar() {
-      estudianteIdAEliminar = null;
-      document.getElementById('confirmModalOverlay').classList.remove('open');
-    }
-
-    function confirmarEliminarAlumno() {
-      if (estudianteIdAEliminar) {
-        document.getElementById('form-eliminar-' + estudianteIdAEliminar).submit();
-      }
-    }
-
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') {
+    onclick="
+      if(event.target === this){
         cerrarConfirmacionEliminar();
+      }
+    "
+  >
+
+    <div class="confirm-modal-box">
+
+      <div class="confirm-modal-icon">
+
+        <svg
+          width="22"
+          height="22"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2.5"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+          />
+        </svg>
+
+      </div>
+
+
+      <div class="confirm-modal-title">
+        ¿Eliminar alumno?
+      </div>
+
+
+      <div class="confirm-modal-text">
+
+        Estás a punto de eliminar a
+        <strong id="confirmModalNombre"></strong>
+        del sistema.
+
+        Esta acción no se puede deshacer.
+
+      </div>
+
+
+      <div class="confirm-modal-actions">
+
+        <button
+          type="button"
+          class="confirm-modal-btn cancelar"
+          onclick="cerrarConfirmacionEliminar()"
+        >
+          Cancelar
+        </button>
+
+
+        <button
+          type="button"
+          class="confirm-modal-btn eliminar"
+          onclick="confirmarEliminarAlumno()"
+        >
+          Sí, eliminar
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- =======================================================
+       MODAL — EDITAR ALUMNO
+       ======================================================= -->
+
+  <div
+    class="confirm-modal-overlay"
+    id="editModalOverlay"
+
+    onclick="
+      if(event.target === this){
         cerrarEdicionAlumno();
       }
-    });
-  </script>
+    "
+  >
+
+    <div class="edit-modal-box">
+
+      <form
+        id="formEditarAlumno"
+        method="POST"
+        action=""
+      >
+
+        {% csrf_token %}
+
+
+        <div class="edit-modal-header">
+
+          <div class="edit-modal-title">
+            <span class="edit-modal-title-mark">✦</span>
+            Editar Alumno
+          </div>
+
+          <div class="edit-modal-subtitle">
+            Actualiza los datos del estudiante y su curso asignado.
+          </div>
+
+        </div>
+
+
+        <div class="edit-modal-body">
+
+
+          <div class="form-group">
+
+            <label class="form-label">
+              Nombres
+            </label>
+
+            <input
+              type="text"
+              name="nombre"
+              id="editNombre"
+              class="form-control"
+              required
+            >
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label class="form-label">
+              Apellido Paterno
+            </label>
+
+            <input
+              type="text"
+              name="apaterno"
+              id="editApaterno"
+              class="form-control"
+              required
+            >
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label class="form-label">
+              Apellido Materno
+            </label>
+
+            <input
+              type="text"
+              name="amaterno"
+              id="editAmaterno"
+              class="form-control"
+              required
+            >
+
+          </div>
+
+
+          <div
+            class="form-group"
+            style="margin-bottom:14px;"
+          >
+
+            <label class="form-label">
+              Curso Asignado
+            </label>
+
+            <select
+              name="curso"
+              id="editCurso"
+              class="form-control"
+              required
+            >
+
+              <option
+                value=""
+                disabled
+              >
+                -- Seleccione Curso --
+              </option>
+
+              {% for c in cursos %}
+
+                <option value="{{ c.curso_id }}">
+                  {{ c.curso_grado }} {{ c.curso_letra }}
+                </option>
+
+              {% endfor %}
+
+            </select>
+
+          </div>
+
+
+          <div
+            class="form-group"
+            style="margin-bottom:0;"
+          >
+
+            <label class="form-label">
+              N° de Lista
+            </label>
+
+            <input
+              type="number"
+              min="1"
+              max="99"
+              name="numero_lista"
+              id="editNumeroLista"
+              class="form-control"
+              placeholder="Ej: 5"
+            >
+
+            <span class="form-help">
+              Se usa para generar el identificador único del alumno.
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="edit-modal-actions">
+
+          <button
+            type="button"
+            class="confirm-modal-btn cancelar"
+            onclick="cerrarEdicionAlumno()"
+          >
+            Cancelar
+          </button>
+
+
+          <button
+            type="submit"
+            class="confirm-modal-btn eliminar"
+          >
+            Guardar Cambios
+          </button>
+
+        </div>
+
+      </form>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =========================================================
+     JAVASCRIPT — EDICIÓN
+     ========================================================= -->
+
+<script>
+
+  function abrirEdicionAlumno(
+    id,
+    nombre,
+    apaterno,
+    amaterno,
+    cursoId,
+    numeroLista
+  ) {
+
+    const urlBase =
+      "{% url 'editar_estudiante' 0 %}";
+
+    document.getElementById(
+      'formEditarAlumno'
+    ).action =
+      urlBase.replace(
+        '/0/',
+        '/' + id + '/'
+      );
+
+
+    document.getElementById(
+      'editNombre'
+    ).value = nombre;
+
+
+    document.getElementById(
+      'editApaterno'
+    ).value = apaterno;
+
+
+    document.getElementById(
+      'editAmaterno'
+    ).value = amaterno;
+
+
+    document.getElementById(
+      'editCurso'
+    ).value =
+      cursoId ? cursoId : '';
+
+
+    document.getElementById(
+      'editNumeroLista'
+    ).value =
+      numeroLista ? numeroLista : '';
+
+
+    document.getElementById(
+      'editModalOverlay'
+    ).classList.add('open');
+
+  }
+
+
+  function cerrarEdicionAlumno() {
+
+    document.getElementById(
+      'editModalOverlay'
+    ).classList.remove('open');
+
+  }
+
+</script>
+
+
+<!-- =========================================================
+     JAVASCRIPT — ELIMINACIÓN
+     ========================================================= -->
+
+<script>
+
+  let estudianteIdAEliminar = null;
+
+
+  function abrirConfirmacionEliminar(
+    estudianteId,
+    nombreCompleto
+  ) {
+
+    estudianteIdAEliminar =
+      estudianteId;
+
+
+    document.getElementById(
+      'confirmModalNombre'
+    ).textContent =
+      nombreCompleto;
+
+
+    document.getElementById(
+      'confirmModalOverlay'
+    ).classList.add('open');
+
+  }
+
+
+  function cerrarConfirmacionEliminar() {
+
+    estudianteIdAEliminar = null;
+
+
+    document.getElementById(
+      'confirmModalOverlay'
+    ).classList.remove('open');
+
+  }
+
+
+  function confirmarEliminarAlumno() {
+
+    if (estudianteIdAEliminar) {
+
+      document
+        .getElementById(
+          'form-eliminar-' +
+          estudianteIdAEliminar
+        )
+        .submit();
+
+    }
+
+  }
+
+
+  document.addEventListener(
+    'keydown',
+    function (e) {
+
+      if (e.key === 'Escape') {
+
+        cerrarConfirmacionEliminar();
+        cerrarEdicionAlumno();
+
+      }
+
+    }
+  );
+
+</script>
+
 {% endblock %}

@@ -2,32 +2,52 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
 
   <title>ConviData – Colegio San Sebastián</title>
 
-  <!-- =========================================================
-       TEMA: se ejecuta antes de pintar la página para evitar
-       el flash blanco cuando el usuario tiene modo oscuro.
-       ========================================================= -->
-  <script>
-    (function () {
-      try {
-        const tema = localStorage.getItem('convidata-theme');
 
-        if (tema === 'dark') {
-          document.documentElement.classList.add('dark-mode');
-        }
-      } catch (e) {}
+  <!-- =========================================================
+       TEMA AUTOMÁTICO
+       Se aplica antes de renderizar para evitar flash.
+       ========================================================= -->
+
+  <script>
+    (() => {
+
+      const mediaQuery = window.matchMedia(
+        '(prefers-color-scheme: dark)'
+      );
+
+      const aplicarTema = () => {
+
+        document.documentElement.setAttribute(
+          'data-theme',
+          mediaQuery.matches ? 'dark' : 'light'
+        );
+
+      };
+
+      aplicarTema();
+
     })();
   </script>
 
-  <!-- Fuentes -->
+
+  <!-- =========================================================
+       FUENTES
+       ========================================================= -->
+
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@700;900&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:wght@700;900&display=swap"
     rel="stylesheet"
   />
+
 
   <style>
 
@@ -47,46 +67,82 @@
       --cream: #F7F3ED;
       --cream-dark: #EDE6DA;
 
+      --surface: #FFFFFF;
+      --surface-soft: #FBF9F6;
+
       --text-dark: #1C0A0A;
       --text-mid: #5C3A2A;
       --text-lo: #9B7060;
 
-      --border: rgba(123, 26, 26, .15);
+      --white: #FFFFFF;
 
       --page-bg: #F7F3ED;
-      --panel-bg: #FFFFFF;
 
-      --input-bg: rgba(247, 243, 237, .78);
-      --input-focus-bg: #FFFFFF;
+      --panel-bg: #FFFFFF;
+      --panel-soft: #FBF9F6;
+
+      --input-bg: #F8F5F1;
+      --input-focus: #FFFFFF;
+
+      --border: rgba(123, 26, 26, .12);
+
+      --success: #2E7D32;
+      --success-bg: rgba(46, 125, 50, .09);
+
+      --danger: #C0392B;
+      --danger-bg: rgba(192, 57, 43, .09);
+
+      --shadow-panel:
+        0 25px 70px rgba(0, 0, 0, .12);
+
+      --shadow-card:
+        0 12px 35px rgba(0, 0, 0, .08);
 
       --radius-sm: 8px;
-      --radius-md: 10px;
-      --radius-lg: 16px;
+      --radius-md: 11px;
+      --radius-lg: 18px;
 
-      --transition: 220ms cubic-bezier(.4, 0, .2, 1);
+      --transition:
+        220ms cubic-bezier(.4, 0, .2, 1);
     }
 
 
     /* =========================================================
-       MODO OSCURO
+       TEMA OSCURO
        ========================================================= */
 
-    html.dark-mode {
+    html[data-theme="dark"] {
 
-      --cream: #111315;
-      --cream-dark: #2A2E34;
+      --cream: #111111;
+      --cream-dark: #242424;
 
-      --text-dark: #F1F3F5;
-      --text-mid: #D5D9DE;
-      --text-lo: #969DA7;
+      --surface: #1A1A1A;
+      --surface-soft: #202020;
 
-      --border: rgba(255, 255, 255, .09);
+      --text-dark: #F4F1EC;
+      --text-mid: #D0C5BC;
+      --text-lo: #9B9189;
 
-      --page-bg: #101214;
-      --panel-bg: #181B1F;
+      --white: #FFFFFF;
 
-      --input-bg: rgba(34, 38, 43, .82);
-      --input-focus-bg: #292E34;
+      --page-bg: #101010;
+
+      --panel-bg: #1A1A1A;
+      --panel-soft: #202020;
+
+      --input-bg: #242424;
+      --input-focus: #2A2A2A;
+
+      --border: rgba(255, 255, 255, .10);
+
+      --success-bg: rgba(76, 175, 80, .13);
+      --danger-bg: rgba(239, 83, 80, .13);
+
+      --shadow-panel:
+        0 30px 85px rgba(0, 0, 0, .58);
+
+      --shadow-card:
+        0 16px 45px rgba(0, 0, 0, .40);
     }
 
 
@@ -104,29 +160,83 @@
 
 
     html {
+      min-height: 100%;
       background: var(--page-bg);
-      transition: background var(--transition);
+      color-scheme: light;
     }
 
 
-    body {
+    html[data-theme="dark"] {
+      color-scheme: dark;
+    }
 
-      font-family: 'Inter', sans-serif;
+
+    /* =========================================================
+       BODY
+       ========================================================= */
+
+    body {
 
       min-height: 100vh;
 
       display: flex;
-      align-items: stretch;
 
-      background: var(--page-bg);
+      font-family: 'Inter', sans-serif;
 
       color: var(--text-dark);
 
-      transition:
-        background var(--transition),
-        color var(--transition);
+      background:
+        radial-gradient(
+          circle at 8% 8%,
+          rgba(123, 26, 26, .09),
+          transparent 30%
+        ),
+        radial-gradient(
+          circle at 92% 92%,
+          rgba(212, 160, 23, .07),
+          transparent 28%
+        ),
+        var(--page-bg);
 
       overflow-x: hidden;
+
+      transition:
+        background-color var(--transition),
+        color var(--transition);
+    }
+
+
+    html[data-theme="dark"] body {
+
+      background:
+        radial-gradient(
+          circle at 8% 8%,
+          rgba(123, 26, 26, .24),
+          transparent 31%
+        ),
+        radial-gradient(
+          circle at 92% 92%,
+          rgba(212, 160, 23, .08),
+          transparent 29%
+        ),
+        #101010;
+    }
+
+
+    /* =========================================================
+       LAYOUT PRINCIPAL
+       ========================================================= */
+
+    .login-shell {
+
+      width: 100%;
+      min-height: 100vh;
+
+      display: grid;
+
+      grid-template-columns:
+        minmax(0, 1fr)
+        500px;
     }
 
 
@@ -136,45 +246,41 @@
 
     .panel-brand {
 
-      flex: 1;
+      position: relative;
 
       min-width: 0;
 
       display: flex;
-      flex-direction: column;
-
-      justify-content: center;
       align-items: center;
+      justify-content: center;
 
-      padding: 60px 48px;
-
-      position: relative;
+      padding: 70px 60px;
 
       overflow: hidden;
 
       background:
         radial-gradient(
-          circle at 20% 20%,
-          rgba(240, 192, 48, .10),
-          transparent 32%
+          circle at 18% 16%,
+          rgba(240, 192, 48, .13),
+          transparent 31%
         ),
         radial-gradient(
-          circle at 80% 80%,
-          rgba(255, 255, 255, .06),
-          transparent 35%
+          circle at 85% 82%,
+          rgba(255, 255, 255, .07),
+          transparent 34%
         ),
         linear-gradient(
-          160deg,
+          145deg,
           var(--guinda) 0%,
           var(--guinda-dark) 100%
         );
 
       box-shadow:
-        inset -30px 0 80px rgba(0, 0, 0, .08);
+        inset -35px 0 80px rgba(0, 0, 0, .12);
     }
 
 
-    /* Patrón decorativo */
+    /* Patrón */
 
     .panel-brand::before {
 
@@ -184,20 +290,20 @@
 
       inset: 0;
 
-      background-image:
+      background:
         repeating-linear-gradient(
           -55deg,
-          rgba(255, 255, 255, .035) 0px,
+          rgba(255, 255, 255, .035) 0,
           rgba(255, 255, 255, .035) 1px,
           transparent 1px,
-          transparent 28px
+          transparent 30px
         );
 
       pointer-events: none;
     }
 
 
-    /* Línea dorada lateral */
+    /* Halo inferior */
 
     .panel-brand::after {
 
@@ -205,26 +311,28 @@
 
       position: absolute;
 
-      top: 0;
-      right: 0;
+      width: 560px;
+      height: 560px;
 
-      width: 4px;
-      height: 100%;
+      right: -290px;
+      bottom: -300px;
+
+      border-radius: 50%;
 
       background:
-        linear-gradient(
-          180deg,
-          transparent,
-          var(--gold),
-          var(--gold-bright),
-          var(--gold),
-          transparent
+        radial-gradient(
+          circle,
+          rgba(240, 192, 48, .17),
+          transparent 68%
         );
 
-      box-shadow:
-        0 0 18px rgba(240, 192, 48, .25);
+      pointer-events: none;
     }
 
+
+    /* =========================================================
+       CONTENIDO DE MARCA
+       ========================================================= */
 
     .brand-content {
 
@@ -232,28 +340,34 @@
 
       z-index: 2;
 
-      text-align: center;
+      width: 100%;
+      max-width: 470px;
 
-      max-width: 400px;
+      text-align: center;
     }
 
 
     /* =========================================================
-       LOGO
+       INSIGNIA
        ========================================================= */
 
     .logo-wrap {
 
-      width: 150px;
-      height: 150px;
-
-      margin: 0 auto 32px;
-
       position: relative;
+
+      width: 164px;
+      height: 164px;
+
+      margin:
+        0 auto 34px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
 
       filter:
         drop-shadow(
-          0 10px 30px rgba(0, 0, 0, .38)
+          0 16px 35px rgba(0, 0, 0, .42)
         );
 
       transition:
@@ -262,14 +376,21 @@
     }
 
 
-    .logo-wrap:hover {
+    .logo-wrap::before {
 
-      transform: translateY(-3px);
+      content: '';
 
-      filter:
-        drop-shadow(
-          0 14px 36px rgba(0, 0, 0, .45)
-        );
+      position: absolute;
+
+      inset: -15px;
+
+      border-radius: 50%;
+
+      border:
+        1px solid rgba(240, 192, 48, .28);
+
+      box-shadow:
+        0 0 0 8px rgba(240, 192, 48, .035);
     }
 
 
@@ -279,28 +400,42 @@
       height: 100%;
 
       object-fit: contain;
+
+      position: relative;
+      z-index: 1;
+    }
+
+
+    .logo-wrap:hover {
+
+      transform: translateY(-4px);
+
+      filter:
+        drop-shadow(
+          0 20px 42px rgba(0, 0, 0, .50)
+        );
     }
 
 
     /* =========================================================
-       MARCA
+       NOMBRE INSTITUCIONAL
        ========================================================= */
 
     .brand-school {
 
       font-family: 'Merriweather', serif;
 
-      font-size: 1.05rem;
+      font-size: .82rem;
 
       font-weight: 700;
 
-      letter-spacing: .12em;
+      letter-spacing: .18em;
 
       text-transform: uppercase;
 
       color: var(--gold-bright);
 
-      margin-bottom: 6px;
+      margin-bottom: 10px;
     }
 
 
@@ -308,29 +443,42 @@
 
       font-family: 'Merriweather', serif;
 
-      font-size: 2rem;
+      font-size: clamp(
+        2.25rem,
+        4vw,
+        3.25rem
+      );
 
       font-weight: 900;
 
-      color: #fff;
+      line-height: 1.1;
 
-      line-height: 1.15;
+      letter-spacing: -.025em;
+
+      color: #FFFFFF;
 
       text-shadow:
-        0 2px 12px rgba(0, 0, 0, .18);
+        0 4px 18px rgba(0, 0, 0, .25);
     }
 
 
     .brand-name span {
-
       color: var(--gold-bright);
     }
 
 
+    /* =========================================================
+       SEPARADOR
+       ========================================================= */
+
     .brand-sep {
 
-      width: 48px;
+      width: 64px;
       height: 3px;
+
+      margin: 24px auto 20px;
+
+      border-radius: 999px;
 
       background:
         linear-gradient(
@@ -339,118 +487,72 @@
           var(--gold-bright)
         );
 
-      border-radius: 999px;
-
-      margin: 20px auto;
-
       box-shadow:
-        0 0 12px rgba(240, 192, 48, .25);
+        0 0 16px rgba(240, 192, 48, .30);
     }
 
 
     .brand-tagline {
 
-      font-size: .88rem;
+      max-width: 380px;
 
-      color: rgba(255, 255, 255, .62);
+      margin: 0 auto;
+
+      font-size: .86rem;
 
       line-height: 1.7;
+
+      color: rgba(255, 255, 255, .68);
     }
 
 
     /* =========================================================
-       BOTÓN DE TEMA
+       INDICADOR INSTITUCIONAL
        ========================================================= */
 
-    .theme-toggle {
+    .brand-status {
 
-      position: absolute;
-
-      top: 24px;
-      right: 24px;
-
-      width: 44px;
-      height: 44px;
-
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
+
+      gap: 8px;
+
+      margin-top: 30px;
+
+      padding: 7px 12px;
+
+      border:
+        1px solid rgba(255, 255, 255, .12);
+
+      border-radius: 999px;
+
+      background:
+        rgba(255, 255, 255, .06);
+
+      color:
+        rgba(255, 255, 255, .68);
+
+      font-size: .67rem;
+
+      font-weight: 700;
+
+      letter-spacing: .08em;
+
+      text-transform: uppercase;
+    }
+
+
+    .brand-status-dot {
+
+      width: 7px;
+      height: 7px;
 
       border-radius: 50%;
 
-      background: rgba(255, 255, 255, .08);
-
-      border: 1px solid rgba(255, 255, 255, .18);
-
-      color: rgba(255, 255, 255, .95);
-
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      background: #68C76B;
 
       box-shadow:
-        0 8px 24px rgba(0, 0, 0, .18),
-        inset 0 1px 0 rgba(255, 255, 255, .08);
-
-      cursor: pointer;
-
-      z-index: 20;
-
-      transition:
-        background var(--transition),
-        border-color var(--transition),
-        transform var(--transition),
-        box-shadow var(--transition);
-    }
-
-
-    .theme-toggle:hover {
-
-      background: rgba(255, 255, 255, .15);
-
-      border-color: rgba(255, 255, 255, .30);
-
-      transform: translateY(-2px);
-
-      box-shadow:
-        0 12px 30px rgba(0, 0, 0, .25),
-        inset 0 1px 0 rgba(255, 255, 255, .12);
-    }
-
-
-    .theme-toggle:active {
-
-      transform: scale(.94);
-    }
-
-
-    .theme-icon {
-
-      width: 18px;
-      height: 18px;
-
-      transition:
-        transform 250ms ease,
-        opacity 250ms ease;
-    }
-
-
-    .theme-icon-moon {
-      display: block;
-    }
-
-
-    .theme-icon-sun {
-      display: none;
-    }
-
-
-    html.dark-mode .theme-icon-moon {
-      display: none;
-    }
-
-
-    html.dark-mode .theme-icon-sun {
-      display: block;
+        0 0 10px rgba(104, 199, 107, .55);
     }
 
 
@@ -460,11 +562,9 @@
 
     .panel-form {
 
-      width: 500px;
+      position: relative;
 
-      min-width: 380px;
-
-      background: var(--panel-bg);
+      min-height: 100vh;
 
       display: flex;
 
@@ -472,26 +572,29 @@
 
       justify-content: center;
 
-      padding: 64px 52px;
+      padding: 70px 52px 86px;
 
-      border-left: 1px solid var(--border);
+      background: var(--panel-bg);
 
-      position: relative;
-
-      transition:
-        background var(--transition),
-        border-color var(--transition),
-        box-shadow var(--transition);
+      border-left:
+        1px solid var(--border);
 
       box-shadow:
-        -20px 0 60px rgba(0, 0, 0, .08);
+        -24px 0 65px rgba(0, 0, 0, .08);
+
+      z-index: 3;
+
+      transition:
+        background-color var(--transition),
+        border-color var(--transition),
+        box-shadow var(--transition);
     }
 
 
-    html.dark-mode .panel-form {
+    html[data-theme="dark"] .panel-form {
 
       box-shadow:
-        -20px 0 70px rgba(0, 0, 0, .38);
+        -24px 0 75px rgba(0, 0, 0, .42);
     }
 
 
@@ -520,34 +623,52 @@
 
 
     /* =========================================================
-       HEADER DEL FORMULARIO
+       CONTENEDOR FORMULARIO
+       ========================================================= */
+
+    .form-container {
+
+      width: 100%;
+
+      max-width: 396px;
+
+      margin: 0 auto;
+    }
+
+
+    /* =========================================================
+       HEADER
        ========================================================= */
 
     .form-header {
 
-      margin-bottom: 36px;
+      margin-bottom: 34px;
     }
 
 
     .form-eyebrow {
 
-      font-size: .72rem;
+      display: flex;
+      align-items: center;
 
-      font-weight: 700;
+      gap: 9px;
 
-      letter-spacing: .12em;
-
-      text-transform: uppercase;
+      margin-bottom: 11px;
 
       color: var(--guinda);
 
-      margin-bottom: 10px;
+      font-size: .69rem;
 
-      display: flex;
+      font-weight: 800;
 
-      align-items: center;
+      letter-spacing: .13em;
 
-      gap: 8px;
+      text-transform: uppercase;
+    }
+
+
+    html[data-theme="dark"] .form-eyebrow {
+      color: var(--gold-bright);
     }
 
 
@@ -555,14 +676,12 @@
 
       content: '';
 
-      display: inline-block;
-
-      width: 20px;
+      width: 22px;
       height: 2px;
 
-      background: var(--gold);
-
       border-radius: 999px;
+
+      background: var(--gold);
     }
 
 
@@ -570,25 +689,154 @@
 
       font-family: 'Merriweather', serif;
 
-      font-size: 1.65rem;
+      font-size: 1.72rem;
 
       font-weight: 900;
 
-      color: var(--text-dark);
+      line-height: 1.22;
 
-      line-height: 1.2;
+      letter-spacing: -.015em;
+
+      color: var(--text-dark);
     }
 
 
     .form-sub {
 
-      margin-top: 8px;
-
-      font-size: .85rem;
+      margin-top: 9px;
 
       color: var(--text-lo);
 
+      font-size: .83rem;
+
+      line-height: 1.6;
+    }
+
+
+    /* =========================================================
+       MENSAJES DJANGO
+       ========================================================= */
+
+    .message-stack {
+
+      margin-bottom: 22px;
+    }
+
+
+    .message-box {
+
+      display: flex;
+      align-items: flex-start;
+
+      gap: 10px;
+
+      padding: 12px 13px;
+
+      margin-bottom: 9px;
+
+      border-radius: var(--radius-md);
+
+      font-size: .78rem;
+
       line-height: 1.5;
+
+      box-shadow:
+        0 5px 18px rgba(0, 0, 0, .04);
+
+      animation:
+        messageIn 240ms ease;
+    }
+
+
+    .message-box:last-child {
+      margin-bottom: 0;
+    }
+
+
+    .message-icon {
+
+      width: 24px;
+      height: 24px;
+
+      flex: 0 0 auto;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 7px;
+    }
+
+
+    .message-success {
+
+      background: var(--success-bg);
+
+      border:
+        1px solid rgba(46, 125, 50, .22);
+
+      border-left:
+        3px solid var(--success);
+
+      color: #1B5E20;
+    }
+
+
+    .message-success .message-icon {
+
+      background:
+        rgba(46, 125, 50, .12);
+
+      color: var(--success);
+    }
+
+
+    .message-error {
+
+      background: var(--danger-bg);
+
+      border:
+        1px solid rgba(192, 57, 43, .22);
+
+      border-left:
+        3px solid var(--danger);
+
+      color: #922B21;
+    }
+
+
+    .message-error .message-icon {
+
+      background:
+        rgba(192, 57, 43, .12);
+
+      color: var(--danger);
+    }
+
+
+    html[data-theme="dark"] .message-success {
+
+      border-color:
+        rgba(76, 175, 80, .25);
+
+      border-left-color:
+        #4CAF50;
+
+      color:
+        #B9E6BC;
+    }
+
+
+    html[data-theme="dark"] .message-error {
+
+      border-color:
+        rgba(239, 83, 80, .25);
+
+      border-left-color:
+        #EF5350;
+
+      color:
+        #FFB8B8;
     }
 
 
@@ -606,15 +854,15 @@
 
       display: block;
 
-      font-size: .78rem;
-
-      font-weight: 600;
+      margin-bottom: 8px;
 
       color: var(--text-mid);
 
-      margin-bottom: 8px;
+      font-size: .71rem;
 
-      letter-spacing: .03em;
+      font-weight: 800;
+
+      letter-spacing: .055em;
 
       text-transform: uppercase;
     }
@@ -623,10 +871,28 @@
     .input-wrap {
 
       position: relative;
+    }
 
-      display: flex;
 
-      align-items: center;
+    .input-icon {
+
+      position: absolute;
+
+      left: 15px;
+      top: 50%;
+
+      width: 17px;
+      height: 17px;
+
+      transform:
+        translateY(-50%);
+
+      color: var(--text-lo);
+
+      pointer-events: none;
+
+      transition:
+        color var(--transition);
     }
 
 
@@ -634,43 +900,46 @@
 
       width: 100%;
 
-      padding: 13px 20px;
+      min-height: 50px;
 
-      background: var(--input-bg);
+      padding:
+        13px 15px 13px 45px;
 
-      border: 1.5px solid var(--cream-dark);
+      border:
+        1px solid var(--border);
 
       border-radius: var(--radius-md);
+
+      outline: none;
+
+      background: var(--input-bg);
 
       color: var(--text-dark);
 
       font-family: 'Inter', sans-serif;
 
-      font-size: .92rem;
+      font-size: .88rem;
 
-      outline: none;
-
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      box-shadow:
+        inset 0 1px 1px rgba(0, 0, 0, .02);
 
       transition:
         border-color var(--transition),
-        background var(--transition),
+        background-color var(--transition),
         box-shadow var(--transition),
-        color var(--transition),
-        transform var(--transition);
+        color var(--transition);
     }
 
 
     .input-wrap input::placeholder {
-
       color: var(--text-lo);
     }
 
 
     .input-wrap input:hover {
 
-      border-color: rgba(123, 26, 26, .30);
+      border-color:
+        rgba(123, 26, 26, .25);
     }
 
 
@@ -678,27 +947,48 @@
 
       border-color: var(--guinda);
 
-      background: var(--input-focus-bg);
+      background: var(--input-focus);
 
       box-shadow:
-        0 0 0 3px rgba(123, 26, 26, .10),
-        0 6px 18px rgba(0, 0, 0, .05);
+        0 0 0 3px rgba(123, 26, 26, .09),
+        0 7px 20px rgba(0, 0, 0, .04);
     }
 
 
-    html.dark-mode .input-wrap input:hover {
+    .input-wrap:focus-within .input-icon {
 
-      border-color: rgba(240, 192, 48, .25);
+      color: var(--guinda);
     }
 
 
-    html.dark-mode .input-wrap input:focus {
+    html[data-theme="dark"] .input-wrap input {
+
+      border-color:
+        rgba(255, 255, 255, .11);
+    }
+
+
+    html[data-theme="dark"] .input-wrap input:hover {
+
+      border-color:
+        rgba(240, 192, 48, .28);
+    }
+
+
+    html[data-theme="dark"] .input-wrap input:focus {
 
       border-color: var(--gold);
 
+      background: var(--input-focus);
+
       box-shadow:
-        0 0 0 3px rgba(212, 160, 23, .12),
-        0 8px 22px rgba(0, 0, 0, .22);
+        0 0 0 3px rgba(212, 160, 23, .11),
+        0 8px 24px rgba(0, 0, 0, .25);
+    }
+
+
+    html[data-theme="dark"] .input-wrap:focus-within .input-icon {
+      color: var(--gold-bright);
     }
 
 
@@ -708,47 +998,52 @@
 
     .btn-primary {
 
+      position: relative;
+
       width: 100%;
 
-      padding: 14px;
+      min-height: 50px;
 
-      background:
-        linear-gradient(
-          135deg,
-          var(--guinda-mid) 0%,
-          var(--guinda-dark) 100%
-        );
+      margin-top: 6px;
+
+      padding: 13px 18px;
+
+      overflow: hidden;
 
       border: none;
 
       border-radius: var(--radius-md);
 
-      color: #fff;
+      background:
+        linear-gradient(
+          135deg,
+          var(--guinda-mid),
+          var(--guinda-dark)
+        );
+
+      color: #FFFFFF;
 
       font-family: 'Inter', sans-serif;
 
-      font-size: .95rem;
+      font-size: .88rem;
 
-      font-weight: 700;
-
-      cursor: pointer;
+      font-weight: 800;
 
       letter-spacing: .02em;
 
-      position: relative;
-
-      overflow: hidden;
+      cursor: pointer;
 
       box-shadow:
-        0 6px 18px rgba(90, 16, 16, .20);
+        0 8px 23px rgba(90, 16, 16, .23);
 
       transition:
         transform var(--transition),
-        box-shadow var(--transition);
+        box-shadow var(--transition),
+        filter var(--transition);
     }
 
 
-    /* Brillo */
+    /* Reflejo */
 
     .btn-primary::before {
 
@@ -757,28 +1052,24 @@
       position: absolute;
 
       top: 0;
+      bottom: 0;
+
       left: -100%;
 
       width: 70%;
-      height: 100%;
 
       background:
         linear-gradient(
           90deg,
           transparent,
-          rgba(255, 255, 255, .10),
+          rgba(255, 255, 255, .14),
           transparent
         );
 
       transform: skewX(-20deg);
 
-      transition: left 500ms ease;
-    }
-
-
-    .btn-primary:hover::before {
-
-      left: 130%;
+      transition:
+        left 500ms ease;
     }
 
 
@@ -790,10 +1081,9 @@
 
       position: absolute;
 
-      bottom: 0;
-
       left: 0;
       right: 0;
+      bottom: 0;
 
       height: 3px;
 
@@ -809,42 +1099,76 @@
 
     .btn-primary:hover {
 
-      transform: translateY(-2px);
+      transform:
+        translateY(-2px);
+
+      filter:
+        brightness(1.045);
 
       box-shadow:
-        0 12px 28px rgba(90, 16, 16, .32);
+        0 13px 30px rgba(90, 16, 16, .32);
+    }
+
+
+    .btn-primary:hover::before {
+      left: 130%;
     }
 
 
     .btn-primary:active {
 
-      transform: translateY(0);
+      transform:
+        translateY(0);
 
       box-shadow:
-        0 5px 14px rgba(90, 16, 16, .22);
+        0 6px 16px rgba(90, 16, 16, .22);
+    }
+
+
+    .btn-primary:focus-visible {
+
+      outline:
+        3px solid rgba(212, 160, 23, .28);
+
+      outline-offset: 3px;
     }
 
 
     /* =========================================================
-       LINKS
+       LINK RECUPERACIÓN
        ========================================================= */
+
+    .link-area {
+
+      margin-top: 18px;
+
+      text-align: center;
+    }
+
 
     .link-switch {
 
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
 
-      margin-top: 16px;
+      gap: 6px;
 
       color: var(--guinda);
 
-      font-size: .82rem;
+      font-size: .77rem;
+
+      font-weight: 700;
 
       text-decoration: none;
 
-      font-weight: 600;
+      transition:
+        color var(--transition);
+    }
+
+
+    .link-switch svg {
 
       transition:
-        color var(--transition),
         transform var(--transition);
     }
 
@@ -852,108 +1176,72 @@
     .link-switch:hover {
 
       color: var(--gold);
+    }
 
-      text-decoration: underline;
+
+    .link-switch:hover svg {
+
+      transform:
+        translateX(2px);
+    }
+
+
+    html[data-theme="dark"] .link-switch {
+      color: var(--gold-bright);
+    }
+
+
+    html[data-theme="dark"] .link-switch:hover {
+      color: #FFFFFF;
     }
 
 
     /* =========================================================
-       MENSAJES DJANGO
+       SEPARADOR DE SEGURIDAD
        ========================================================= */
 
-    .message-box {
+    .security-note {
 
-      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
 
-      padding: 11px 14px;
+      justify-content: center;
 
-      font-size: .82rem;
+      gap: 7px;
 
-      margin-bottom: 20px;
+      margin-top: 30px;
 
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      padding-top: 18px;
 
-      box-shadow:
-        0 6px 18px rgba(0, 0, 0, .04);
+      border-top:
+        1px solid var(--border);
 
-      transition:
-        background var(--transition),
-        border-color var(--transition),
-        color var(--transition);
+      color: var(--text-lo);
+
+      font-size: .67rem;
+
+      line-height: 1.45;
+
+      text-align: center;
     }
 
 
-    .message-success {
+    .security-note svg {
 
-      background: rgba(232, 245, 233, .88);
+      flex-shrink: 0;
 
-      border: 1px solid rgba(46, 125, 50, .25);
-
-      border-left: 3px solid #2E7D32;
-
-      color: #1B5E20;
-    }
-
-
-    .message-error {
-
-      background: rgba(255, 245, 245, .90);
-
-      border: 1px solid rgba(192, 57, 43, .25);
-
-      border-left: 3px solid #C0392B;
-
-      color: #922B21;
-    }
-
-
-    html.dark-mode .message-success {
-
-      background: rgba(46, 125, 50, .14);
-
-      border-color: rgba(76, 175, 80, .25);
-
-      border-left-color: #4CAF50;
-
-      color: #A5D6A7;
-    }
-
-
-    html.dark-mode .message-error {
-
-      background: rgba(192, 57, 43, .14);
-
-      border-color: rgba(239, 83, 80, .25);
-
-      border-left-color: #EF5350;
-
-      color: #FFABAB;
+      color: var(--text-lo);
     }
 
 
     /* =========================================================
-       VISTAS LOGIN / RECUPERACIÓN
+       RECUPERACIÓN
        ========================================================= */
 
     .view-block {
 
       animation:
-        blockFade var(--transition) ease;
-    }
-
-
-    @keyframes blockFade {
-
-      from {
-        opacity: 0;
-        transform: translateY(6px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+        viewIn 220ms ease;
     }
 
 
@@ -965,570 +1253,923 @@
 
       position: absolute;
 
-      bottom: 20px;
-
       left: 52px;
       right: 52px;
+      bottom: 23px;
 
-      text-align: center;
+      padding-top: 15px;
 
-      font-size: .72rem;
+      border-top:
+        1px solid var(--border);
 
       color: var(--text-lo);
 
-      border-top: 1px solid var(--border);
+      font-size: .64rem;
 
-      padding-top: 16px;
+      text-align: center;
     }
 
 
     /* =========================================================
-       SELECCIÓN DE TEXTO
+       SELECCIÓN
        ========================================================= */
 
     ::selection {
 
-      background: rgba(123, 26, 26, .20);
+      background:
+        rgba(123, 26, 26, .18);
 
-      color: var(--text-dark);
+      color:
+        var(--text-dark);
     }
 
 
-    html.dark-mode ::selection {
+    html[data-theme="dark"] ::selection {
 
-      background: rgba(240, 192, 48, .22);
+      background:
+        rgba(240, 192, 48, .22);
 
-      color: #fff;
+      color:
+        #FFFFFF;
     }
 
 
     /* =========================================================
-       RESPONSIVE
+       ANIMACIONES
        ========================================================= */
 
-    @media (max-width: 820px) {
+    @keyframes viewIn {
 
-      body {
+      from {
+        opacity: 0;
+        transform: translateY(7px);
+      }
 
-        flex-direction: column;
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+
+    @keyframes messageIn {
+
+      from {
+        opacity: 0;
+        transform: translateY(-5px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+
+    /* =========================================================
+       TABLET
+       ========================================================= */
+
+    @media (max-width: 1000px) {
+
+      .login-shell {
+
+        grid-template-columns:
+          minmax(0, 1fr)
+          440px;
       }
 
 
       .panel-brand {
 
-        flex: none;
-
-        padding: 48px 32px 40px;
-      }
-
-
-      .brand-tagline {
-
-        display: none;
-      }
-
-
-      .logo-wrap {
-
-        width: 110px;
-        height: 110px;
-
-        margin-bottom: 20px;
-      }
-
-
-      .brand-name {
-
-        font-size: 1.7rem;
+        padding:
+          50px 35px;
       }
 
 
       .panel-form {
 
-        width: 100%;
-
-        min-width: unset;
-
-        padding: 44px 28px 72px;
-
-        border-left: none;
-
-        box-shadow:
-          0 -20px 50px rgba(0, 0, 0, .06);
-      }
-
-
-      html.dark-mode .panel-form {
-
-        box-shadow:
-          0 -20px 60px rgba(0, 0, 0, .35);
-      }
-
-
-      .theme-toggle {
-
-        top: 16px;
-
-        right: 16px;
+        padding:
+          60px 38px 82px;
       }
 
 
       .form-footer {
 
-        left: 28px;
-
-        right: 28px;
+        left: 38px;
+        right: 38px;
       }
+
     }
 
 
-    @media (max-width: 480px) {
+    /* =========================================================
+       MÓVIL
+       ========================================================= */
+
+    @media (max-width: 760px) {
+
+      body {
+        display: block;
+      }
+
+
+      .login-shell {
+
+        display: block;
+
+        min-height: 100vh;
+      }
+
+
+      /* -------------------------------------------------------
+         MARCA
+         ------------------------------------------------------- */
 
       .panel-brand {
 
-        padding: 38px 24px 32px;
+        min-height: 310px;
+
+        padding:
+          42px 25px 38px;
+
+        box-shadow:
+          inset 0 -25px 60px rgba(0, 0, 0, .12);
       }
 
 
       .logo-wrap {
 
-        width: 90px;
-        height: 90px;
+        width: 105px;
+        height: 105px;
+
+        margin-bottom: 21px;
+      }
+
+
+      .logo-wrap::before {
+        inset: -9px;
       }
 
 
       .brand-school {
 
-        font-size: .82rem;
+        font-size: .69rem;
+
+        letter-spacing: .14em;
       }
 
 
       .brand-name {
 
-        font-size: 1.5rem;
+        font-size: 1.75rem;
       }
 
 
+      .brand-sep {
+
+        width: 50px;
+
+        margin:
+          16px auto;
+      }
+
+
+      .brand-tagline {
+        display: none;
+      }
+
+
+      .brand-status {
+
+        margin-top: 17px;
+
+        font-size: .60rem;
+      }
+
+
+      /* -------------------------------------------------------
+         FORMULARIO
+         ------------------------------------------------------- */
+
       .panel-form {
 
-        padding: 38px 22px 76px;
+        min-height: auto;
+
+        padding:
+          42px 26px 82px;
+
+        border-left: none;
+
+        box-shadow:
+          0 -18px 55px rgba(0, 0, 0, .08);
+      }
+
+
+      html[data-theme="dark"] .panel-form {
+
+        box-shadow:
+          0 -20px 60px rgba(0, 0, 0, .40);
+      }
+
+
+      .form-container {
+
+        max-width: 430px;
+      }
+
+
+      .form-header {
+
+        margin-bottom: 29px;
       }
 
 
       .form-title {
+        font-size: 1.48rem;
+      }
 
-        font-size: 1.45rem;
+
+      .form-sub {
+        font-size: .80rem;
       }
 
 
       .form-footer {
 
-        left: 22px;
+        position: absolute;
 
-        right: 22px;
+        left: 26px;
+        right: 26px;
+
+        bottom: 21px;
       }
+
+    }
+
+
+    /* =========================================================
+       MÓVIL PEQUEÑO
+       ========================================================= */
+
+    @media (max-width: 420px) {
+
+      .panel-brand {
+
+        min-height: 280px;
+
+        padding:
+          34px 20px 28px;
+      }
+
+
+      .logo-wrap {
+
+        width: 88px;
+        height: 88px;
+
+        margin-bottom: 17px;
+      }
+
+
+      .brand-school {
+
+        font-size: .63rem;
+      }
+
+
+      .brand-name {
+
+        font-size: 1.48rem;
+      }
+
+
+      .brand-sep {
+
+        margin:
+          13px auto;
+      }
+
+
+      .brand-status {
+
+        display: none;
+      }
+
+
+      .panel-form {
+
+        padding:
+          36px 20px 82px;
+      }
+
+
+      .form-title {
+
+        font-size: 1.35rem;
+      }
+
+
+      .field {
+        margin-bottom: 17px;
+      }
+
+
+      .input-wrap input {
+
+        min-height: 48px;
+
+        font-size: .85rem;
+      }
+
+
+      .btn-primary {
+
+        min-height: 48px;
+      }
+
+
+      .form-footer {
+
+        left: 20px;
+        right: 20px;
+      }
+
+    }
+
+
+    /* =========================================================
+       REDUCCIÓN DE MOVIMIENTO
+       ========================================================= */
+
+    @media (prefers-reduced-motion: reduce) {
+
+      *,
+      *::before,
+      *::after {
+
+        scroll-behavior: auto !important;
+
+        transition-duration: .01ms !important;
+
+        animation-duration: .01ms !important;
+
+        animation-iteration-count: 1 !important;
+      }
+
     }
 
   </style>
+
 </head>
 
 
 <body>
 
-  <!-- =======================================================
-       PANEL INSTITUCIONAL
-       ======================================================= -->
 
-  <div class="panel-brand">
-
-    <!-- BOTÓN TEMA -->
-
-    <button
-      type="button"
-      class="theme-toggle"
-      onclick="toggleTheme()"
-      title="Cambiar tema"
-      aria-label="Cambiar tema"
-    >
-
-      <!-- Luna -->
-
-      <svg
-        class="theme-icon theme-icon-moon"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M21 12.79A9 9 0 1111.21 3
-             7 7 0 0021 12.79z"
-        />
-
-      </svg>
+  <main class="login-shell">
 
 
-      <!-- Sol -->
+    <!-- =======================================================
+         PANEL INSTITUCIONAL
+         ======================================================= -->
 
-      <svg
-        class="theme-icon theme-icon-sun"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-      >
+    <section class="panel-brand">
 
-        <circle
-          cx="12"
-          cy="12"
-          r="4"
-        />
-
-        <path
-          stroke-linecap="round"
-          d="M12 2v2"
-        />
-
-        <path
-          stroke-linecap="round"
-          d="M12 20v2"
-        />
-
-        <path
-          stroke-linecap="round"
-          d="M4.93 4.93l1.41 1.41"
-        />
-
-        <path
-          stroke-linecap="round"
-          d="M17.66 17.66l1.41 1.41"
-        />
-
-        <path
-          stroke-linecap="round"
-          d="M2 12h2"
-        />
-
-        <path
-          stroke-linecap="round"
-          d="M20 12h2"
-        />
-
-        <path
-          stroke-linecap="round"
-          d="M6.34 17.66l-1.41 1.41"
-        />
-
-        <path
-          stroke-linecap="round"
-          d="M19.07 4.93l-1.41 1.41"
-        />
-
-      </svg>
-
-    </button>
+      <div class="brand-content">
 
 
-    <!-- MARCA -->
+        <div class="logo-wrap">
 
-    <div class="brand-content">
+          <img
+            src="{% static 'Insignia.png' %}"
+            alt="Insignia Colegio San Sebastián"
+          />
 
-      <div class="logo-wrap">
+        </div>
 
-        <img
-          src="{% static 'Insignia.png' %}"
-          alt="Insignia Colegio San Sebastián"
-        />
+
+        <p class="brand-school">
+          Colegio San Sebastián
+        </p>
+
+
+        <h1 class="brand-name">
+          Convi<span>Data</span>
+        </h1>
+
+
+        <div class="brand-sep"></div>
+
+
+        <p class="brand-tagline">
+          Plataforma institucional de gestión y seguimiento
+          de casos de convivencia escolar.
+        </p>
+
+
+        <div class="brand-status">
+
+          <span class="brand-status-dot"></span>
+
+          Plataforma institucional
+
+        </div>
 
       </div>
 
-
-      <p class="brand-school">
-        Colegio San Sebastián
-      </p>
+    </section>
 
 
-      <h1 class="brand-name">
-        Convi<span>Data</span>
-      </h1>
+    <!-- =======================================================
+         PANEL DE ACCESO
+         ======================================================= -->
+
+    <section class="panel-form">
 
 
-      <div class="brand-sep"></div>
+      <div class="form-container">
 
 
-      <p class="brand-tagline">
-        Plataforma institucional de gestión y seguimiento
-        de casos de convivencia escolar.
-      </p>
+        <!-- =====================================================
+             MENSAJES DJANGO
+             ===================================================== -->
 
-    </div>
+        {% if messages %}
 
-  </div>
+          <div class="message-stack">
+
+            {% for message in messages %}
+
+              <div
+                class="message-box {% if message.tags == 'success' %}message-success{% else %}message-error{% endif %}"
+              >
 
 
-  <!-- =======================================================
-       PANEL FORMULARIO
-       ======================================================= -->
+                <span class="message-icon">
 
-  <div class="panel-form">
+                  {% if message.tags == 'success' %}
 
-    <!-- =====================================================
-         MENSAJES
-         ===================================================== -->
+                    <svg
+                      width="14"
+                      height="14"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
 
-    {% if messages %}
+                  {% else %}
 
-      {% for message in messages %}
+                    <svg
+                      width="14"
+                      height="14"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                      />
+                    </svg>
+
+                  {% endif %}
+
+                </span>
+
+
+                <span>
+                  {{ message }}
+                </span>
+
+
+              </div>
+
+            {% endfor %}
+
+          </div>
+
+        {% endif %}
+
+
+        <!-- =====================================================
+             LOGIN
+             ===================================================== -->
 
         <div
-          class="message-box {% if message.tags == 'success' %}message-success{% else %}message-error{% endif %}"
+          id="view-login"
+          class="view-block"
+          style="display: block;"
         >
 
-          {% if message.tags == 'success' %}
-            ✅
-          {% else %}
-            ⚠️
-          {% endif %}
 
-          {{ message }}
+          <div class="form-header">
 
-        </div>
-
-      {% endfor %}
-
-    {% endif %}
+            <p class="form-eyebrow">
+              Acceso al sistema
+            </p>
 
 
-    <!-- =====================================================
-         LOGIN
-         ===================================================== -->
-
-    <div
-      id="view-login"
-      class="view-block"
-      style="display: block;"
-    >
-
-      <div class="form-header">
-
-        <p class="form-eyebrow">
-          Acceso al sistema
-        </p>
+            <h2 class="form-title">
+              Bienvenido/a
+            </h2>
 
 
-        <h2 class="form-title">
-          Bienvenido/a
-        </h2>
-
-
-        <p class="form-sub">
-          Ingresa con tu correo institucional para continuar.
-        </p>
-
-      </div>
-
-
-      <form
-        method="POST"
-        action="{% url 'login' %}"
-      >
-
-        {% csrf_token %}
-
-
-        <!-- CORREO -->
-
-        <div class="field">
-
-          <label>
-            Correo institucional
-          </label>
-
-
-          <div class="input-wrap">
-
-            <input
-              type="email"
-              name="correo"
-              placeholder="usuario@melipilla.cl"
-              autocomplete="email"
-              required
-            />
+            <p class="form-sub">
+              Ingresa con tu correo institucional para continuar.
+            </p>
 
           </div>
 
-        </div>
+
+          <form
+            method="POST"
+            action="{% url 'login' %}"
+          >
+
+            {% csrf_token %}
 
 
-        <!-- CONTRASEÑA -->
+            <!-- CORREO -->
 
-        <div class="field">
+            <div class="field">
 
-          <label>
-            Contraseña
-          </label>
+              <label for="correo">
+                Correo institucional
+              </label>
 
 
-          <div class="input-wrap">
+              <div class="input-wrap">
 
-            <input
-              type="password"
-              name="contrasena"
-              placeholder="••••••••"
-              autocomplete="current-password"
-              required
-            />
+
+                <svg
+                  class="input-icon"
+                  width="17"
+                  height="17"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+
+                </svg>
+
+
+                <input
+                  id="correo"
+                  type="email"
+                  name="correo"
+                  placeholder="usuario@melipilla.cl"
+                  autocomplete="email"
+                  required
+                />
+
+              </div>
+
+            </div>
+
+
+            <!-- CONTRASEÑA -->
+
+            <div class="field">
+
+              <label for="contrasena">
+                Contraseña
+              </label>
+
+
+              <div class="input-wrap">
+
+
+                <svg
+                  class="input-icon"
+                  width="17"
+                  height="17"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+
+                  <rect
+                    x="4"
+                    y="10"
+                    width="16"
+                    height="11"
+                    rx="2"
+                  />
+
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M8 10V7a4 4 0 018 0v3"
+                  />
+
+                </svg>
+
+
+                <input
+                  id="contrasena"
+                  type="password"
+                  name="contrasena"
+                  placeholder="••••••••"
+                  autocomplete="current-password"
+                  required
+                />
+
+              </div>
+
+            </div>
+
+
+            <!-- INGRESAR -->
+
+            <button
+              type="submit"
+              class="btn-primary"
+            >
+              Ingresar
+            </button>
+
+          </form>
+
+
+          <!-- RECUPERACIÓN -->
+
+          <div class="link-area">
+
+            <a
+              href="#"
+              class="link-switch"
+              onclick="toggleViews(event, 'recover')"
+            >
+
+              ¿Olvidó su contraseña?
+
+              <svg
+                width="13"
+                height="13"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2.4"
+              >
+
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 5l7 7-7 7"
+                />
+
+              </svg>
+
+            </a>
 
           </div>
 
-        </div>
 
+          <!-- SEGURIDAD -->
 
-        <!-- INGRESAR -->
+          <div class="security-note">
 
-        <button
-          type="submit"
-          class="btn-primary"
-          style="margin-top: 10px;"
-        >
-          Ingresar
-        </button>
+            <svg
+              width="13"
+              height="13"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
 
-      </form>
+              <rect
+                x="4"
+                y="10"
+                width="16"
+                height="11"
+                rx="2"
+              />
 
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M8 10V7a4 4 0 018 0v3"
+              />
 
-      <div style="text-align: center;">
+            </svg>
 
-        <a
-          href="#"
-          class="link-switch"
-          onclick="toggleViews(event, 'recover')"
-        >
-          ¿Olvidó su contraseña?
-        </a>
-
-      </div>
-
-    </div>
-
-
-    <!-- =====================================================
-         RECUPERACIÓN
-         ===================================================== -->
-
-    <div
-      id="view-recover"
-      class="view-block"
-      style="display: none;"
-    >
-
-      <div class="form-header">
-
-        <p class="form-eyebrow">
-          Seguridad de Cuenta
-        </p>
-
-
-        <h2 class="form-title">
-          Restablecer Clave
-        </h2>
-
-
-        <p class="form-sub">
-          Ingresa tu correo real para enviarte tus credenciales actuales de forma atómica.
-        </p>
-
-      </div>
-
-
-      <form
-        method="POST"
-        action="{% url 'login' %}"
-      >
-
-        {% csrf_token %}
-
-
-        <!-- CORREO RECUPERACIÓN -->
-
-        <div class="field">
-
-          <label>
-            Correo Institucional Registrado
-          </label>
-
-
-          <div class="input-wrap">
-
-            <input
-              type="email"
-              name="correo_recuperacion"
-              placeholder="rodrgo.flores2003@gmail.com"
-              autocomplete="email"
-              required
-            />
+            Acceso protegido para personal autorizado
 
           </div>
 
+
         </div>
 
 
-        <!-- ENVIAR -->
+        <!-- =====================================================
+             RECUPERACIÓN
+             ===================================================== -->
 
-        <button
-          type="submit"
-          class="btn-primary"
-          style="margin-top: 10px;"
+        <div
+          id="view-recover"
+          class="view-block"
+          style="display: none;"
         >
-          Enviar Solicitud
-        </button>
-
-      </form>
 
 
-      <div style="text-align: center;">
+          <div class="form-header">
 
-        <a
-          href="#"
-          class="link-switch"
-          style="color: var(--text-lo);"
-          onclick="toggleViews(event, 'login')"
-        >
-          Volver al Inicio de Sesión
-        </a>
+            <p class="form-eyebrow">
+              Seguridad de cuenta
+            </p>
+
+
+            <h2 class="form-title">
+              Restablecer clave
+            </h2>
+
+
+            <p class="form-sub">
+              Ingresa tu correo registrado para solicitar
+              la recuperación de acceso.
+            </p>
+
+          </div>
+
+
+          <form
+            method="POST"
+            action="{% url 'login' %}"
+          >
+
+            {% csrf_token %}
+
+
+            <div class="field">
+
+              <label for="correo_recuperacion">
+                Correo institucional registrado
+              </label>
+
+
+              <div class="input-wrap">
+
+
+                <svg
+                  class="input-icon"
+                  width="17"
+                  height="17"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+
+                </svg>
+
+
+                <input
+                  id="correo_recuperacion"
+                  type="email"
+                  name="correo_recuperacion"
+                  placeholder="usuario@melipilla.cl"
+                  autocomplete="email"
+                  required
+                />
+
+              </div>
+
+            </div>
+
+
+            <button
+              type="submit"
+              class="btn-primary"
+            >
+              Enviar solicitud
+            </button>
+
+          </form>
+
+
+          <div class="link-area">
+
+            <a
+              href="#"
+              class="link-switch"
+              onclick="toggleViews(event, 'login')"
+            >
+
+              <svg
+                width="13"
+                height="13"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2.4"
+              >
+
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15 19l-7-7 7-7"
+                />
+
+              </svg>
+
+              Volver al inicio de sesión
+
+            </a>
+
+          </div>
+
+
+          <div class="security-note">
+
+            <svg
+              width="13"
+              height="13"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 9v4m0 4h.01"
+              />
+
+              <circle
+                cx="12"
+                cy="12"
+                r="9"
+              />
+
+            </svg>
+
+            Recibirás instrucciones en tu correo institucional
+
+          </div>
+
+
+        </div>
+
 
       </div>
 
-    </div>
+
+      <!-- =====================================================
+           FOOTER
+           ===================================================== -->
+
+      <p class="form-footer">
+        © 2026 ConviData · Colegio San Sebastián
+      </p>
 
 
-    <!-- =====================================================
-         FOOTER
-         ===================================================== -->
-
-    <p class="form-footer">
-      © 2026 ConviData · Colegio San Sebastián
-    </p>
-
-  </div>
+    </section>
 
 
-  <!-- =======================================================
+  </main>
+
+
+  <!-- =========================================================
        JAVASCRIPT
-       ======================================================= -->
+       ========================================================= -->
 
   <script>
 
-    /* =======================================================
-       LOGIN / RECUPERACIÓN
-       ======================================================= */
+
+    /* =========================================================
+       CAMBIO LOGIN / RECUPERACIÓN
+       ========================================================= */
 
     function toggleViews(e, target) {
 
       e.preventDefault();
+
 
       const loginBlock =
         document.getElementById('view-login');
@@ -1537,11 +2178,26 @@
         document.getElementById('view-recover');
 
 
+      if (!loginBlock || !recoverBlock) {
+        return;
+      }
+
+
       if (target === 'recover') {
 
         loginBlock.style.display = 'none';
 
         recoverBlock.style.display = 'block';
+
+
+        const input =
+          document.getElementById(
+            'correo_recuperacion'
+          );
+
+        if (input) {
+          setTimeout(() => input.focus(), 50);
+        }
 
       } else {
 
@@ -1549,61 +2205,46 @@
 
         loginBlock.style.display = 'block';
 
+
+        const input =
+          document.getElementById('correo');
+
+        if (input) {
+          setTimeout(() => input.focus(), 50);
+        }
+
       }
 
     }
 
 
-    /* =======================================================
-       MODO OSCURO / CLARO
-       ======================================================= */
+    /* =========================================================
+       TEMA AUTOMÁTICO
+       ========================================================= */
 
-    function toggleTheme() {
-
-      const html =
-        document.documentElement;
-
-      const isDark =
-        html.classList.toggle('dark-mode');
+    const mediaQuery =
+      window.matchMedia(
+        '(prefers-color-scheme: dark)'
+      );
 
 
-      try {
+    mediaQuery.addEventListener(
+      'change',
+      () => {
 
-        localStorage.setItem(
-          'convidata-theme',
-          isDark ? 'dark' : 'light'
+        document.documentElement.setAttribute(
+          'data-theme',
+          mediaQuery.matches
+            ? 'dark'
+            : 'light'
         );
-
-      } catch (e) {}
-
-    }
-
-
-    /* =======================================================
-       ATAJO DE TECLADO
-       Ctrl + Shift + D
-       ======================================================= */
-
-    document.addEventListener(
-      'keydown',
-      function (e) {
-
-        if (
-          e.ctrlKey &&
-          e.shiftKey &&
-          e.key.toLowerCase() === 'd'
-        ) {
-
-          e.preventDefault();
-
-          toggleTheme();
-
-        }
 
       }
     );
 
+
   </script>
+
 
 </body>
 </html>

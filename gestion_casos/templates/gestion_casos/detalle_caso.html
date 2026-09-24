@@ -1,147 +1,1430 @@
 {% extends 'gestion_casos/base.html' %}
 {% load static %}
 
-{% block title %}ConviData – Detalle del Caso #{{ caso.caso_id }}{% endblock %}
+{% block title %}ConviData – Editar Caso #{{ caso.caso_id }}{% endblock %}
 
 {% block extra_css %}
 <style>
-  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--text-lo); margin-bottom: 18px; }
-  .breadcrumb a { color: var(--guinda); text-decoration: none; font-weight: 500; }
-  .breadcrumb a:hover { text-decoration: underline; }
-  .breadcrumb-sep { opacity: .4; }
 
-  .page-header { margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; }
-  .page-header h1 { font-family: 'Merriweather', serif; font-size: 1.5rem; font-weight: 900; color: var(--guinda); }
-  
-  .btn-back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--white); color: var(--text-mid); font-size: .8rem; font-weight: 600; text-decoration: none; transition: all var(--transition); }
-  .btn-back:hover { border-color: var(--guinda); color: var(--guinda); }
+  /* ============================================================
+     PÁGINA
+     ============================================================ */
 
-  .grid-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
-  @media (max-width: 768px) { .grid-layout { grid-template-columns: 1fr; } }
+  .edit-case-page {
+    width: 100%;
+    max-width: 1050px;
+    margin: 0 auto;
+  }
 
-  .card-pane { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 24px; }
-  .pane-title { font-family: 'Merriweather', serif; font-size: 1.1rem; font-weight: 900; color: var(--text-dark); margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
-  
-  .meta-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-lo); margin-top: 14px; display: block; }
-  .meta-value { font-size: .9rem; color: var(--text-dark); margin-top: 4px; display: block; line-height: 1.5; }
-  
-  .desc-box { background: var(--cream); border-radius: 8px; padding: 16px; border-left: 4px solid var(--guinda); margin-top: 8px; font-size: .88rem; line-height: 1.5; color: var(--text-dark); white-space: pre-wrap; }
-  
-  /* Badges de Gravedad */
-  .badge-falta { display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: .75rem; font-weight: 700; text-transform: uppercase; margin-top: 4px; }
-  .falta-Leve { background: rgba(30,132,73,.1); color: #1E8449; }
-  .falta-Grave { background: rgba(212,160,23,.15); color: #B7860B; }
-  .falta-Gravísima { background: rgba(123,26,26,.1); color: var(--guinda); }
 
-  /* Tarjetas de implicados limpias sin badge */
-  .student-item { background: var(--cream); border-radius: 8px; border: 1px solid var(--border); padding: 12px 14px; margin-top: 10px; }
-  .student-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .student-name { font-weight: 700; font-size: .88rem; color: var(--text-dark); }
-  .student-list-num { font-size: .75rem; font-weight: 700; color: var(--guinda); background: rgba(123,26,26,.08); padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+  /* ============================================================
+     BREADCRUMB
+     ============================================================ */
 
-  /* Evidencia */
-  .evidence-box { margin-top: 20px; border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--cream); width: fit-content; max-width: 100%; box-shadow: var(--shadow); }
-  .evidence-img { max-width: 100%; max-height: 350px; border-radius: 6px; display: block; object-fit: contain; border: 1px solid var(--border); }
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+
+    font-size: .76rem;
+    color: var(--text-lo);
+
+    margin-bottom: 18px;
+  }
+
+  .breadcrumb a {
+    color: var(--guinda);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .breadcrumb a:hover {
+    text-decoration: underline;
+  }
+
+  .breadcrumb-sep {
+    opacity: .4;
+  }
+
+
+  /* ============================================================
+     HERO
+     ============================================================ */
+
+  .edit-hero {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 20px;
+
+    padding: 24px 26px;
+
+    margin-bottom: 18px;
+
+    border-radius: var(--radius);
+
+    background:
+      linear-gradient(
+        135deg,
+        var(--guinda-dark) 0%,
+        var(--guinda) 65%,
+        #8F2020 100%
+      );
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    box-shadow:
+      0 10px 30px rgba(0,0,0,.16);
+
+    overflow: hidden;
+  }
+
+  .edit-hero::after {
+    content: "";
+
+    position: absolute;
+
+    width: 250px;
+    height: 250px;
+
+    right: -90px;
+    top: -135px;
+
+    border-radius: 50%;
+
+    background:
+      radial-gradient(
+        circle,
+        rgba(212,160,23,.18),
+        transparent 68%
+      );
+
+    pointer-events: none;
+  }
+
+  .edit-hero-main {
+    position: relative;
+    z-index: 1;
+
+    min-width: 0;
+  }
+
+  .edit-overline {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+
+    color: rgba(255,255,255,.62);
+
+    font-size: .66rem;
+    font-weight: 700;
+
+    text-transform: uppercase;
+    letter-spacing: .1em;
+
+    margin-bottom: 5px;
+  }
+
+  .edit-overline-dot {
+    width: 6px;
+    height: 6px;
+
+    border-radius: 50%;
+
+    background: var(--gold-bright);
+  }
+
+  .edit-title {
+    font-family: 'Merriweather', serif;
+
+    font-size: 1.45rem;
+    line-height: 1.2;
+
+    font-weight: 900;
+
+    color: #fff;
+  }
+
+  .edit-subtitle {
+    margin-top: 5px;
+
+    color: rgba(255,255,255,.68);
+
+    font-size: .77rem;
+  }
+
+  .edit-case-id {
+    position: relative;
+    z-index: 1;
+
+    min-width: 80px;
+
+    padding: 10px 13px;
+
+    border-radius: 9px;
+
+    background: rgba(255,255,255,.10);
+
+    border: 1px solid rgba(255,255,255,.14);
+
+    text-align: center;
+
+    flex-shrink: 0;
+  }
+
+  .edit-case-id-label {
+    color: rgba(255,255,255,.5);
+
+    font-size: .59rem;
+    font-weight: 700;
+
+    text-transform: uppercase;
+    letter-spacing: .07em;
+  }
+
+  .edit-case-id-number {
+    margin-top: 2px;
+
+    color: #fff;
+
+    font-family: 'Merriweather', serif;
+
+    font-size: 1.1rem;
+    font-weight: 900;
+  }
+
+
+  /* ============================================================
+     FORMULARIO
+     ============================================================ */
+
+  .form-card {
+    background: var(--white);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius);
+
+    box-shadow: var(--shadow);
+
+    overflow: hidden;
+  }
+
+  .form-card-header {
+    display: flex;
+    align-items: center;
+
+    gap: 11px;
+
+    padding: 17px 22px;
+
+    border-bottom: 1px solid var(--border);
+  }
+
+  .form-card-icon {
+    width: 34px;
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 8px;
+
+    background: rgba(123,26,26,.08);
+
+    color: var(--guinda);
+
+    flex-shrink: 0;
+  }
+
+  .form-card-title {
+    font-family: 'Merriweather', serif;
+
+    font-size: .94rem;
+
+    font-weight: 900;
+
+    color: var(--text-dark);
+  }
+
+  .form-card-subtitle {
+    margin-top: 2px;
+
+    font-size: .7rem;
+
+    color: var(--text-lo);
+  }
+
+  .form-inner {
+    padding: 22px;
+  }
+
+
+  /* ============================================================
+     SECCIONES
+     ============================================================ */
+
+  .form-section {
+    margin-bottom: 23px;
+  }
+
+  .form-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .section-heading {
+    display: flex;
+    align-items: center;
+
+    gap: 9px;
+
+    padding-bottom: 9px;
+
+    margin-bottom: 15px;
+
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-number {
+    width: 24px;
+    height: 24px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 6px;
+
+    background: var(--guinda);
+
+    color: #fff;
+
+    font-size: .66rem;
+
+    font-weight: 800;
+  }
+
+  .section-title {
+    font-size: .77rem;
+
+    font-weight: 800;
+
+    color: var(--text-dark);
+
+    text-transform: uppercase;
+
+    letter-spacing: .06em;
+  }
+
+
+  /* ============================================================
+     CAMPOS
+     ============================================================ */
+
+  .form-group {
+    margin-bottom: 16px;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 6px;
+  }
+
+  .form-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .form-group label {
+    font-size: .67rem;
+
+    font-weight: 700;
+
+    color: var(--text-mid);
+
+    text-transform: uppercase;
+
+    letter-spacing: .05em;
+  }
+
+  .form-control {
+    width: 100%;
+
+    padding: 10px 12px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 7px;
+
+    background: var(--surface-soft);
+
+    color: var(--text-dark);
+
+    font-family: 'Inter', sans-serif;
+
+    font-size: .84rem;
+
+    outline: none;
+
+    transition:
+      border-color var(--transition),
+      box-shadow var(--transition),
+      background-color var(--transition);
+  }
+
+  .form-control:hover {
+    border-color:
+      rgba(123,26,26,.25);
+  }
+
+  .form-control:focus {
+    border-color: var(--guinda);
+
+    background: var(--white);
+
+    box-shadow:
+      0 0 0 3px rgba(123,26,26,.08);
+  }
+
+  textarea.form-control {
+    min-height: 130px;
+
+    resize: vertical;
+
+    line-height: 1.55;
+  }
+
+  select.form-control {
+    appearance: auto;
+
+    cursor: pointer;
+  }
+
+  html[data-theme="dark"] .form-control {
+    background: #202020;
+
+    color: #F4F1EC;
+
+    border-color: rgba(255,255,255,.12);
+  }
+
+  html[data-theme="dark"] .form-control:focus {
+    background: #242424;
+  }
+
+  html[data-theme="dark"] select.form-control option {
+    background: #202020;
+
+    color: #F4F1EC;
+  }
+
+
+  /* ============================================================
+     FILA DE DOS COLUMNAS
+     ============================================================ */
+
+  .row-two {
+    display: grid;
+
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+
+    gap: 16px;
+  }
+
+
+  /* ============================================================
+     BLOQUE ALUMNO
+     ============================================================ */
+
+  .alumno-bloque {
+    position: relative;
+
+    padding: 18px;
+
+    margin-bottom: 14px;
+
+    background: var(--surface-soft);
+
+    border: 1px solid var(--border);
+
+    border-radius: 10px;
+
+    transition:
+      border-color var(--transition),
+      box-shadow var(--transition);
+  }
+
+  .alumno-bloque:hover {
+    border-color:
+      rgba(123,26,26,.22);
+
+    box-shadow:
+      0 4px 15px rgba(0,0,0,.05);
+  }
+
+  .alumno-bloque:last-child {
+    margin-bottom: 0;
+  }
+
+  .alumno-bloque-header {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 12px;
+
+    margin-bottom: 15px;
+
+    padding-bottom: 10px;
+
+    border-bottom: 1px solid var(--border);
+  }
+
+  .alumno-heading {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    min-width: 0;
+  }
+
+  .alumno-heading-icon {
+    width: 28px;
+    height: 28px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 7px;
+
+    background: rgba(123,26,26,.08);
+
+    color: var(--guinda);
+
+    flex-shrink: 0;
+  }
+
+  .alumno-heading-text {
+    font-size: .76rem;
+
+    font-weight: 800;
+
+    color: var(--text-dark);
+
+    text-transform: uppercase;
+
+    letter-spacing: .04em;
+  }
+
+  .alumno-heading-number {
+    color: var(--text-lo);
+
+    font-size: .68rem;
+
+    font-weight: 600;
+  }
+
+  .btn-remove-alumno {
+    width: 30px;
+    height: 30px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    border-radius: 7px;
+
+    background: transparent;
+
+    border: 1px solid rgba(192,57,43,.35);
+
+    color: #C0392B;
+
+    cursor: pointer;
+
+    transition:
+      background var(--transition),
+      color var(--transition),
+      border-color var(--transition);
+  }
+
+  .btn-remove-alumno:hover {
+    background: #C0392B;
+
+    border-color: #C0392B;
+
+    color: #fff;
+  }
+
+
+  /* ============================================================
+     AVISO DEL CASO
+     ============================================================ */
+
+  .edit-notice {
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 10px;
+
+    margin-bottom: 20px;
+
+    padding: 12px 14px;
+
+    border-radius: 8px;
+
+    background: rgba(212,160,23,.07);
+
+    border: 1px solid rgba(212,160,23,.2);
+  }
+
+  .edit-notice-icon {
+    color: #B7860B;
+
+    flex-shrink: 0;
+
+    margin-top: 1px;
+  }
+
+  .edit-notice-text {
+    font-size: .73rem;
+
+    line-height: 1.45;
+
+    color: var(--text-mid);
+  }
+
+
+  /* ============================================================
+     BOTONES
+     ============================================================ */
+
+  .form-actions {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 12px;
+
+    margin-top: 23px;
+
+    padding-top: 18px;
+
+    border-top: 1px solid var(--border);
+  }
+
+  .btn-cancel {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    padding: 10px 15px;
+
+    border-radius: 7px;
+
+    background: transparent;
+
+    border: 1px solid var(--border);
+
+    color: var(--text-mid);
+
+    font-size: .75rem;
+
+    font-weight: 700;
+
+    text-decoration: none;
+
+    transition:
+      background var(--transition),
+      color var(--transition),
+      border-color var(--transition);
+  }
+
+  .btn-cancel:hover {
+    background: var(--cream);
+
+    color: var(--guinda);
+
+    border-color:
+      rgba(123,26,26,.25);
+  }
+
+  .btn-submit {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    padding: 11px 20px;
+
+    min-width: 190px;
+
+    border: none;
+
+    border-radius: 7px;
+
+    background:
+      linear-gradient(
+        135deg,
+        var(--guinda-dark),
+        var(--guinda)
+      );
+
+    color: #fff;
+
+    font-size: .76rem;
+
+    font-weight: 800;
+
+    cursor: pointer;
+
+    box-shadow:
+      0 4px 12px rgba(123,26,26,.18);
+
+    transition:
+      transform var(--transition),
+      box-shadow var(--transition),
+      background var(--transition);
+  }
+
+  .btn-submit:hover {
+    background:
+      linear-gradient(
+        135deg,
+        var(--guinda),
+        var(--guinda-mid)
+      );
+
+    transform: translateY(-1px);
+
+    box-shadow:
+      0 7px 18px rgba(123,26,26,.24);
+  }
+
+  .btn-submit:active {
+    transform: translateY(0);
+  }
+
+
+  /* ============================================================
+     DARK MODE
+     ============================================================ */
+
+  html[data-theme="dark"] .edit-hero {
+    box-shadow:
+      0 12px 38px rgba(0,0,0,.42);
+  }
+
+  html[data-theme="dark"] .form-card {
+    background: #1A1A1A;
+  }
+
+  html[data-theme="dark"] .alumno-bloque {
+    background: #202020;
+  }
+
+  html[data-theme="dark"] .alumno-bloque:hover {
+    box-shadow:
+      0 6px 18px rgba(0,0,0,.3);
+  }
+
+  html[data-theme="dark"] .edit-notice {
+    background: rgba(212,160,23,.08);
+  }
+
+
+  /* ============================================================
+     RESPONSIVE
+     ============================================================ */
+
+  @media (max-width: 700px) {
+
+    .edit-hero {
+      align-items: flex-start;
+
+      padding: 20px;
+    }
+
+    .edit-title {
+      font-size: 1.2rem;
+    }
+
+    .edit-case-id {
+      min-width: 66px;
+    }
+
+    .form-inner {
+      padding: 18px;
+    }
+
+    .row-two {
+      grid-template-columns: 1fr;
+
+      gap: 0;
+    }
+
+    .form-actions {
+      flex-direction: column-reverse;
+
+      align-items: stretch;
+    }
+
+    .btn-submit,
+    .btn-cancel {
+      width: 100%;
+    }
+
+  }
+
+
+  @media (max-width: 480px) {
+
+    .edit-hero {
+      flex-direction: column;
+
+      gap: 15px;
+    }
+
+    .edit-case-id {
+      width: 100%;
+
+      display: flex;
+
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .edit-case-id-number {
+      margin-top: 0;
+    }
+
+    .form-card-header {
+      padding: 15px 17px;
+    }
+
+    .form-inner {
+      padding: 15px;
+    }
+
+    .alumno-bloque {
+      padding: 14px;
+    }
+
+  }
+
+
+  /* ============================================================
+     REDUCCIÓN DE MOVIMIENTO
+     ============================================================ */
+
+  @media (prefers-reduced-motion: reduce) {
+
+    .metric-card,
+    .alumno-bloque,
+    .btn-submit,
+    .btn-remove-alumno,
+    .form-control {
+      transition: none !important;
+    }
+
+  }
+
 </style>
 {% endblock %}
 
+
 {% block content %}
+
+<div class="edit-case-page">
+
+  <!-- ==========================================================
+       BREADCRUMB
+       ========================================================== -->
+
   <div class="breadcrumb">
-    <a href="{% url 'dashboard' %}">Inicio</a>
-    <span class="breadcrumb-sep">›</span>
-    <a href="{% url 'historial_casos' %}">Casos</a>
-    <span class="breadcrumb-sep">›</span>
-    <span>Detalle #{{ caso.caso_id }}</span>
-  </div>
 
-  <div class="page-header">
-    <div>
-      <h1>Expediente de Caso #{{ caso.caso_id }}</h1>
-    </div>
-    <a href="{% url 'historial_casos' %}" class="btn-back">
-      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-      Volver al listado
+    <a href="{% url 'dashboard' %}">
+      Inicio
     </a>
+
+    <span class="breadcrumb-sep">›</span>
+
+    <span>
+      Casos
+    </span>
+
+    <span class="breadcrumb-sep">›</span>
+
+    <span>
+      Editar caso #{{ caso.caso_id }}
+    </span>
+
   </div>
 
-  <div class="grid-layout">
-    <!-- PANEL PRINCIPAL: DETALLES DE LA BITÁCORA -->
-    <div class="card-pane">
-      <div class="pane-title">Detalles de la Bitácora</div>
-      
-      <span class="meta-label">Título del Suceso</span>
-      <span class="meta-value" style="font-weight: 700; font-size: 1.05rem; color: var(--guinda);">{{ titulo }}</span>
-      
-      <span class="meta-label">Descripción Narrativa</span>
-      <div class="desc-box">
-        {{ descripcion }}
+
+  <!-- ==========================================================
+       HERO
+       ========================================================== -->
+
+  <section class="edit-hero">
+
+    <div class="edit-hero-main">
+
+      <div class="edit-overline">
+
+        <span class="edit-overline-dot"></span>
+
+        Gestión de expediente
+
       </div>
 
-      {% if nombre_foto %}
-        <span class="meta-label" style="margin-top: 20px;">Evidencia Adjunta de Respaldo</span>
-        <div class="evidence-box">
-          <img src="{% static 'evidencias/' %}{{ nombre_foto }}" alt="Evidencia Fotográfica del Caso" class="evidence-img">
-        </div>
-      {% endif %}
-
-      <!-- Cuadrícula de 3 columnas para Fecha, Lugar y Tipo de Falta -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px;">
-        <div>
-          <span class="meta-label">Fecha del Suceso</span>
-          <span class="meta-value">📅 {{ caso.caso_fecha|date:"d \d\e F, Y" }}</span>
-        </div>
-        <div>
-          <span class="meta-label">Lugar de los Hechos</span>
-          <span class="meta-value">📍 {{ caso.lugar.lugar_nombre|default:"No especificado" }}</span>
-        </div>
-        <!-- 🌟 TIPO DE FALTA MOVIDO A DETALLES DE BITÁCORA -->
-        <div>
-          <span class="meta-label">Gravedad de la Falta</span>
-          <div>
-            <span class="badge-falta falta-{{ tipo_falta }}">
-              {{ tipo_falta }}
-            </span>
-          </div>
-        </div>
+      <div class="edit-title">
+        Editar caso de convivencia
       </div>
+
+      <div class="edit-subtitle">
+        Modificación de la información registrada en la bitácora.
+      </div>
+
     </div>
 
-    <!-- PANEL LATERAL: IMPLICADOS -->
-    <div class="card-pane">
-      <div class="pane-title">Implicados ({% if relaciones %}{{ relaciones|length }}{% else %}0{% endif %})</div>
-      
-      {% if relaciones %}
-        {% for relacion in relaciones %}
-          <div class="student-item">
-            <div class="student-header">
-              <!-- 🌟 ORDEN DE NOMBRE: Nombre ApellidoPaterno ApellidoMaterno -->
-              <span class="student-name">
-                {{ relacion.estudiante.estudiante_nombre }} {{ relacion.estudiante.estudiante_apaterno }} {{ relacion.estudiante.estudiante_amaterno }}
-              </span>
-              <span class="student-list-num">
-                N° Lista: {% if relacion.estudiante.estudiante_numero_lista %}{{ relacion.estudiante.estudiante_numero_lista }}{% else %}N/A{% endif %}
-              </span>
+
+    <div class="edit-case-id">
+
+      <div>
+
+        <div class="edit-case-id-label">
+          Caso
+        </div>
+
+        <div class="edit-case-id-number">
+          #{{ caso.caso_id }}
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ==========================================================
+       FORMULARIO
+       ========================================================== -->
+
+  <section class="form-card">
+
+    <div class="form-card-header">
+
+      <div class="form-card-icon">
+
+        <svg
+          width="17"
+          height="17"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"
+          />
+
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+          />
+        </svg>
+
+      </div>
+
+      <div>
+
+        <div class="form-card-title">
+          Información del caso
+        </div>
+
+        <div class="form-card-subtitle">
+          Actualiza los antecedentes que correspondan.
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="form-inner">
+
+      <div class="edit-notice">
+
+        <div class="edit-notice-icon">
+
+          <svg
+            width="16"
+            height="16"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 9v3.75m9-.75a9 9 0 11-18 0zm-9 3.75h.008v.008H12v-.008z"
+            />
+          </svg>
+
+        </div>
+
+        <div class="edit-notice-text">
+          Los cambios realizados aquí actualizarán el registro oficial del caso.
+        </div>
+
+      </div>
+
+
+      <form method="POST">
+
+        {% csrf_token %}
+
+
+        <!-- ======================================================
+             INFORMACIÓN PRINCIPAL
+             ====================================================== -->
+
+        <section class="form-section">
+
+          <div class="section-heading">
+
+            <div class="section-number">
+              01
             </div>
 
-            <div style="font-size: .8rem; color: var(--text-mid); margin-top: 6px;">
-              🏫 <strong>Curso:</strong> {{ relacion.estudiante.curso.curso_grado }} {{ relacion.estudiante.curso.curso_letra }}
+            <div class="section-title">
+              Información del incidente
             </div>
+
           </div>
-        {% endfor %}
-      {% else %}
-        <span class="meta-value" style="color: var(--text-lo); font-style: italic;">No hay alumnos registrados en este caso.</span>
-      {% endif %}
 
-      <span class="meta-label" style="border-top: 1px solid var(--border); margin-top: 20px; padding-top: 14px;">Funcionario Registrador</span>
-      <span class="meta-value" style="font-size: .83rem; color: var(--text-mid); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-        👤 {{ caso.usuario.usuario_nombre }} {{ caso.usuario.usuario_apaterno }}
-        
-        {% if es_mi_caso %}
-          <span style="background: rgba(123,26,26,.1); color: var(--guinda); padding: 2px 6px; border-radius: 4px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .02em;">
-            Registrado por mí
-          </span>
-        {% endif %}
-      </span>
+
+          <div class="form-group">
+
+            <label>
+              Título del incidente
+            </label>
+
+            <input
+              type="text"
+              name="titulo"
+              class="form-control"
+              value="{{ titulo_actual }}"
+              required
+            >
+
+          </div>
+
+
+          <div class="row-two">
+
+            <div class="form-group">
+
+              <label>
+                Lugar del colegio
+              </label>
+
+              <select
+                name="lugar"
+                class="form-control"
+                required
+              >
+
+                {% for l in lugares %}
+
+                  <option
+                    value="{{ l.lugar_id }}"
+                    {% if l.lugar_id == caso.lugar_id %}selected{% endif %}
+                  >
+                    {{ l.lugar_nombre }}
+                  </option>
+
+                {% endfor %}
+
+              </select>
+
+            </div>
+
+
+            <div class="form-group">
+
+              <label>
+                Severidad de la falta
+              </label>
+
+              <select
+                name="tipo_falta"
+                class="form-control"
+                required
+              >
+
+                <option
+                  value="Leve"
+                  {% if tipo_falta_actual == "Leve" %}selected{% endif %}
+                >
+                  Leve
+                </option>
+
+                <option
+                  value="Grave"
+                  {% if tipo_falta_actual == "Grave" %}selected{% endif %}
+                >
+                  Grave
+                </option>
+
+                <option
+                  value="Gravísima"
+                  {% if tipo_falta_actual == "Gravísima" %}selected{% endif %}
+                >
+                  Gravísima
+                </option>
+
+              </select>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- ======================================================
+             ALUMNOS
+             ====================================================== -->
+
+        <section class="form-section">
+
+          <div class="section-heading">
+
+            <div class="section-number">
+              02
+            </div>
+
+            <div class="section-title">
+              Alumnos involucrados
+            </div>
+
+          </div>
+
+
+          {% for est in estudiantes %}
+
+          <div class="alumno-bloque">
+
+            <div class="alumno-bloque-header">
+
+              <div class="alumno-heading">
+
+                <div class="alumno-heading-icon">
+
+                  <svg
+                    width="15"
+                    height="15"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+
+                </div>
+
+                <div>
+
+                  <div class="alumno-heading-text">
+                    Alumno involucrado
+                  </div>
+
+                  <div class="alumno-heading-number">
+                    Registro #{{ forloop.counter }}
+                  </div>
+
+                </div>
+
+              </div>
+
+
+              {% if estudiantes|length > 1 %}
+
+              <button
+                type="button"
+                class="btn-remove-alumno"
+                title="Eliminar a este alumno del caso"
+                onclick="if(confirm('¿Eliminar a {{ est.estudiante_nombre }} {{ est.estudiante_apaterno }} de este caso?')){ document.getElementById('form-eliminar-{{ est.estudiante_id }}').submit(); }"
+              >
+
+                <svg
+                  width="14"
+                  height="14"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+
+              </button>
+
+              {% endif %}
+
+            </div>
+
+
+            <input
+              type="hidden"
+              name="estudiante_id[]"
+              value="{{ est.estudiante_id }}"
+            >
+
+
+            <div class="form-group">
+
+              <label>
+                Nombre del estudiante
+              </label>
+
+              <input
+                type="text"
+                name="alumno_nombre[]"
+                class="form-control"
+                value="{{ est.estudiante_nombre }}"
+                required
+              >
+
+            </div>
+
+
+            <div class="row-two">
+
+              <div class="form-group">
+
+                <label>
+                  Apellido paterno
+                </label>
+
+                <input
+                  type="text"
+                  name="alumno_apaterno[]"
+                  class="form-control"
+                  value="{{ est.estudiante_apaterno }}"
+                  required
+                >
+
+              </div>
+
+
+              <div class="form-group">
+
+                <label>
+                  Apellido materno
+                </label>
+
+                <input
+                  type="text"
+                  name="alumno_amaterno[]"
+                  class="form-control"
+                  value="{{ est.estudiante_amaterno }}"
+                  required
+                >
+
+              </div>
+
+            </div>
+
+
+            <div class="form-group">
+
+              <label>
+                Curso actual
+              </label>
+
+              <select
+                name="curso[]"
+                class="form-control"
+                required
+              >
+
+                {% for c in cursos %}
+
+                  <option
+                    value="{{ c.curso_id }}"
+                    {% if c.curso_id == est.curso_id %}selected{% endif %}
+                  >
+                    {{ c.curso_grado }} {{ c.curso_letra }}
+                  </option>
+
+                {% endfor %}
+
+              </select>
+
+            </div>
+
+          </div>
+
+          {% endfor %}
+
+        </section>
+
+
+        <!-- ======================================================
+             DESCRIPCIÓN
+             ====================================================== -->
+
+        <section class="form-section">
+
+          <div class="section-heading">
+
+            <div class="section-number">
+              03
+            </div>
+
+            <div class="section-title">
+              Relato de los hechos
+            </div>
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label>
+              Descripción / relato de los hechos
+            </label>
+
+            <textarea
+              name="descripcion"
+              class="form-control"
+              rows="5"
+              required
+            >{{ descripcion_actual }}</textarea>
+
+          </div>
+
+        </section>
+
+
+        <!-- ======================================================
+             ACCIONES
+             ====================================================== -->
+
+        <div class="form-actions">
+
+          <a
+            href="{% url 'detalle_caso' caso.caso_id %}"
+            class="btn-cancel"
+          >
+
+            <svg
+              width="14"
+              height="14"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+
+            Cancelar
+
+          </a>
+
+
+          <button
+            type="submit"
+            class="btn-submit"
+          >
+
+            <svg
+              width="15"
+              height="15"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+
+            Guardar cambios
+
+          </button>
+
+        </div>
+
+      </form>
+
+
+      <!-- ========================================================
+           FORMULARIOS OCULTOS
+           Fuera del formulario principal para evitar
+           formularios HTML anidados.
+           ======================================================== -->
+
+      {% for est in estudiantes %}
+
+      <form
+        id="form-eliminar-{{ est.estudiante_id }}"
+        method="POST"
+        action="{% url 'eliminar_estudiante_caso' caso.caso_id est.estudiante_id %}"
+        style="display:none;"
+      >
+
+        {% csrf_token %}
+
+      </form>
+
+      {% endfor %}
+
     </div>
-  </div>
+
+  </section>
+
+</div>
+
 {% endblock %}

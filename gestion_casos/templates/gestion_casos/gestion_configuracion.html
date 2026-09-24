@@ -5,113 +5,1433 @@
 
 {% block extra_css %}
 <style>
-  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--text-lo); margin-bottom: 18px; }
-  .breadcrumb a { color: var(--guinda); text-decoration: none; font-weight: 500; }
-  .breadcrumb a:hover { text-decoration: underline; }
-  .breadcrumb-sep { opacity: .4; }
 
-  .page-header { margin-bottom: 24px; }
-  .page-header h1 { font-family: 'Merriweather', serif; font-size: 1.5rem; font-weight: 900; color: var(--guinda); }
-  .page-header p { font-size: .85rem; color: var(--text-lo); margin-top: 4px; }
+  /* ============================================================
+     PÁGINA
+     ============================================================ */
 
-  .pane-card-profile { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 28px; max-width: 600px; }
-  
-  .data-group { margin-bottom: 16px; }
-  .data-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; color: var(--text-mid); margin-bottom: 6px; }
-  
-  .form-control-input { width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--white); color: var(--text-dark); font-size: .85rem; font-family: inherit; box-sizing: border-box; }
-  .form-control-input:focus { outline: none; border-color: var(--guinda); }
-  .form-control-input:disabled { background: #f7f3ed; color: #777; cursor: not-allowed; opacity: 0.8; }
-  
-  .btn-save-profile { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 22px; border-radius: 6px; background: var(--guinda); color: #fff; font-size: .83rem; font-weight: 600; border: none; cursor: pointer; transition: all var(--transition); margin-top: 8px; width: 100%; }
-  .btn-save-profile:hover { background: var(--guinda-mid); box-shadow: 0 4px 12px rgba(123,26,26,.2); }
+  .settings-page {
+    width: 100%;
+    max-width: 980px;
+    margin: 0 auto;
+  }
 
-  /* 🌟 Ventana emergente: obliga a cambiar la contraseña temporal */
-  .pw-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(28,10,10,.65); z-index: 3000; align-items: center; justify-content: center; padding: 20px; }
-  .pw-modal-overlay.open { display: flex; }
-  .pw-modal-box { background: var(--white); border-radius: var(--radius); width: 100%; max-width: 420px; box-shadow: 0 24px 70px rgba(0,0,0,.4); border-top: 4px solid var(--gold); overflow: hidden; }
-  .pw-modal-icon { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 50%; background: #fef9e7; color: #B7860B; margin: 26px auto 0; }
-  .pw-modal-title { font-family: 'Merriweather', serif; font-weight: 900; font-size: 1.1rem; color: var(--guinda); text-align: center; margin: 14px 26px 6px; }
-  .pw-modal-text { font-size: .85rem; color: var(--text-mid); text-align: center; margin: 0 26px 24px; line-height: 1.55; }
-  .pw-modal-actions { padding: 18px 26px 26px; }
-  .pw-modal-btn { width: 100%; padding: 11px; border-radius: 8px; font-size: .85rem; font-weight: 700; cursor: pointer; border: none; background: var(--guinda); color: #fff; transition: all var(--transition); }
-  .pw-modal-btn:hover { background: var(--guinda-mid); box-shadow: 0 4px 12px rgba(123,26,26,.25); }
+
+  /* ============================================================
+     BREADCRUMB
+     ============================================================ */
+
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+
+    font-size: .76rem;
+    color: var(--text-lo);
+
+    margin-bottom: 18px;
+  }
+
+  .breadcrumb a {
+    color: var(--guinda);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .breadcrumb a:hover {
+    text-decoration: underline;
+  }
+
+  .breadcrumb-sep {
+    opacity: .4;
+  }
+
+
+  /* ============================================================
+     HEADER
+     ============================================================ */
+
+  .settings-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+
+    gap: 20px;
+
+    margin-bottom: 18px;
+  }
+
+  .settings-header-main {
+    position: relative;
+
+    padding-left: 13px;
+  }
+
+  .settings-header-main::before {
+    content: "";
+
+    position: absolute;
+
+    left: 0;
+    top: 2px;
+    bottom: 2px;
+
+    width: 4px;
+
+    border-radius: 999px;
+
+    background:
+      linear-gradient(
+        180deg,
+        var(--gold),
+        var(--guinda)
+      );
+  }
+
+  .settings-header h1 {
+    font-family: 'Merriweather', serif;
+
+    font-size: 1.45rem;
+
+    font-weight: 900;
+
+    color: var(--guinda);
+  }
+
+  .settings-header p {
+    margin-top: 4px;
+
+    font-size: .8rem;
+
+    color: var(--text-lo);
+  }
+
+  .settings-header-tag {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 7px;
+
+    padding: 6px 10px;
+
+    border-radius: 999px;
+
+    background: var(--white);
+
+    border: 1px solid var(--border);
+
+    color: var(--text-mid);
+
+    font-size: .65rem;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+    letter-spacing: .05em;
+
+    box-shadow: var(--shadow);
+
+    white-space: nowrap;
+  }
+
+  .settings-header-tag-dot {
+    width: 6px;
+    height: 6px;
+
+    border-radius: 50%;
+
+    background: #1E8449;
+  }
+
+
+  /* ============================================================
+     LAYOUT
+     ============================================================ */
+
+  .settings-layout {
+    display: grid;
+
+    grid-template-columns:
+      260px minmax(0, 1fr);
+
+    gap: 16px;
+
+    align-items: start;
+  }
+
+
+  /* ============================================================
+     PANEL LATERAL
+     ============================================================ */
+
+  .settings-side {
+    background: var(--white);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius);
+
+    box-shadow: var(--shadow);
+
+    overflow: hidden;
+  }
+
+  .account-card {
+    padding: 20px;
+
+    background:
+      linear-gradient(
+        145deg,
+        rgba(123,26,26,.07),
+        transparent
+      );
+
+    border-bottom: 1px solid var(--border);
+  }
+
+  .account-avatar {
+    width: 52px;
+    height: 52px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: var(--guinda);
+
+    color: #fff;
+
+    border: 2px solid var(--gold);
+
+    font-family: 'Merriweather', serif;
+
+    font-size: 1rem;
+
+    font-weight: 900;
+
+    margin-bottom: 12px;
+  }
+
+  .account-name {
+    font-family: 'Merriweather', serif;
+
+    font-size: .9rem;
+
+    line-height: 1.35;
+
+    font-weight: 900;
+
+    color: var(--text-dark);
+
+    overflow-wrap: anywhere;
+  }
+
+  .account-email {
+    margin-top: 4px;
+
+    font-size: .68rem;
+
+    color: var(--text-lo);
+
+    line-height: 1.4;
+
+    overflow-wrap: anywhere;
+  }
+
+  .account-section {
+    padding: 14px 20px;
+  }
+
+  .account-section-label {
+    font-size: .62rem;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: .07em;
+
+    color: var(--text-lo);
+
+    margin-bottom: 8px;
+  }
+
+  .account-status {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    color: #1E8449;
+
+    font-size: .7rem;
+
+    font-weight: 700;
+  }
+
+  .account-status-dot {
+    width: 7px;
+    height: 7px;
+
+    border-radius: 50%;
+
+    background: #1E8449;
+
+    box-shadow:
+      0 0 0 3px rgba(30,132,73,.10);
+  }
+
+
+  /* ============================================================
+     PANEL PRINCIPAL
+     ============================================================ */
+
+  .settings-card {
+    background: var(--white);
+
+    border: 1px solid var(--border);
+
+    border-radius: var(--radius);
+
+    box-shadow: var(--shadow);
+
+    overflow: hidden;
+  }
+
+  .settings-card-header {
+    display: flex;
+    align-items: center;
+
+    gap: 11px;
+
+    padding: 17px 20px;
+
+    border-bottom: 1px solid var(--border);
+  }
+
+  .settings-card-icon {
+    width: 35px;
+    height: 35px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 8px;
+
+    background: rgba(123,26,26,.08);
+
+    color: var(--guinda);
+
+    flex-shrink: 0;
+  }
+
+  .settings-card-title {
+    font-family: 'Merriweather', serif;
+
+    font-size: .94rem;
+
+    font-weight: 900;
+
+    color: var(--text-dark);
+  }
+
+  .settings-card-subtitle {
+    margin-top: 2px;
+
+    font-size: .69rem;
+
+    color: var(--text-lo);
+  }
+
+  .settings-inner {
+    padding: 21px;
+  }
+
+
+  /* ============================================================
+     SECCIONES
+     ============================================================ */
+
+  .settings-section {
+    margin-bottom: 23px;
+  }
+
+  .settings-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .section-heading {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    margin-bottom: 14px;
+
+    padding-bottom: 9px;
+
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-marker {
+    width: 23px;
+    height: 23px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 6px;
+
+    background: var(--guinda);
+
+    color: #fff;
+
+    font-size: .6rem;
+
+    font-weight: 800;
+  }
+
+  .section-title {
+    font-size: .74rem;
+
+    font-weight: 800;
+
+    color: var(--text-dark);
+
+    text-transform: uppercase;
+
+    letter-spacing: .05em;
+  }
+
+
+  /* ============================================================
+     CAMPOS
+     ============================================================ */
+
+  .data-group {
+    margin-bottom: 15px;
+  }
+
+  .data-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .data-label {
+    display: block;
+
+    font-size: .65rem;
+
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: .05em;
+
+    color: var(--text-mid);
+
+    margin-bottom: 6px;
+  }
+
+  .field-hint {
+    margin-top: 4px;
+
+    font-size: .64rem;
+
+    color: var(--text-lo);
+
+    line-height: 1.4;
+  }
+
+  .form-control-input {
+    display: block;
+
+    width: 100%;
+
+    padding: 10px 12px;
+
+    box-sizing: border-box;
+
+    border-radius: 7px;
+
+    border: 1px solid var(--border);
+
+    background: var(--surface-soft);
+
+    color: var(--text-dark);
+
+    font-family: inherit;
+
+    font-size: .83rem;
+
+    outline: none;
+
+    transition:
+      border-color var(--transition),
+      box-shadow var(--transition),
+      background-color var(--transition);
+  }
+
+  .form-control-input:hover {
+    border-color:
+      rgba(123,26,26,.24);
+  }
+
+  .form-control-input:focus {
+    border-color: var(--guinda);
+
+    background: var(--white);
+
+    box-shadow:
+      0 0 0 3px rgba(123,26,26,.08);
+  }
+
+  .form-control-input:disabled {
+    background: var(--cream);
+
+    color: var(--text-lo);
+
+    cursor: not-allowed;
+
+    opacity: 1;
+  }
+
+  html[data-theme="dark"] .form-control-input {
+    background: #202020;
+
+    color: #F4F1EC;
+
+    border-color: rgba(255,255,255,.12);
+  }
+
+  html[data-theme="dark"] .form-control-input:focus {
+    background: #242424;
+  }
+
+  html[data-theme="dark"] .form-control-input:disabled {
+    background: #181818;
+
+    color: #89827D;
+  }
+
+
+  /* ============================================================
+     CORREO BLOQUEADO
+     ============================================================ */
+
+  .locked-field {
+    position: relative;
+  }
+
+  .locked-field .form-control-input {
+    padding-right: 42px;
+  }
+
+  .locked-icon {
+    position: absolute;
+
+    right: 12px;
+    bottom: 10px;
+
+    color: var(--text-lo);
+
+    pointer-events: none;
+  }
+
+
+  /* ============================================================
+     CONTRASEÑA
+     ============================================================ */
+
+  .password-field {
+    position: relative;
+  }
+
+  .password-field .form-control-input {
+    padding-right: 42px;
+  }
+
+  .password-icon {
+    position: absolute;
+
+    right: 12px;
+    bottom: 10px;
+
+    color: var(--text-lo);
+
+    pointer-events: none;
+  }
+
+
+  /* ============================================================
+     ACCIONES
+     ============================================================ */
+
+  .settings-actions {
+    display: flex;
+
+    justify-content: flex-end;
+
+    padding-top: 18px;
+
+    border-top: 1px solid var(--border);
+
+    margin-top: 20px;
+  }
+
+  .btn-save-profile {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    min-width: 190px;
+
+    padding: 11px 20px;
+
+    border: none;
+
+    border-radius: 7px;
+
+    background:
+      linear-gradient(
+        135deg,
+        var(--guinda-dark),
+        var(--guinda)
+      );
+
+    color: #fff;
+
+    font-size: .75rem;
+
+    font-weight: 800;
+
+    cursor: pointer;
+
+    box-shadow:
+      0 4px 12px rgba(123,26,26,.18);
+
+    transition:
+      transform var(--transition),
+      box-shadow var(--transition),
+      background var(--transition);
+  }
+
+  .btn-save-profile:hover {
+    background:
+      linear-gradient(
+        135deg,
+        var(--guinda),
+        var(--guinda-mid)
+      );
+
+    transform: translateY(-1px);
+
+    box-shadow:
+      0 7px 18px rgba(123,26,26,.24);
+  }
+
+  .btn-save-profile:active {
+    transform: translateY(0);
+  }
+
+
+  /* ============================================================
+     MODAL CONTRASEÑA
+     ============================================================ */
+
+  .pw-modal-overlay {
+    display: none;
+
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 3000;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    background:
+      rgba(20,8,8,.72);
+
+    backdrop-filter: blur(5px);
+
+    -webkit-backdrop-filter: blur(5px);
+  }
+
+  .pw-modal-overlay.open {
+    display: flex;
+  }
+
+  .pw-modal-box {
+    width: 100%;
+
+    max-width: 430px;
+
+    background: var(--white);
+
+    border: 1px solid var(--border);
+
+    border-top: 4px solid var(--gold);
+
+    border-radius: var(--radius);
+
+    box-shadow:
+      0 24px 70px rgba(0,0,0,.42);
+
+    overflow: hidden;
+  }
+
+  .pw-modal-content {
+    padding: 26px 26px 0;
+  }
+
+  .pw-modal-icon {
+    width: 50px;
+    height: 50px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 12px;
+
+    background: rgba(212,160,23,.12);
+
+    border: 1px solid rgba(212,160,23,.22);
+
+    color: #B7860B;
+
+    margin: 0 auto 14px;
+  }
+
+  .pw-modal-overline {
+    text-align: center;
+
+    font-size: .62rem;
+
+    font-weight: 700;
+
+    color: var(--text-lo);
+
+    text-transform: uppercase;
+
+    letter-spacing: .08em;
+
+    margin-bottom: 4px;
+  }
+
+  .pw-modal-title {
+    font-family: 'Merriweather', serif;
+
+    font-weight: 900;
+
+    font-size: 1.08rem;
+
+    color: var(--guinda);
+
+    text-align: center;
+
+    margin-bottom: 7px;
+  }
+
+  .pw-modal-text {
+    font-size: .79rem;
+
+    color: var(--text-mid);
+
+    text-align: center;
+
+    line-height: 1.55;
+  }
+
+  .pw-modal-actions {
+    padding: 19px 26px 26px;
+  }
+
+  .pw-modal-btn {
+    width: 100%;
+
+    padding: 11px;
+
+    border-radius: 7px;
+
+    font-size: .76rem;
+
+    font-weight: 800;
+
+    cursor: pointer;
+
+    border: none;
+
+    background: var(--guinda);
+
+    color: #fff;
+
+    transition:
+      background var(--transition),
+      box-shadow var(--transition);
+  }
+
+  .pw-modal-btn:hover {
+    background: var(--guinda-mid);
+
+    box-shadow:
+      0 5px 15px rgba(123,26,26,.25);
+  }
+
+  html[data-theme="dark"] .pw-modal-box {
+    background: #1A1A1A;
+  }
+
+
+  /* ============================================================
+     RESPONSIVE
+     ============================================================ */
+
+  @media (max-width: 800px) {
+
+    .settings-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .settings-side {
+      display: grid;
+
+      grid-template-columns:
+        1fr 1fr;
+    }
+
+    .account-card {
+      border-bottom: none;
+
+      border-right: 1px solid var(--border);
+    }
+
+  }
+
+
+  @media (max-width: 600px) {
+
+    .settings-header {
+      align-items: flex-start;
+
+      flex-direction: column;
+
+      gap: 10px;
+    }
+
+    .settings-header-tag {
+      align-self: flex-start;
+    }
+
+    .settings-side {
+      display: block;
+    }
+
+    .account-card {
+      border-right: none;
+
+      border-bottom: 1px solid var(--border);
+    }
+
+    .settings-inner {
+      padding: 17px;
+    }
+
+    .settings-actions {
+      justify-content: stretch;
+    }
+
+    .btn-save-profile {
+      width: 100%;
+    }
+
+  }
+
+
+  @media (max-width: 430px) {
+
+    .settings-header h1 {
+      font-size: 1.25rem;
+    }
+
+    .settings-card-header {
+      padding: 15px 17px;
+    }
+
+    .pw-modal-content {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    .pw-modal-actions {
+      padding-left: 20px;
+      padding-right: 20px;
+      padding-bottom: 20px;
+    }
+
+  }
+
+
+  /* ============================================================
+     REDUCCIÓN DE MOVIMIENTO
+     ============================================================ */
+
+  @media (prefers-reduced-motion: reduce) {
+
+    .form-control-input,
+    .btn-save-profile,
+    .pw-modal-btn {
+      transition: none !important;
+    }
+
+  }
+
 </style>
 {% endblock %}
 
+
 {% block content %}
+
+<div class="settings-page">
+
+  <!-- ==========================================================
+       BREADCRUMB
+       ========================================================== -->
+
   <div class="breadcrumb">
-    <a href="{% url 'dashboard' %}">Inicio</a>
+
+    <a href="{% url 'dashboard' %}">
+      Inicio
+    </a>
+
     <span class="breadcrumb-sep">›</span>
-    <span>Configuración</span>
+
+    <span>
+      Configuración
+    </span>
+
   </div>
 
-  <div class="page-header">
-    <h1>Configuración de la Cuenta</h1>
-    <p>Gestiona tus credenciales de acceso y datos privados de seguridad</p>
+
+  <!-- ==========================================================
+       HEADER
+       ========================================================== -->
+
+  <div class="settings-header">
+
+    <div class="settings-header-main">
+
+      <h1>
+        Configuración de la Cuenta
+      </h1>
+
+      <p>
+        Gestiona tus credenciales de acceso y datos privados de seguridad.
+      </p>
+
+    </div>
+
+
+    <div class="settings-header-tag">
+
+      <span class="settings-header-tag-dot"></span>
+
+      Cuenta activa
+
+    </div>
+
   </div>
 
-  <div class="pane-card-profile">
-    <form action="{% url 'gestion_configuracion' %}" method="POST">
-      {% csrf_token %}
-      
-      <div class="data-group">
-        <label class="data-label">Nombres</label>
-        <input type="text" name="nombre" class="form-control-input" value="{{ perfil.usuario_nombre }}" required>
+
+  <!-- ==========================================================
+       LAYOUT
+       ========================================================== -->
+
+  <div class="settings-layout">
+
+
+    <!-- ========================================================
+         PANEL LATERAL
+         ======================================================== -->
+
+    <aside class="settings-side">
+
+      <div class="account-card">
+
+        <div class="account-avatar">
+
+          {{ perfil.usuario_nombre|slice:":1" }}{{ perfil.usuario_apaterno|slice:":1" }}
+
+        </div>
+
+        <div class="account-name">
+
+          {{ perfil.usuario_nombre }}
+          {{ perfil.usuario_apaterno }}
+
+        </div>
+
+        <div class="account-email">
+
+          {{ perfil.usuario_correo }}
+
+        </div>
+
       </div>
 
-      <div class="data-group">
-        <label class="data-label">Apellido Paterno</label>
-        <input type="text" name="apaterno" class="form-control-input" value="{{ perfil.usuario_apaterno }}" required>
+
+      <div class="account-section">
+
+        <div class="account-section-label">
+          Estado de la cuenta
+        </div>
+
+        <div class="account-status">
+
+          <span class="account-status-dot"></span>
+
+          Cuenta operativa
+
+        </div>
+
       </div>
 
-      <div class="data-group">
-        <label class="data-label">Apellido Materno</label>
-        <input type="text" name="amaterno" class="form-control-input" value="{{ perfil.usuario_amaterno }}" required>
+    </aside>
+
+
+    <!-- ========================================================
+         PANEL PRINCIPAL
+         ======================================================== -->
+
+    <section class="settings-card">
+
+      <div class="settings-card-header">
+
+        <div class="settings-card-icon">
+
+          <svg
+            width="17"
+            height="17"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 001.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            />
+
+            <circle
+              cx="12"
+              cy="12"
+              r="3"
+            />
+
+          </svg>
+
+        </div>
+
+
+        <div>
+
+          <div class="settings-card-title">
+            Datos de acceso
+          </div>
+
+          <div class="settings-card-subtitle">
+            Información personal y credenciales de tu cuenta.
+          </div>
+
+        </div>
+
       </div>
 
-      <div class="data-group">
-        <label class="data-label">Correo Institucional (No modificable)</label>
-        <input type="email" class="form-control-input" value="{{ perfil.usuario_correo }}" disabled>
+
+      <div class="settings-inner">
+
+        <form
+          action="{% url 'gestion_configuracion' %}"
+          method="POST"
+        >
+
+          {% csrf_token %}
+
+
+          <!-- ==================================================
+               DATOS PERSONALES
+               ================================================== -->
+
+          <section class="settings-section">
+
+            <div class="section-heading">
+
+              <div class="section-marker">
+                01
+              </div>
+
+              <div class="section-title">
+                Datos personales
+              </div>
+
+            </div>
+
+
+            <div class="data-group">
+
+              <label class="data-label">
+                Nombres
+              </label>
+
+              <input
+                type="text"
+                name="nombre"
+                class="form-control-input"
+                value="{{ perfil.usuario_nombre }}"
+                required
+              >
+
+            </div>
+
+
+            <div class="data-group">
+
+              <label class="data-label">
+                Apellido paterno
+              </label>
+
+              <input
+                type="text"
+                name="apaterno"
+                class="form-control-input"
+                value="{{ perfil.usuario_apaterno }}"
+                required
+              >
+
+            </div>
+
+
+            <div class="data-group">
+
+              <label class="data-label">
+                Apellido materno
+              </label>
+
+              <input
+                type="text"
+                name="amaterno"
+                class="form-control-input"
+                value="{{ perfil.usuario_amaterno }}"
+                required
+              >
+
+            </div>
+
+          </section>
+
+
+          <!-- ==================================================
+               CUENTA
+               ================================================== -->
+
+          <section class="settings-section">
+
+            <div class="section-heading">
+
+              <div class="section-marker">
+                02
+              </div>
+
+              <div class="section-title">
+                Cuenta institucional
+              </div>
+
+            </div>
+
+
+            <div class="data-group">
+
+              <label class="data-label">
+                Correo institucional
+              </label>
+
+              <div class="locked-field">
+
+                <input
+                  type="email"
+                  class="form-control-input"
+                  value="{{ perfil.usuario_correo }}"
+                  disabled
+                >
+
+                <div class="locked-icon">
+
+                  <svg
+                    width="14"
+                    height="14"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <rect
+                      x="5"
+                      y="11"
+                      width="14"
+                      height="10"
+                      rx="2"
+                    />
+
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M8 11V8a4 4 0 018 0v3"
+                    />
+
+                  </svg>
+
+                </div>
+
+              </div>
+
+              <div class="field-hint">
+                El correo institucional no puede modificarse desde esta pantalla.
+              </div>
+
+            </div>
+
+          </section>
+
+
+          <!-- ==================================================
+               SEGURIDAD
+               ================================================== -->
+
+          <section class="settings-section">
+
+            <div class="section-heading">
+
+              <div class="section-marker">
+                03
+              </div>
+
+              <div class="section-title">
+                Seguridad
+              </div>
+
+            </div>
+
+
+            <div class="data-group">
+
+              <label class="data-label">
+                Modificar contraseña de acceso
+              </label>
+
+              <div class="password-field">
+
+                <input
+                  type="password"
+                  name="contrasena"
+                  class="form-control-input"
+                  placeholder="Dejar vacío para conservar la contraseña actual"
+                >
+
+                <div class="password-icon">
+
+                  <svg
+                    width="14"
+                    height="14"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <circle
+                      cx="8"
+                      cy="15"
+                      r="4"
+                    />
+
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M10.85 12.15L19 4m0 0v4m0-4h-4"
+                    />
+
+                  </svg>
+
+                </div>
+
+              </div>
+
+              <div class="field-hint">
+                Si no deseas cambiarla, deja este campo vacío.
+              </div>
+
+            </div>
+
+          </section>
+
+
+          <!-- ==================================================
+               ACCIONES
+               ================================================== -->
+
+          <div class="settings-actions">
+
+            <button
+              type="submit"
+              class="btn-save-profile"
+            >
+
+              <svg
+                width="14"
+                height="14"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2.5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+
+              Actualizar datos
+
+            </button>
+
+          </div>
+
+        </form>
+
       </div>
 
-      <div class="data-group">
-        <label class="data-label">Modificar Contraseña de Acceso</label>
-        <input type="password" name="contrasena" class="form-control-input" placeholder="Dejar vacío si deseas conservar tu contraseña actual">
-      </div>
+    </section>
 
-      <button type="submit" class="btn-save-profile">
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-        Actualizar Datos Privados
-      </button>
-    </form>
   </div>
+
+
+  <!-- ==========================================================
+       MODAL — CAMBIO DE CONTRASEÑA TEMPORAL
+       ========================================================== -->
 
   {% if debe_cambiar_contrasena %}
-  <!-- 🌟 Ventana emergente obligatoria: contraseña temporal -->
-  <div class="pw-modal-overlay open" id="pwModalOverlay">
+
+  <div
+    class="pw-modal-overlay open"
+    id="pwModalOverlay"
+  >
+
     <div class="pw-modal-box">
-      <div class="pw-modal-icon">
-        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zM8 11v6M16 8h.01M16 11a4 4 0 100-8 4 4 0 000 8z"/></svg>
+
+      <div class="pw-modal-content">
+
+        <div class="pw-modal-icon">
+
+          <svg
+            width="24"
+            height="24"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+
+            <circle
+              cx="8"
+              cy="15"
+              r="4"
+            />
+
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M10.85 12.15L19 4m0 0v4m0-4h-4"
+            />
+
+          </svg>
+
+        </div>
+
+
+        <div class="pw-modal-overline">
+          Acción de seguridad requerida
+        </div>
+
+
+        <div class="pw-modal-title">
+          Debes cambiar tu contraseña
+        </div>
+
+
+        <div class="pw-modal-text">
+          Iniciaste sesión con una contraseña temporal.
+          Por seguridad, el sistema requiere que definas
+          una contraseña nueva y personal antes de poder
+          continuar usando ConviData.
+        </div>
+
       </div>
-      <div class="pw-modal-title">Debes cambiar tu contraseña</div>
-      <div class="pw-modal-text">
-        Iniciaste sesión con una contraseña temporal. Por seguridad, el sistema requiere que
-        definas una contraseña nueva y personal antes de poder continuar usando ConviData.
-      </div>
+
+
       <div class="pw-modal-actions">
-        <button type="button" class="pw-modal-btn" onclick="cerrarModalCambioContrasena()">Entendido, la cambiaré ahora</button>
+
+        <button
+          type="button"
+          class="pw-modal-btn"
+          onclick="cerrarModalCambioContrasena()"
+        >
+          Entendido, la cambiaré ahora
+        </button>
+
       </div>
+
     </div>
+
   </div>
 
+
   <script>
+
     function cerrarModalCambioContrasena() {
-      document.getElementById('pwModalOverlay').classList.remove('open');
-      // Lleva el foco directo al campo de nueva contraseña para que la cambien de inmediato
-      const campoContrasena = document.querySelector('input[name="contrasena"]');
-      if (campoContrasena) campoContrasena.focus();
+
+      const modal =
+        document.getElementById('pwModalOverlay');
+
+      if (modal) {
+        modal.classList.remove('open');
+      }
+
+      const campoContrasena =
+        document.querySelector(
+          'input[name="contrasena"]'
+        );
+
+      if (campoContrasena) {
+        campoContrasena.focus();
+      }
+
     }
+
   </script>
+
   {% endif %}
+
+</div>
+
 {% endblock %}
