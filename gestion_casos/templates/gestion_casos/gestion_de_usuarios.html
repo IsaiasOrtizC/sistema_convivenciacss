@@ -946,6 +946,206 @@
 
 
   /* ============================================================
+     SELECCIÓN MÚLTIPLE (MODO "SELECCIONAR")
+     ============================================================ */
+
+  .bulk-toolbar {
+    display: flex;
+    justify-content: flex-end;
+
+    margin-bottom: 14px;
+  }
+
+  .bulk-idle,
+  .bulk-active {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .bulk-idle[hidden],
+  .bulk-active[hidden] {
+    display: none;
+  }
+
+  .bulk-active {
+    flex-wrap: wrap;
+
+    width: 100%;
+
+    padding: 10px 12px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--surface-soft);
+
+    animation: bulkIn .18s ease-out;
+  }
+
+  @keyframes bulkIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .bulk-count {
+    margin-right: auto;
+
+    font-size: .76rem;
+    font-weight: 800;
+
+    color: var(--text-dark);
+  }
+
+  .bulk-count span {
+    color: var(--text-lo);
+    font-weight: 600;
+  }
+
+  .btn-select-mode,
+  .btn-bulk {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 7px 13px;
+
+    border-radius: 8px;
+
+    font-size: .73rem;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+      background var(--transition),
+      opacity var(--transition),
+      transform var(--transition);
+  }
+
+  .btn-select-mode:hover,
+  .btn-bulk:not(:disabled):hover {
+    transform: translateY(-1px);
+  }
+
+  .btn-select-mode {
+    background: rgba(123, 26, 26, .09);
+    color: var(--guinda);
+    border: 1px solid rgba(123, 26, 26, .25);
+  }
+
+  .btn-select-mode:hover {
+    background: rgba(123, 26, 26, .16);
+  }
+
+  html[data-theme="dark"] .btn-select-mode {
+    color: #E58E8E;
+    border-color: rgba(229, 142, 142, .28);
+  }
+
+  .btn-bulk:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+  }
+
+  .btn-bulk-warn {
+    background: rgba(212, 160, 23, .11);
+    color: #B7860B;
+    border: 1px solid rgba(212, 160, 23, .25);
+  }
+
+  .btn-bulk-danger {
+    background: rgba(192, 57, 43, .10);
+    color: #C0392B;
+    border: 1px solid rgba(192, 57, 43, .25);
+  }
+
+  .btn-bulk-cancel {
+    background: transparent;
+    color: var(--text-lo);
+    border: 1px solid var(--border);
+  }
+
+  html[data-theme="dark"] .btn-bulk-warn {
+    color: #E7C35A;
+  }
+
+  html[data-theme="dark"] .btn-bulk-danger {
+    color: #F1948A;
+  }
+
+  /* Columna de casillas: oculta hasta activar el modo selección */
+
+  .user-table:not(.modo-seleccion) .chk-col {
+    display: none;
+  }
+
+  .chk-col {
+    width: 40px;
+    text-align: center;
+  }
+
+  .user-table.modo-seleccion tbody tr {
+    cursor: pointer;
+  }
+
+  .user-table tbody tr.fila-seleccionada td {
+    background: rgba(123, 26, 26, .12);
+  }
+
+  /* Checkbox personalizado */
+
+  .chk-col input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+
+    width: 18px;
+    height: 18px;
+
+    margin: 0;
+
+    border: 1.5px solid rgba(140, 140, 140, .65);
+    border-radius: 5px;
+
+    background-color: transparent;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 13px 13px;
+
+    cursor: pointer;
+
+    vertical-align: middle;
+
+    transition:
+      background-color .15s ease,
+      border-color .15s ease,
+      transform .15s ease;
+  }
+
+  .chk-col input[type="checkbox"]:hover {
+    border-color: var(--guinda);
+    transform: scale(1.08);
+  }
+
+  .chk-col input[type="checkbox"]:focus-visible {
+    outline: 2px solid rgba(123, 26, 26, .45);
+    outline-offset: 2px;
+  }
+
+  .chk-col input[type="checkbox"]:checked {
+    background-color: var(--guinda);
+    border-color: var(--guinda);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-6.5' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+
+  .chk-col input[type="checkbox"]:indeterminate {
+    background-color: var(--guinda);
+    border-color: var(--guinda);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8h8' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
+
+
+  /* ============================================================
      ESTADO VACÍO
      ============================================================ */
 
@@ -1322,7 +1522,7 @@
     }
 
     .user-table {
-      min-width: 880px;
+      min-width: 920px;
     }
 
     .modal-overlay {
@@ -2086,11 +2286,93 @@
       </div>
 
 
-      <table class="user-table">
+      <form
+        id="form-masivo"
+        method="POST"
+        action="{% url 'acciones_masivas_usuarios' %}"
+      >
+        {% csrf_token %}
+      </form>
+
+      <div class="bulk-toolbar">
+
+        <!-- Estado normal: solo el botón Seleccionar -->
+        <div class="bulk-idle" id="bulk-idle">
+
+          <button type="button" class="btn-select-mode" id="btn-modo-seleccion">
+
+            <svg
+              width="13"
+              height="13"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2.4"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"
+              />
+            </svg>
+
+            Seleccionar
+
+          </button>
+
+        </div>
+
+        <!-- Modo selección: contador y acciones -->
+        <div class="bulk-active" id="bulk-active" hidden>
+
+          <span class="bulk-count" id="bulk-count">
+            0 seleccionados
+          </span>
+
+          <button
+            type="submit"
+            form="form-masivo"
+            name="accion"
+            value="desactivar"
+            class="btn-bulk btn-bulk-warn"
+            id="btn-bulk-desactivar"
+            disabled
+            onclick="return confirmarAccionMasiva('desactivar');"
+          >
+            Desactivar
+          </button>
+
+          <button
+            type="submit"
+            form="form-masivo"
+            name="accion"
+            value="eliminar"
+            class="btn-bulk btn-bulk-danger"
+            id="btn-bulk-eliminar"
+            disabled
+            onclick="return confirmarAccionMasiva('eliminar');"
+          >
+            Eliminar
+          </button>
+
+          <button type="button" class="btn-bulk btn-bulk-cancel" id="btn-bulk-cancelar">
+            Cancelar
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <table class="user-table" id="tabla-usuarios">
 
         <thead>
 
           <tr>
+
+            <th class="chk-col">
+              <input type="checkbox" id="chk-todos" title="Seleccionar todos" aria-label="Seleccionar todos">
+            </th>
 
             <th>
               ID
@@ -2130,6 +2412,22 @@
           {% for u in usuarios %}
 
             <tr>
+
+
+              <!-- SELECCIÓN -->
+
+              <td class="chk-col">
+                {% if u.usuario_id != usuario_actual_id %}
+                  <input
+                    type="checkbox"
+                    class="chk-usuario"
+                    name="usuarios_seleccionados"
+                    value="{{ u.usuario_id }}"
+                    form="form-masivo"
+                    aria-label="Seleccionar a {{ u.usuario_nombre }} {{ u.usuario_apaterno }}"
+                  >
+                {% endif %}
+              </td>
 
 
               <!-- ID -->
@@ -2345,7 +2643,7 @@
 
             <tr>
 
-              <td colspan="7">
+              <td colspan="8">
 
                 <div class="empty-users">
 
@@ -2862,6 +3160,131 @@
 
     }
   );
+
+
+  /* ============================================================
+     MODO SELECCIONAR — DESACTIVAR / ELIMINAR EN LOTE
+     ============================================================ */
+
+  (function () {
+
+    const tabla = document.getElementById('tabla-usuarios');
+    const chkTodos = document.getElementById('chk-todos');
+    const contador = document.getElementById('bulk-count');
+    const panelIdle = document.getElementById('bulk-idle');
+    const panelActivo = document.getElementById('bulk-active');
+    const btnModo = document.getElementById('btn-modo-seleccion');
+    const btnCancelar = document.getElementById('btn-bulk-cancelar');
+    const btnDesactivar = document.getElementById('btn-bulk-desactivar');
+    const btnEliminar = document.getElementById('btn-bulk-eliminar');
+
+    function checks() {
+      return document.querySelectorAll('.chk-usuario');
+    }
+
+    function seleccionados() {
+      return document.querySelectorAll('.chk-usuario:checked').length;
+    }
+
+    function enModoSeleccion() {
+      return tabla.classList.contains('modo-seleccion');
+    }
+
+    function actualizar() {
+      const n = seleccionados();
+      const total = checks().length;
+
+      contador.innerHTML =
+        n + (n === 1 ? ' seleccionado' : ' seleccionados') +
+        ' <span>de ' + total + '</span>';
+
+      btnDesactivar.disabled = (n === 0);
+      btnEliminar.disabled = (n === 0);
+
+      checks().forEach(function (c) {
+        const fila = c.closest('tr');
+        if (fila) fila.classList.toggle('fila-seleccionada', c.checked);
+      });
+
+      if (chkTodos) {
+        chkTodos.checked = (total > 0 && n === total);
+        chkTodos.indeterminate = (n > 0 && n < total);
+      }
+    }
+
+    function entrarModo() {
+      tabla.classList.add('modo-seleccion');
+      panelIdle.hidden = true;
+      panelActivo.hidden = false;
+      actualizar();
+    }
+
+    function salirModo() {
+      checks().forEach(function (c) { c.checked = false; });
+      tabla.classList.remove('modo-seleccion');
+      panelIdle.hidden = false;
+      panelActivo.hidden = true;
+      actualizar();
+    }
+
+    btnModo.addEventListener('click', entrarModo);
+    btnCancelar.addEventListener('click', salirModo);
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && enModoSeleccion()) salirModo();
+    });
+
+    if (chkTodos) {
+      chkTodos.addEventListener('change', function () {
+        checks().forEach(function (c) { c.checked = chkTodos.checked; });
+        actualizar();
+      });
+    }
+
+    document.addEventListener('change', function (e) {
+      if (e.target.classList && e.target.classList.contains('chk-usuario')) {
+        actualizar();
+      }
+    });
+
+    // En modo selección, un clic en cualquier parte de la fila marca/desmarca
+    tabla.addEventListener('click', function (e) {
+      if (!enModoSeleccion()) return;
+      if (e.target.closest('button, a, input, label, form')) return;
+
+      const fila = e.target.closest('tbody tr');
+      const chk = fila ? fila.querySelector('.chk-usuario') : null;
+
+      if (chk) {
+        chk.checked = !chk.checked;
+        actualizar();
+      }
+    });
+
+    window.confirmarAccionMasiva = function (accion) {
+      const n = seleccionados();
+
+      if (n === 0) {
+        alert('Selecciona al menos un usuario.');
+        return false;
+      }
+
+      if (accion === 'eliminar') {
+        return confirm(
+          '¿Eliminar definitivamente ' + n + ' usuario(s)?\n\n' +
+          'Se borrarán también sus notificaciones e historial de acciones, ' +
+          'y los casos que registraron quedarán sin autor asignado. ' +
+          'Esta acción no se puede deshacer.\n\n' +
+          'Si solo quieres impedir su acceso, usa "Desactivar".'
+        );
+      }
+
+      return confirm('¿Desactivar ' + n + ' usuario(s)? No podrán iniciar sesión.');
+    };
+
+    actualizar();
+
+  })();
 
 </script>
 

@@ -770,6 +770,7 @@ def gestion_de_usuarios_view(request):
 
     context = {
         'usuarios': usuarios_registrados,
+        'usuario_actual_id': request.session.get('usuario_id'),
         'roles': roles_disponibles,
         'cursos': cursos_disponibles,
         'filtros': {
@@ -782,6 +783,66 @@ def gestion_de_usuarios_view(request):
         'hay_filtros_activos': bool(filtro_nombre or filtro_rol_id or filtro_estado or filtro_fecha_desde or filtro_fecha_hasta),
     }
     return render(request, 'gestion_casos/gestion_de_usuarios.html', context)
+
+
+# RF: SELECCIÓN MÚLTIPLE DE USUARIOS PARA DESACTIVAR O ELIMINAR (solo Administrador)
+def acciones_masivas_usuarios_view(request):
+    if 'usuario_id' not in request.session:
+        return redirect('login')
+    if request.session.get('usuario_rol') != 'Administrador':
+        messages.error(request, "Acceso denegado: No tienes permisos de Administrador.")
+        return redirect('dashboard')
+    if request.method != 'POST':
+        return redirect('gestion_de_usuarios')
+
+    accion = request.POST.get('accion', '')
+    if accion not in ('desactivar', 'eliminar'):
+        messages.error(request, "Acción no válida.")
+        return redirect('gestion_de_usuarios')
+
+    ids = [int(x) for x in request.POST.getlist('usuarios_seleccionados') if x.isdigit()]
+    if not ids:
+        messages.warning(request, "Debes seleccionar al menos un usuario.")
+        return redirect('gestion_de_usuarios')
+
+    admin_id = request.session.get('usuario_id')
+
+    # El Administrador no puede desactivarse ni eliminarse a sí mismo
+    omitido_propio = admin_id in ids
+    lista = list(Usuario.objects.filter(pk__in=ids).exclude(pk=admin_id))
+    if not lista:
+        messages.warning(request, "No se puede aplicar la acción sobre tu propia cuenta.")
+        return redirect('gestion_de_usuarios')
+
+    nombres = [f"{u.usuario_nombre} {u.usuario_apaterno} (#{u.usuario_id})" for u in lista]
+    ids_objetivo = [u.usuario_id for u in lista]
+
+    try:
+        with transaction.atomic():
+            if accion == 'desactivar':
+                Usuario.objects.filter(pk__in=ids_objetivo).update(usuario_activo=False)
+                accion_hist, verbo_msg = "Desactivación masiva", "desactivado(s)"
+            else:
+                # Django aplica los on_delete definidos en models.py (CASCADE / SET_NULL)
+                Usuario.objects.filter(pk__in=ids_objetivo).delete()
+                accion_hist, verbo_msg = "Eliminación masiva", "eliminado(s)"
+
+            admin_instancia = Usuario.objects.filter(pk=admin_id).first()
+            if admin_instancia:
+                HistorialUsuario.objects.create(
+                    usuario=admin_instancia,
+                    historial_accion=accion_hist,
+                    historial_detalle=f"{accion_hist} de {len(lista)} usuario(s): " + ", ".join(nombres) + "."
+                )
+
+        mensaje = f"{len(lista)} usuario(s) {verbo_msg} exitosamente."
+        if omitido_propio:
+            mensaje += " Tu propia cuenta fue omitida."
+        messages.success(request, mensaje)
+    except Exception as e:
+        messages.error(request, f"Ocurrió un error al procesar la acción masiva: {str(e)}")
+
+    return redirect('gestion_de_usuarios')
 
 
 def editar_usuario_view(request, usuario_id):
