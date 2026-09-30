@@ -24,6 +24,43 @@
     display: flex; align-items: center; justify-content: center; line-height: 1; transition: all var(--transition);
   }
   .btn-remove-alumno:hover { background: #C0392B; color: white; }
+  /* ============================================================
+     MODO OSCURO
+     ============================================================ */
+
+  /* Recuadro de cada alumno: deja de ser crema fijo */
+  html[data-theme="dark"] .alumno-bloque {
+    background: rgba(255, 255, 255, .04);
+    border-color: rgba(255, 255, 255, .10);
+  }
+
+  /* Campos del formulario (antes quedaban blancos) */
+  html[data-theme="dark"] .form-control {
+    background: rgba(255, 255, 255, .06);
+    color: #EDEDED;
+    border-color: rgba(255, 255, 255, .14);
+    color-scheme: dark;
+  }
+
+  html[data-theme="dark"] .form-control::placeholder {
+    color: rgba(255, 255, 255, .40);
+  }
+
+  html[data-theme="dark"] .form-control:focus {
+    border-color: #E58E8E;
+    background: rgba(255, 255, 255, .09);
+  }
+
+  html[data-theme="dark"] .form-control option {
+    background: #1B1B1F;
+    color: #EDEDED;
+  }
+
+  /* Títulos en guinda, más claros para que se lean sobre fondo oscuro */
+  html[data-theme="dark"] .form-title {
+    color: #E58E8E;
+  }
+
 </style>
 {% endblock %}
 
