@@ -1498,10 +1498,79 @@ def historial_usuarios_view(request):
     if rol_actual != 'administrador':
         messages.error(request, "Acceso denegado: Solo el Administrador puede visualizar la bitácora de usuarios.")
         return redirect('dashboard')
-    registros_auditoria = HistorialUsuario.objects.all().select_related('usuario').order_by('-historial_fecha')
+    from django.utils.dateparse import parse_date
+
+    # Filtros combinables: usuario responsable, tipo de acción y rango de fechas
+    filtro_usuario = request.GET.get('usuario', '').strip()
+    filtro_accion = request.GET.get('accion', '').strip()
+    filtro_fecha_desde = request.GET.get('fecha_desde', '').strip()
+    filtro_fecha_hasta = request.GET.get('fecha_hasta', '').strip()
+
+    base_qs = HistorialUsuario.objects.select_related('usuario')
+    total_registros = base_qs.count()
+    registros_auditoria = base_qs.order_by('-historial_fecha')
+
+    # Usuario responsable: cada palabra escrita debe coincidir con nombre, apellidos o correo
+    if filtro_usuario:
+        for termino in filtro_usuario.split():
+            termino_norm = _quitar_tildes(termino)
+            registros_auditoria = registros_auditoria.filter(
+                Q(usuario__usuario_nombre__unaccent__icontains=termino_norm) |
+                Q(usuario__usuario_apaterno__unaccent__icontains=termino_norm) |
+                Q(usuario__usuario_amaterno__unaccent__icontains=termino_norm) |
+                Q(usuario__usuario_correo__icontains=termino)
+            )
+
+    # Tipo de acción
+    if filtro_accion:
+        registros_auditoria = registros_auditoria.filter(historial_accion=filtro_accion)
+
+    # Rango de fechas (se ignoran valores con formato inválido)
+    def _fecha_valida(texto):
+        if not texto:
+            return None
+        try:
+            return parse_date(texto)
+        except ValueError:
+            return None
+
+    fecha_desde = _fecha_valida(filtro_fecha_desde)
+    fecha_hasta = _fecha_valida(filtro_fecha_hasta)
+
+    if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
+        fecha_desde, fecha_hasta = fecha_hasta, fecha_desde
+        messages.warning(request, "La fecha 'desde' era posterior a 'hasta'; se invirtieron para aplicar el filtro.")
+
+    if fecha_desde:
+        registros_auditoria = registros_auditoria.filter(historial_fecha__date__gte=fecha_desde)
+    if fecha_hasta:
+        registros_auditoria = registros_auditoria.filter(historial_fecha__date__lte=fecha_hasta)
+
+    filtro_fecha_desde = fecha_desde.isoformat() if fecha_desde else ''
+    filtro_fecha_hasta = fecha_hasta.isoformat() if fecha_hasta else ''
+
+    # Opciones de los filtros (solo lo que realmente existe en la bitácora)
+    acciones_disponibles = (
+        HistorialUsuario.objects.order_by('historial_accion')
+        .values_list('historial_accion', flat=True).distinct()
+    )
+    usuarios_historial = (
+        Usuario.objects.filter(historial_acciones__isnull=False)
+        .distinct().order_by('usuario_apaterno', 'usuario_nombre')
+    )
 
     context = {
-        'historial': registros_auditoria
+        'historial': registros_auditoria,
+        'total_registros': total_registros,
+        'acciones_disponibles': acciones_disponibles,
+        'usuarios_historial': usuarios_historial,
+        'filtros': {
+            'usuario': filtro_usuario,
+            'accion': filtro_accion,
+            'fecha_desde': filtro_fecha_desde,
+            'fecha_hasta': filtro_fecha_hasta,
+        },
+        'hay_filtros_activos': bool(filtro_usuario or filtro_accion or filtro_fecha_desde or filtro_fecha_hasta),
     }
     return render(request, 'gestion_casos/historial_de_usuarios.html', context)
 
