@@ -1636,13 +1636,50 @@ def gestion_de_estudiantes_view(request):
         except Exception as e:
             messages.error(request, "Ocurrió un error al intentar registrar al alumno.")
 
+    from urllib.parse import urlencode
+
+    # Filtros combinables: búsqueda por texto, curso y N° de lista
+    filtro_busqueda = request.GET.get('busqueda', '').strip()
+    filtro_curso = request.GET.get('curso', '').strip()
+    filtro_lista = request.GET.get('numero_lista', '').strip()
+
     estudiantes_registrados = Estudiante.objects.select_related('curso').all().order_by(
-        'curso__curso_grado', 
-        'curso__curso_letra', 
-        'estudiante_apaterno', 
+        'curso__curso_grado',
+        'curso__curso_letra',
+        'estudiante_apaterno',
         'estudiante_nombre'
     )
+
+    # Búsqueda: cada palabra escrita debe coincidir con nombre, apellidos o identificador
+    if filtro_busqueda:
+        for termino in filtro_busqueda.split():
+            termino_norm = _quitar_tildes(termino)
+            estudiantes_registrados = estudiantes_registrados.filter(
+                Q(estudiante_nombre__unaccent__icontains=termino_norm) |
+                Q(estudiante_apaterno__unaccent__icontains=termino_norm) |
+                Q(estudiante_amaterno__unaccent__icontains=termino_norm) |
+                Q(estudiante_identificador__icontains=termino)
+            )
+
+    # Curso (se ignoran valores que no sean un id numérico)
+    if filtro_curso.isdigit():
+        estudiantes_registrados = estudiantes_registrados.filter(curso_id=int(filtro_curso))
+    else:
+        filtro_curso = ''
+
+    # N° de lista
+    if filtro_lista.isdigit():
+        estudiantes_registrados = estudiantes_registrados.filter(estudiante_numero_lista=int(filtro_lista))
+    else:
+        filtro_lista = ''
+
     cursos_disponibles = Curso.objects.all().order_by('curso_grado', 'curso_letra')
+
+    # Para que los enlaces de paginación conserven los filtros activos
+    parametros = {k: val for k, val in (
+        ('busqueda', filtro_busqueda), ('curso', filtro_curso), ('numero_lista', filtro_lista)
+    ) if val}
+    querystring_filtros = ('&' + urlencode(parametros)) if parametros else ''
 
     # Paginación: 10 alumnos por página, con flechas Anterior/Siguiente
     paginador = Paginator(estudiantes_registrados, 10)
@@ -1651,7 +1688,14 @@ def gestion_de_estudiantes_view(request):
 
     context = {
         'estudiantes': pagina_estudiantes,  # Page object: iterable + tiene .has_next, .has_previous, etc.
-        'cursos': cursos_disponibles
+        'cursos': cursos_disponibles,
+        'filtros': {
+            'busqueda': filtro_busqueda,
+            'curso': filtro_curso,
+            'numero_lista': filtro_lista,
+        },
+        'hay_filtros_activos': bool(parametros),
+        'querystring_filtros': querystring_filtros,
     }
     return render(request, 'gestion_casos/gestion_de_estudiantes.html', context)
 

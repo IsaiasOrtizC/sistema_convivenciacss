@@ -1175,6 +1175,160 @@
       gap: 5px;
     }
   }
+
+  /* ============================================================
+     BÚSQUEDA Y FILTROS
+     ============================================================ */
+
+  .filtros-alumnos {
+    margin-bottom: 18px;
+    padding: 14px 16px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: var(--surface-soft);
+  }
+
+  .filtros-grid {
+    display: grid;
+    grid-template-columns: 1.7fr 1.2fr .8fr auto;
+    gap: 12px;
+    align-items: end;
+  }
+
+  .filtro-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .filtro-label {
+    font-size: .66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: var(--text-mid);
+  }
+
+  .filtro-control {
+    padding: 9px 12px;
+    height: 38px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dark);
+    font-size: .83rem;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+    transition:
+      border-color var(--transition),
+      background var(--transition),
+      box-shadow var(--transition);
+  }
+
+  .filtro-control:focus {
+    outline: none;
+    border-color: var(--guinda);
+    box-shadow: 0 0 0 3px rgba(123, 26, 26, .08);
+  }
+
+  html[data-theme="dark"] .filtro-control {
+    color-scheme: dark;
+    background: #242424;
+  }
+
+  html[data-theme="dark"] .filtro-control option {
+    background: #242424;
+    color: #f4f1ec;
+  }
+
+  .btn-filtrar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 16px;
+    height: 38px;
+    border-radius: 7px;
+    background: var(--guinda);
+    color: #fff;
+    font-size: .82rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background var(--transition),
+      transform var(--transition),
+      box-shadow var(--transition);
+  }
+
+  .btn-filtrar:hover {
+    background: var(--guinda-mid);
+    box-shadow: 0 5px 14px rgba(123, 26, 26, .20);
+    transform: translateY(-1px);
+  }
+
+  .filtros-activos-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 13px;
+    padding-top: 13px;
+    border-top: 1px solid var(--border);
+  }
+
+  .filtros-activos-texto {
+    font-size: .78rem;
+    color: var(--text-lo);
+  }
+
+  .btn-limpiar-filtros {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: .78rem;
+    font-weight: 700;
+    color: #C0392B;
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(192, 57, 43, .25);
+    background: rgba(192, 57, 43, .08);
+    transition:
+      background var(--transition),
+      border-color var(--transition);
+  }
+
+  .btn-limpiar-filtros:hover {
+    background: rgba(192, 57, 43, .14);
+    border-color: rgba(192, 57, 43, .35);
+  }
+
+  @media (max-width: 1250px) {
+    .filtros-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .filtro-search {
+      grid-column: 1 / -1;
+    }
+
+    .btn-filtrar {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .filtros-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
 </style>
 {% endblock %}
 
@@ -1570,6 +1724,147 @@
       </div>
 
 
+      <!-- ---------------------------------------------------
+           BÚSQUEDA Y FILTROS
+           --------------------------------------------------- -->
+
+      <form
+        method="GET"
+        action="{% url 'gestion_de_alumnos' %}"
+        class="filtros-alumnos"
+      >
+
+        <div class="filtros-grid">
+
+          <div class="filtro-group filtro-search">
+
+            <label class="filtro-label" for="f-busqueda">
+              Buscar alumno
+            </label>
+
+            <input
+              type="text"
+              id="f-busqueda"
+              name="busqueda"
+              class="filtro-control"
+              placeholder="Nombre, apellido o identificador..."
+              autocomplete="off"
+              value="{{ filtros.busqueda }}"
+            />
+
+          </div>
+
+          <div class="filtro-group">
+
+            <label class="filtro-label" for="f-curso">
+              Curso
+            </label>
+
+            <select
+              id="f-curso"
+              name="curso"
+              class="filtro-control"
+            >
+
+              <option value="">
+                Todos los cursos
+              </option>
+
+              {% for c in cursos %}
+                <option
+                  value="{{ c.curso_id }}"
+                  {% if filtros.curso == c.curso_id|stringformat:"s" %}selected{% endif %}
+                >
+                  {{ c.curso_grado }} {{ c.curso_letra }}
+                </option>
+              {% endfor %}
+
+            </select>
+
+          </div>
+
+          <div class="filtro-group">
+
+            <label class="filtro-label" for="f-lista">
+              N° de lista
+            </label>
+
+            <input
+              type="number"
+              id="f-lista"
+              name="numero_lista"
+              class="filtro-control"
+              min="1"
+              placeholder="Ej: 5"
+              value="{{ filtros.numero_lista }}"
+            />
+
+          </div>
+
+          <button
+            type="submit"
+            class="btn-filtrar"
+          >
+
+            <svg
+              width="14"
+              height="14"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"
+              />
+            </svg>
+
+            Buscar
+
+          </button>
+
+        </div>
+
+        {% if hay_filtros_activos %}
+
+          <div class="filtros-activos-bar">
+
+            <span class="filtros-activos-texto">
+              {{ estudiantes.paginator.count }} alumno(s) con los filtros aplicados.
+            </span>
+
+            <a
+              href="{% url 'gestion_de_alumnos' %}"
+              class="btn-limpiar-filtros"
+            >
+
+              <svg
+                width="12"
+                height="12"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2.5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+
+              Limpiar filtros
+
+            </a>
+
+          </div>
+
+        {% endif %}
+
+      </form>
+
       <div class="table-scroll">
 
         <table class="user-table">
@@ -1754,11 +2049,9 @@
                 >
 
                   <span class="empty-table-icon">
-                    No hay estudiantes registrados
+                    {% if hay_filtros_activos %}Ningún alumno coincide con los filtros{% else %}No hay estudiantes registrados{% endif %}
                   </span>
-
-                  Actualmente no existen estudiantes
-                  registrados en el sistema.
+                  {% if hay_filtros_activos %}Prueba con otro nombre, curso o número de lista.{% else %}Actualmente no existen estudiantes registrados en el sistema.{% endif %}
 
                 </td>
 
@@ -1797,7 +2090,7 @@
             {% if estudiantes.has_previous %}
 
               <a
-                href="?pagina={{ estudiantes.previous_page_number }}"
+                href="?pagina={{ estudiantes.previous_page_number }}{{ querystring_filtros }}"
                 class="pagination-btn"
               >
 
@@ -1859,7 +2152,7 @@
             {% if estudiantes.has_next %}
 
               <a
-                href="?pagina={{ estudiantes.next_page_number }}"
+                href="?pagina={{ estudiantes.next_page_number }}{{ querystring_filtros }}"
                 class="pagination-btn"
               >
 
