@@ -202,7 +202,7 @@
      ============================================================ */
 
   .form-card {
-    background: var(--white);
+    background: var(--surface-solid);
 
     border: 1px solid var(--border);
 
@@ -383,7 +383,7 @@
   .form-control:focus {
     border-color: var(--guinda);
 
-    background: var(--white);
+    background: var(--surface-solid);
 
     box-shadow:
       0 0 0 3px rgba(123,26,26,.08);
@@ -401,24 +401,6 @@
     appearance: auto;
 
     cursor: pointer;
-  }
-
-  html[data-theme="dark"] .form-control {
-    background: #202020;
-
-    color: #F4F1EC;
-
-    border-color: rgba(255,255,255,.12);
-  }
-
-  html[data-theme="dark"] .form-control:focus {
-    background: #242424;
-  }
-
-  html[data-theme="dark"] select.form-control option {
-    background: #202020;
-
-    color: #F4F1EC;
   }
 
 
@@ -719,33 +701,6 @@
 
   .btn-submit:active {
     transform: translateY(0);
-  }
-
-
-  /* ============================================================
-     DARK MODE
-     ============================================================ */
-
-  html[data-theme="dark"] .edit-hero {
-    box-shadow:
-      0 12px 38px rgba(0,0,0,.42);
-  }
-
-  html[data-theme="dark"] .form-card {
-    background: #1A1A1A;
-  }
-
-  html[data-theme="dark"] .alumno-bloque {
-    background: #202020;
-  }
-
-  html[data-theme="dark"] .alumno-bloque:hover {
-    box-shadow:
-      0 6px 18px rgba(0,0,0,.3);
-  }
-
-  html[data-theme="dark"] .edit-notice {
-    background: rgba(212,160,23,.08);
   }
 
 
@@ -1182,7 +1137,7 @@
                 type="button"
                 class="btn-remove-alumno"
                 title="Eliminar a este alumno del caso"
-                onclick="if(confirm('¿Eliminar a {{ est.estudiante_nombre }} {{ est.estudiante_apaterno }} de este caso?')){ document.getElementById('form-eliminar-{{ est.estudiante_id }}').submit(); }"
+                onclick="confirmarAccion(event, document.getElementById('form-eliminar-{{ est.estudiante_id }}'), '¿Eliminar alumno?', '¿Estás seguro de eliminar a {{ est.estudiante_nombre }} {{ est.estudiante_apaterno }} de este caso?')"
               >
 
                 <svg

@@ -100,13 +100,13 @@
       <div class="alumno-bloque-header">
         <div class="form-title">👤 Alumno Involucrado #{{ forloop.counter }}</div>
         {% if estudiantes|length > 1 %}
-        <button type="button" class="btn-remove-alumno"
-          title="Eliminar a este alumno del caso"
-          onclick="if(confirm('¿Eliminar a {{ est.estudiante_nombre }} {{ est.estudiante_apaterno }} de este caso?')){ document.getElementById('form-eliminar-{{ est.estudiante_id }}').submit(); }">
-          ✕
-        </button>
-        {% endif %}
-      </div>
+<button type="button" class="btn-remove-alumno"
+  title="Eliminar a este alumno del caso"
+  onclick="confirmarAccion(event, document.getElementById('form-eliminar-{{ est.estudiante_id }}'), '¿Eliminar alumno?', '¿Estás seguro de eliminar a {{ est.estudiante_nombre }} {{ est.estudiante_apaterno }} de este caso?')">
+  ✕
+</button>
+{% endif %}
+    </div>
 
       <input type="hidden" name="estudiante_id[]" value="{{ est.estudiante_id }}">
 

@@ -13,7 +13,9 @@
     rel="stylesheet"
   />
 
+  <!-- Gráficos y Alertas Estilizadas -->
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <!-- ============================================================
        TEMA AUTOMÁTICO
@@ -1905,6 +1907,47 @@
       }
     }
 
+    /* ============================================================
+       CORRECCIONES MODO OSCURO (FORMULARIOS Y MODALES)
+       ============================================================ */
+    
+    /* 1. Fondo de inputs y textareas en modo oscuro */
+    html[data-theme="dark"] input:not([type="submit"]):not([type="checkbox"]):not([type="radio"]),
+    html[data-theme="dark"] select,
+    html[data-theme="dark"] textarea {
+        background-color: rgba(0, 0, 0, 0.25);
+        color: var(--text-dark); /* Texto blanco en modo oscuro */
+        border: 1px solid var(--border);
+        color-scheme: dark; /* Ayuda a los iconos de calendario nativos */
+    }
+
+    html[data-theme="dark"] input::placeholder,
+    html[data-theme="dark"] textarea::placeholder {
+        color: var(--text-lo);
+    }
+
+    /* 2. Forzar contraste en textos de modales y etiquetas (labels) */
+    html[data-theme="dark"] label,
+    html[data-theme="dark"] .modal p,
+    html[data-theme="dark"] .modal span,
+    html[data-theme="dark"] .modal div {
+        color: var(--text-mid);
+    }
+
+    /* 3. Títulos y Checkboxes que necesitan blanco absoluto */
+    html[data-theme="dark"] h1,
+    html[data-theme="dark"] h2,
+    html[data-theme="dark"] h3,
+    html[data-theme="dark"] h4,
+    html[data-theme="dark"] .modal h1,
+    html[data-theme="dark"] .modal h2,
+    html[data-theme="dark"] .modal h3,
+    html[data-theme="dark"] input[type="checkbox"] + label,
+    html[data-theme="dark"] label.checkbox-label,
+    html[data-theme="dark"] strong,
+    html[data-theme="dark"] b {
+        color: var(--text-dark) !important;
+    }
   </style>
 
   {% block extra_css %}{% endblock %}
@@ -3194,6 +3237,43 @@
       }
 
     });
+
+
+    /* ============================================================
+       MODAL DE CONFIRMACIÓN ELEGANTE (SWEETALERT2)
+       ============================================================ */
+    function confirmarAccion(event, elemento, titulo, texto) {
+      event.preventDefault(); // Detiene el clic original
+      
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      
+      Swal.fire({
+        title: titulo || '¿Estás seguro?',
+        text: texto || 'Esta acción no se puede deshacer.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#E05252', // Color danger de tu paleta
+        cancelButtonColor: isDark ? '#31343A' : '#E8E1D7',
+        confirmButtonText: 'Sí, confirmar',
+        cancelButtonText: 'Cancelar',
+        background: isDark ? '#191B1E' : '#FFFFFF',
+        color: isDark ? '#FFFFFF' : '#181313',
+        customClass: {
+            popup: 'glass-card' // Usa tu propia clase de CSS para que combine
+        }
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // Si es un botón dentro de un formulario, envía el formulario
+          if (elemento.closest('form')) {
+              elemento.closest('form').submit();
+          } 
+          // Si es un enlace <a>, navega a la URL
+          else if (elemento.tagName.toLowerCase() === 'a') {
+              window.location.href = elemento.href;
+          }
+        }
+      });
+    }
 
   </script>
 
