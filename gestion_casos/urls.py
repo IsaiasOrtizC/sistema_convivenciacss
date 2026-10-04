@@ -13,6 +13,10 @@ urlpatterns = [
     path('estadisticas/pdf/', views.estadisticas_pdf_view, name='estadisticas_pdf'),
     path('estadisticas/xlsx/', views.estadisticas_xlsx_view, name='estadisticas_xlsx'),
     path('notificaciones/', views.notificaciones_view, name='notificaciones'),
+    path(
+    'notificaciones/<int:notificacion_id>/leer/',
+    views.marcar_notificacion_leida_view,
+    name='marcar_notificacion_leida'),
     path('casos/editar/<int:caso_id>/', views.editar_caso_view, name='editar_caso'),
     path('casos/editar/<int:caso_id>/eliminar_estudiante/<int:estudiante_id>/', views.eliminar_estudiante_caso_view, name='eliminar_estudiante_caso'),
     path('casos/eliminar/<int:caso_id>/', views.eliminar_caso_view, name='eliminar_caso'),

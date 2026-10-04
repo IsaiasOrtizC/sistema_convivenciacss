@@ -406,7 +406,119 @@ def eliminar_caso_view(request, caso_id):
 
     return redirect('historial_casos')
 
+def _verificar_alerta_curso_mas_de_10_casos(curso):
+    """
+    RF-33 / RF-34
 
+    Genera una alerta cuando un curso supera los 10 casos
+    durante la semana actual (lunes a domingo).
+
+    La alerta se genera una sola vez por curso y semana.
+    """
+
+    if not curso:
+        return
+
+    hoy = timezone.localdate()
+
+    # Semana actual: lunes -> domingo
+    inicio_semana = hoy - timedelta(days=hoy.weekday())
+    fin_semana = inicio_semana + timedelta(days=6)
+
+    # Contar casos distintos asociados al curso.
+    total_casos = (
+        Caso.objects
+        .filter(
+            caso_fecha__gte=inicio_semana,
+            caso_fecha__lte=fin_semana,
+            estudiantes__curso=curso
+        )
+        .distinct()
+        .count()
+    )
+
+    # La alerta aparece SOLO cuando supera 10.
+    if total_casos <= 10:
+        return
+
+    nombre_curso = str(curso)
+
+    titulo = "Alerta: alta cantidad de casos"
+
+    mensaje = (
+        f"El curso {nombre_curso} supera los 10 casos de convivencia "
+        f"esta semana. Actualmente registra {total_casos} casos."
+    )
+
+    # ------------------------------------------------------------
+    # RF-33
+    # Administrador / Inspector / PConvivencia
+    # ------------------------------------------------------------
+
+    roles_alerta = Rol.objects.filter(
+        rol_nombre__in=[
+            'Administrador',
+            'Inspector',
+            'PConvivencia'
+        ]
+    )
+
+    usuarios_generales = Usuario.objects.filter(
+        rol__in=roles_alerta,
+        usuario_activo=True,
+        usuario_bloqueado=False
+    )
+
+    # ------------------------------------------------------------
+    # RF-34
+    # Profesor Jefe del curso
+    # ------------------------------------------------------------
+
+    profesor_jefe = (
+        ProfesorJefe.objects
+        .filter(
+            curso=curso,
+            usuario__usuario_activo=True,
+            usuario__usuario_bloqueado=False
+        )
+        .select_related('usuario')
+        .first()
+    )
+
+    usuarios_destino = {
+        usuario.usuario_id: usuario
+        for usuario in usuarios_generales
+    }
+
+    if profesor_jefe and profesor_jefe.usuario:
+        usuarios_destino[profesor_jefe.usuario.usuario_id] = (
+            profesor_jefe.usuario
+        )
+
+    # ------------------------------------------------------------
+    # Evitar duplicados:
+    # una alerta por curso y semana para cada usuario.
+    # ------------------------------------------------------------
+
+    for usuario in usuarios_destino.values():
+
+        ya_existe = Notificacion.objects.filter(
+            usuario=usuario,
+            notificacion_titulo=titulo,
+            notificacion_mensaje__contains=f"curso {nombre_curso}",
+            notificacion_fecha__date__gte=inicio_semana,
+            notificacion_fecha__date__lte=fin_semana
+        ).exists()
+
+        if ya_existe:
+            continue
+
+        Notificacion.objects.create(
+            usuario=usuario,
+            notificacion_titulo=titulo,
+            notificacion_mensaje=mensaje,
+            notificacion_icono="⚠️"
+        )
 # FORMULARIO DE REGISTRAR CASO
 def registrar_caso_view(request):
     if 'usuario_id' not in request.session:
@@ -470,6 +582,7 @@ def registrar_caso_view(request):
                 nuevo_caso.save() 
 
                 nombres_involucrados = []
+                cursos_alerta_ids = set()
 
                 # 2. Recorrer todos los estudiantes ingresados en el formulario
                 for nom, apat, amat, num_list, c_id, est_id_existente in zip(nombres, apaternos, amaternos, num_listas, cursos_ids, estudiantes_ids):
@@ -479,6 +592,7 @@ def registrar_caso_view(request):
                     num_lista_val = int(num_list) if num_list and num_list.isdigit() else None
 
                     curso_instancia = Curso.objects.get(pk=c_id)
+                    cursos_alerta_ids.add(curso_instancia.curso_id)
 
                     # Si se eligió un alumno ya existente desde el buscador, se reutiliza
                     # directamente (evita crear un duplicado por variaciones de tipeo).
@@ -524,6 +638,13 @@ def registrar_caso_view(request):
                         ])
 
                     nombres_involucrados.append(f"{nom_clean} {apat_clean}")
+
+                # RF-33 / RF-34
+                # Verificar si alguno de los cursos involucrados
+                # superó los 10 casos durante la semana actual.
+                for curso_id_alerta in cursos_alerta_ids:
+                    curso_alerta = Curso.objects.get(pk=curso_id_alerta)
+                    _verificar_alerta_curso_mas_de_10_casos(curso_alerta)
 
                 # 3. Notificación e Historial
                 lista_nombres_str = ", ".join(nombres_involucrados)
@@ -956,23 +1077,26 @@ def desbloquear_usuario_view(request, usuario_id):
 def _tiene_acceso_estadisticas(request):
     return request.session.get('usuario_rol') in ('Administrador', 'Inspector', 'PConvivencia')
 
-
 def _calcular_ids_casos(fecha_desde, fecha_hasta, curso_id, lugar_id, gravedad):
     """Devuelve la lista de caso_id que cumplen con los filtros dados."""
     qs = Caso.objects.filter(caso_fecha__gte=fecha_desde, caso_fecha__lte=fecha_hasta)
+    
     if curso_id:
         qs = qs.filter(estudiantes__curso_id=curso_id)
     if lugar_id:
         qs = qs.filter(lugar_id=lugar_id)
+        
     ids = list(qs.distinct().values_list('caso_id', flat=True))
 
-    if gravedad:
+    if gravedad and ids:
+        placeholders = ','.join(['%s'] * len(ids))
+        query = f"SELECT DISTINCT caso_id FROM involucran WHERE tipo_falta = %s AND caso_id IN ({placeholders})"
+        params = [gravedad] + ids
         with connection.cursor() as cursor:
-            cursor.execute("SELECT DISTINCT caso_id FROM involucran WHERE tipo_falta = %s", [gravedad])
-            ids_gravedad = set(fila[0] for fila in cursor.fetchall())
-        ids = [cid for cid in ids if cid in ids_gravedad]
-    return ids
+            cursor.execute(query, params)
+            ids = [row[0] for row in cursor.fetchall()]
 
+    return ids
 
 def _obtener_datos_estadisticas(request):
     """Calcula todos los datos (KPIs, series de gráficos y tabla) según los
@@ -1346,15 +1470,45 @@ def estadisticas_xlsx_view(request):
 def notificaciones_view(request):
     if 'usuario_id' not in request.session:
         return redirect('login')
-    id_usuario = request.session['usuario_id']
-    
-    alertas_reales = Notificacion.objects.filter(usuario_id=id_usuario).order_by('-notificacion_fecha')
 
-    alertas_reales.filter(notificacion_leido=False).update(notificacion_leido=True)
+    id_usuario = request.session['usuario_id']
+
+    alertas_reales = (
+        Notificacion.objects
+        .filter(usuario_id=id_usuario)
+        .order_by('-notificacion_fecha')
+    )
+
     context = {
         'notificaciones': alertas_reales
     }
-    return render(request, 'gestion_casos/notificaciones.html', context)
+
+    return render(
+        request,
+        'gestion_casos/notificaciones.html',
+        context
+    )
+
+
+def marcar_notificacion_leida_view(request, notificacion_id):
+    if 'usuario_id' not in request.session:
+        return redirect('login')
+
+    if request.method != 'POST':
+        return redirect('notificaciones')
+
+    notificacion = get_object_or_404(
+        Notificacion,
+        pk=notificacion_id,
+        usuario_id=request.session['usuario_id']
+    )
+
+    notificacion.notificacion_leido = True
+    notificacion.save(
+        update_fields=['notificacion_leido']
+    )
+
+    return redirect('notificaciones')
 # editar un caso
 def editar_caso_view(request, caso_id):
     # 1. Seguridad: Validar sesión activa
@@ -1370,6 +1524,7 @@ def editar_caso_view(request, caso_id):
 
     # 2. Rescatar el caso o lanzar error 404 si no existe
     caso = get_object_or_404(Caso, pk=caso_id)
+    creador_caso = caso.usuario
     usuario_id_sesion = request.session['usuario_id']
     rol_usuario = request.session.get('usuario_rol', '').lower() # Asegúrate de que guardas el rol en la sesión al loguear
 
@@ -1433,11 +1588,25 @@ def editar_caso_view(request, caso_id):
                     with connection.cursor() as cursor:
                         cursor.execute(query_update_intermedia, [tipo_falta, caso.caso_id, est_id])
 
-            HistorialUsuario.objects.create(
-                usuario=usuario_instancia,
-                historial_accion="Modificación",
-                historial_detalle=f"Modificó los registros de la bitácora del caso #{caso.caso_id} [{titulo}]."
-            )
+                # Notificar al creador si otro usuario modificó el caso
+                if creador_caso and creador_caso.usuario_id != usuario_instancia.usuario_id:
+                    Notificacion.objects.create(
+                        usuario=creador_caso,
+                        notificacion_titulo="Caso modificado",
+                        notificacion_mensaje=(
+                            f"El caso #{caso.caso_id} fue modificado por "
+                            f"{usuario_instancia.usuario_nombre} "
+                            f"{usuario_instancia.usuario_apaterno}."
+                        ),
+                        notificacion_icono="✏️"
+                    )
+
+                HistorialUsuario.objects.create(
+                    usuario=usuario_instancia,
+                    historial_accion="Modificación",
+                    historial_detalle=f"Modificó los registros de la bitácora del caso #{caso.caso_id} [{titulo}]."
+                )
+
             messages.success(request, f"El caso #{caso.caso_id} ha sido modificado exitosamente.")
             return redirect('historial_casos')
 

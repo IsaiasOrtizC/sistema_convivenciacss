@@ -14,7 +14,30 @@
     width: 100%;
     max-width: 900px;
   }
+.notif-form {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
 
+.notif-card {
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notif-card:not(:disabled) {
+  width: 100%;
+}
+
+.notif-card:disabled {
+  cursor: default;
+}
+
+.notif-card:focus-visible {
+  outline: 3px solid rgba(212, 160, 23, .45);
+  outline-offset: 2px;
+}
 
   /* ============================================================
      BREADCRUMB
@@ -636,50 +659,63 @@
 
       {% for n in notificaciones %}
 
-        <div
-          class="notif-card {% if not n.notificacion_leido %}notif-unread{% endif %}"
-        >
+       <form
+  method="POST"
+  action="{% url 'marcar_notificacion_leida' n.notificacion_id %}"
+  class="notif-form"
+>
+  {% csrf_token %}
 
-          <!-- ICONO -->
+  <button
+    type="submit"
+    class="notif-card {% if not n.notificacion_leido %}notif-unread{% endif %}"
+    {% if n.notificacion_leido %}
+      disabled
+    {% endif %}
+  >
 
-          <div class="notif-icon">
-            {{ n.notificacion_icono }}
-          </div>
+    <!-- ICONO -->
 
-
-          <!-- CONTENIDO -->
-
-          <div class="notif-body">
-
-            <div class="notif-title">
-
-              <span>
-                {{ n.notificacion_titulo }}
-              </span>
-
-              {% if not n.notificacion_leido %}
-
-                <span class="badge-unread">
-                  Nueva
-                </span>
-
-              {% endif %}
-
-            </div>
+    <div class="notif-icon">
+      {{ n.notificacion_icono }}
+    </div>
 
 
-            <div class="notif-text">
-              {{ n.notificacion_mensaje }}
-            </div>
+    <!-- CONTENIDO -->
+
+    <div class="notif-body">
+
+      <div class="notif-title">
+
+        <span>
+          {{ n.notificacion_titulo }}
+        </span>
+
+        {% if not n.notificacion_leido %}
+
+          <span class="badge-unread">
+            Nueva
+          </span>
+
+        {% endif %}
+
+      </div>
 
 
-            <div class="notif-meta">
-              {{ n.notificacion_fecha|date:"d M, Y · H:i" }}
-            </div>
+      <div class="notif-text">
+        {{ n.notificacion_mensaje }}
+      </div>
 
-          </div>
 
-        </div>
+      <div class="notif-meta">
+        {{ n.notificacion_fecha|date:"d M, Y · H:i" }}
+      </div>
+
+    </div>
+
+  </button>
+
+</form>
 
       {% endfor %}
 
