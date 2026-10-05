@@ -1,7 +1,7 @@
 {% extends 'gestion_casos/base.html' %}
 {% load static %}
 
-{% block title %}ConviData – Editar Caso #{{ caso.caso_id }}{% endblock %}
+{% block title %}ConviData – Caso #{{ caso.caso_id }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -800,12 +800,137 @@
 
   }
 
+
+  /* ============================================================
+     PANTALLA DE DETALLE (SOLO LECTURA)
+     ============================================================ */
+
+  .form-section + .form-section {
+    margin-top: 26px;
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px;
+  }
+
+  .detail-item {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface-soft);
+  }
+
+  .detail-label {
+    margin-bottom: 6px;
+    font-size: .65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-mid);
+  }
+
+  .detail-value {
+    font-size: .9rem;
+    font-weight: 700;
+    color: var(--text-dark);
+  }
+
+  .detail-sub {
+    margin-top: 2px;
+    font-size: .72rem;
+    font-weight: 500;
+    color: var(--text-lo);
+  }
+
+  .detail-text {
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface-soft);
+    color: var(--text-dark);
+    font-size: .88rem;
+    line-height: 1.65;
+    word-break: break-word;
+  }
+
+  .badge-gravedad {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 11px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: .72rem;
+    font-weight: 800;
+  }
+
+  .badge-gravedad.leve {
+    background: rgba(39, 174, 96, .12);
+    color: #27AE60;
+    border-color: rgba(39, 174, 96, .28);
+  }
+
+  .badge-gravedad.grave {
+    background: rgba(212, 160, 23, .13);
+    color: #D4A017;
+    border-color: rgba(212, 160, 23, .30);
+  }
+
+  .badge-gravedad.gravisima {
+    background: rgba(192, 57, 43, .12);
+    color: #E0584A;
+    border-color: rgba(192, 57, 43, .30);
+  }
+
+  .alumno-ficha {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .alumno-avatar {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--guinda);
+    color: #fff;
+    font-size: .74rem;
+    font-weight: 800;
+  }
+
+  .alumno-nombre {
+    font-size: .9rem;
+    font-weight: 800;
+    color: var(--text-dark);
+  }
+
+  .alumno-meta {
+    margin-top: 2px;
+    font-size: .74rem;
+    color: var(--text-lo);
+  }
+
+  .evidencia-img {
+    display: block;
+    max-width: 100%;
+    max-height: 440px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+  }
+
+  a.btn-submit {
+    text-decoration: none;
+  }
+
 </style>
 {% endblock %}
 
-
 {% block content %}
-
 <div class="edit-case-page">
 
   <!-- ==========================================================
@@ -813,25 +938,12 @@
        ========================================================== -->
 
   <div class="breadcrumb">
-
-    <a href="{% url 'dashboard' %}">
-      Inicio
-    </a>
-
+    <a href="{% url 'dashboard' %}">Inicio</a>
     <span class="breadcrumb-sep">›</span>
-
-    <span>
-      Casos
-    </span>
-
+    <a href="{% if request.session.usuario_rol == 'Profesor Jefe' %}{% url 'mis_casos_curso' %}{% else %}{% url 'historial_casos' %}{% endif %}">Casos</a>
     <span class="breadcrumb-sep">›</span>
-
-    <span>
-      Editar caso #{{ caso.caso_id }}
-    </span>
-
+    <span>Caso #{{ caso.caso_id }}</span>
   </div>
-
 
   <!-- ==========================================================
        HERO
@@ -842,45 +954,35 @@
     <div class="edit-hero-main">
 
       <div class="edit-overline">
-
         <span class="edit-overline-dot"></span>
-
-        Gestión de expediente
-
+        Expediente de convivencia
       </div>
 
       <div class="edit-title">
-        Editar caso de convivencia
+        {{ titulo }}
       </div>
 
       <div class="edit-subtitle">
-        Modificación de la información registrada en la bitácora.
+        Caso registrado el {{ caso.caso_fecha|date:"d/m/Y" }}.
       </div>
 
     </div>
 
-
     <div class="edit-case-id">
-
       <div>
-
         <div class="edit-case-id-label">
           Caso
         </div>
-
         <div class="edit-case-id-number">
           #{{ caso.caso_id }}
         </div>
-
       </div>
-
     </div>
 
   </section>
 
-
   <!-- ==========================================================
-       FORMULARIO
+       DETALLE
        ========================================================== -->
 
   <section class="form-card">
@@ -888,498 +990,182 @@
     <div class="form-card-header">
 
       <div class="form-card-icon">
-
-        <svg
-          width="17"
-          height="17"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"
-          />
-
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
-          />
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
         </svg>
-
       </div>
 
       <div>
-
         <div class="form-card-title">
           Información del caso
         </div>
-
         <div class="form-card-subtitle">
-          Actualiza los antecedentes que correspondan.
+          Antecedentes registrados en la bitácora de convivencia.
         </div>
-
       </div>
 
     </div>
 
-
     <div class="form-inner">
 
-      <div class="edit-notice">
+      <!-- 01 · INCIDENTE -->
 
-        <div class="edit-notice-icon">
+      <section class="form-section">
 
-          <svg
-            width="16"
-            height="16"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M12 9v3.75m9-.75a9 9 0 11-18 0zm-9 3.75h.008v.008H12v-.008z"
-            />
-          </svg>
-
+        <div class="section-heading">
+          <div class="section-number">01</div>
+          <div class="section-title">Información del incidente</div>
         </div>
 
-        <div class="edit-notice-text">
-          Los cambios realizados aquí actualizarán el registro oficial del caso.
-        </div>
+        <div class="detail-grid">
 
-      </div>
-
-
-      <form method="POST">
-
-        {% csrf_token %}
-
-
-        <!-- ======================================================
-             INFORMACIÓN PRINCIPAL
-             ====================================================== -->
-
-        <section class="form-section">
-
-          <div class="section-heading">
-
-            <div class="section-number">
-              01
-            </div>
-
-            <div class="section-title">
-              Información del incidente
-            </div>
-
+          <div class="detail-item">
+            <div class="detail-label">Lugar del colegio</div>
+            <div class="detail-value">{{ caso.lugar.lugar_nombre }}</div>
           </div>
 
-
-          <div class="form-group">
-
-            <label>
-              Título del incidente
-            </label>
-
-            <input
-              type="text"
-              name="titulo"
-              class="form-control"
-              value="{{ titulo_actual }}"
-              required
-            >
-
+          <div class="detail-item">
+            <div class="detail-label">Fecha del suceso</div>
+            <div class="detail-value">{{ caso.caso_fecha|date:"d/m/Y" }}</div>
           </div>
 
-
-          <div class="row-two">
-
-            <div class="form-group">
-
-              <label>
-                Lugar del colegio
-              </label>
-
-              <select
-                name="lugar"
-                class="form-control"
-                required
-              >
-
-                {% for l in lugares %}
-
-                  <option
-                    value="{{ l.lugar_id }}"
-                    {% if l.lugar_id == caso.lugar_id %}selected{% endif %}
-                  >
-                    {{ l.lugar_nombre }}
-                  </option>
-
-                {% endfor %}
-
-              </select>
-
+          <div class="detail-item">
+            <div class="detail-label">Severidad de la falta</div>
+            <div class="detail-value">
+              <span class="badge-gravedad {% if tipo_falta == 'Leve' %}leve{% elif tipo_falta == 'Grave' %}grave{% elif tipo_falta == 'Gravísima' %}gravisima{% endif %}">
+                {{ tipo_falta }}
+              </span>
             </div>
-
-
-            <div class="form-group">
-
-              <label>
-                Severidad de la falta
-              </label>
-
-              <select
-                name="tipo_falta"
-                class="form-control"
-                required
-              >
-
-                <option
-                  value="Leve"
-                  {% if tipo_falta_actual == "Leve" %}selected{% endif %}
-                >
-                  Leve
-                </option>
-
-                <option
-                  value="Grave"
-                  {% if tipo_falta_actual == "Grave" %}selected{% endif %}
-                >
-                  Grave
-                </option>
-
-                <option
-                  value="Gravísima"
-                  {% if tipo_falta_actual == "Gravísima" %}selected{% endif %}
-                >
-                  Gravísima
-                </option>
-
-              </select>
-
-            </div>
-
           </div>
 
-        </section>
-
-
-        <!-- ======================================================
-             ALUMNOS
-             ====================================================== -->
-
-        <section class="form-section">
-
-          <div class="section-heading">
-
-            <div class="section-number">
-              02
-            </div>
-
-            <div class="section-title">
-              Alumnos involucrados
-            </div>
-
-          </div>
-
-
-          {% for est in estudiantes %}
-
-          <div class="alumno-bloque">
-
-            <div class="alumno-bloque-header">
-
-              <div class="alumno-heading">
-
-                <div class="alumno-heading-icon">
-
-                  <svg
-                    width="15"
-                    height="15"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-
-                </div>
-
-                <div>
-
-                  <div class="alumno-heading-text">
-                    Alumno involucrado
-                  </div>
-
-                  <div class="alumno-heading-number">
-                    Registro #{{ forloop.counter }}
-                  </div>
-
-                </div>
-
-              </div>
-
-
-              {% if estudiantes|length > 1 %}
-
-              <button
-                type="button"
-                class="btn-remove-alumno"
-                title="Eliminar a este alumno del caso"
-                onclick="confirmarAccion(event, document.getElementById('form-eliminar-{{ est.estudiante_id }}'), '¿Eliminar alumno?', '¿Estás seguro de eliminar a {{ est.estudiante_nombre }} {{ est.estudiante_apaterno }} de este caso?')"
-              >
-
-                <svg
-                  width="14"
-                  height="14"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-
-              </button>
-
+          <div class="detail-item">
+            <div class="detail-label">Registrado por</div>
+            <div class="detail-value">
+              {% if caso.usuario %}
+                {{ caso.usuario.usuario_nombre }} {{ caso.usuario.usuario_apaterno }}
+              {% else %}
+                Usuario ya no disponible
               {% endif %}
-
             </div>
-
-
-            <input
-              type="hidden"
-              name="estudiante_id[]"
-              value="{{ est.estudiante_id }}"
-            >
-
-
-            <div class="form-group">
-
-              <label>
-                Nombre del estudiante
-              </label>
-
-              <input
-                type="text"
-                name="alumno_nombre[]"
-                class="form-control"
-                value="{{ est.estudiante_nombre }}"
-                required
-              >
-
-            </div>
-
-
-            <div class="row-two">
-
-              <div class="form-group">
-
-                <label>
-                  Apellido paterno
-                </label>
-
-                <input
-                  type="text"
-                  name="alumno_apaterno[]"
-                  class="form-control"
-                  value="{{ est.estudiante_apaterno }}"
-                  required
-                >
-
-              </div>
-
-
-              <div class="form-group">
-
-                <label>
-                  Apellido materno
-                </label>
-
-                <input
-                  type="text"
-                  name="alumno_amaterno[]"
-                  class="form-control"
-                  value="{{ est.estudiante_amaterno }}"
-                  required
-                >
-
-              </div>
-
-            </div>
-
-
-            <div class="form-group">
-
-              <label>
-                Curso actual
-              </label>
-
-              <select
-                name="curso[]"
-                class="form-control"
-                required
-              >
-
-                {% for c in cursos %}
-
-                  <option
-                    value="{{ c.curso_id }}"
-                    {% if c.curso_id == est.curso_id %}selected{% endif %}
-                  >
-                    {{ c.curso_grado }} {{ c.curso_letra }}
-                  </option>
-
-                {% endfor %}
-
-              </select>
-
-            </div>
-
+            {% if caso.caso_creado_en %}
+              <div class="detail-sub">{{ caso.caso_creado_en|date:"d/m/Y H:i" }}</div>
+            {% endif %}
           </div>
 
-          {% endfor %}
+        </div>
 
-        </section>
+      </section>
 
+      <!-- 02 · ALUMNOS -->
 
-        <!-- ======================================================
-             DESCRIPCIÓN
-             ====================================================== -->
+      <section class="form-section">
+
+        <div class="section-heading">
+          <div class="section-number">02</div>
+          <div class="section-title">Alumnos involucrados</div>
+        </div>
+
+        {% for rel in relaciones %}
+          <div class="alumno-bloque">
+            <div class="alumno-ficha">
+
+              <div class="alumno-avatar">
+                {{ rel.estudiante.estudiante_nombre|slice:":1" }}{{ rel.estudiante.estudiante_apaterno|slice:":1" }}
+              </div>
+
+              <div>
+                <div class="alumno-nombre">
+                  {{ rel.estudiante.estudiante_nombre }}
+                  {{ rel.estudiante.estudiante_apaterno }}
+                  {{ rel.estudiante.estudiante_amaterno }}
+                </div>
+                <div class="alumno-meta">
+                  {{ rel.estudiante.curso.curso_grado }} {{ rel.estudiante.curso.curso_letra }}
+                  {% if rel.estudiante.estudiante_numero_lista %}
+                    · N° de lista {{ rel.estudiante.estudiante_numero_lista }}
+                  {% endif %}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        {% empty %}
+          <div class="detail-text">
+            Este caso no tiene alumnos asociados.
+          </div>
+        {% endfor %}
+
+      </section>
+
+      <!-- 03 · DESCRIPCIÓN -->
+
+      <section class="form-section">
+
+        <div class="section-heading">
+          <div class="section-number">03</div>
+          <div class="section-title">Relato de los hechos</div>
+        </div>
+
+        <div class="detail-text">
+          {{ descripcion|linebreaksbr }}
+        </div>
+
+      </section>
+
+      {% if nombre_foto %}
+
+        <!-- 04 · EVIDENCIA -->
 
         <section class="form-section">
 
           <div class="section-heading">
-
-            <div class="section-number">
-              03
-            </div>
-
-            <div class="section-title">
-              Relato de los hechos
-            </div>
-
+            <div class="section-number">04</div>
+            <div class="section-title">Evidencia adjunta</div>
           </div>
 
-
-          <div class="form-group">
-
-            <label>
-              Descripción / relato de los hechos
-            </label>
-
-            <textarea
-              name="descripcion"
-              class="form-control"
-              rows="5"
-              required
-            >{{ descripcion_actual }}</textarea>
-
-          </div>
+          {% with 'evidencias/'|add:nombre_foto as ruta_foto %}
+            <img
+              src="{% static ruta_foto %}"
+              alt="Evidencia del caso #{{ caso.caso_id }}"
+              class="evidencia-img"
+            >
+          {% endwith %}
 
         </section>
 
+      {% endif %}
 
-        <!-- ======================================================
-             ACCIONES
-             ====================================================== -->
+      <!-- ACCIONES -->
 
-        <div class="form-actions">
+      <div class="form-actions">
 
+        <a
+          href="{% if request.session.usuario_rol == 'Profesor Jefe' %}{% url 'mis_casos_curso' %}{% else %}{% url 'historial_casos' %}{% endif %}"
+          class="btn-cancel"
+        >
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+          </svg>
+          Volver al listado
+        </a>
+
+        {% if request.session.usuario_rol|lower == 'administrador' or es_mi_caso %}
           <a
-            href="{% url 'detalle_caso' caso.caso_id %}"
-            class="btn-cancel"
-          >
-
-            <svg
-              width="14"
-              height="14"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-
-            Cancelar
-
-          </a>
-
-
-          <button
-            type="submit"
+            href="{% url 'editar_caso' caso.caso_id %}"
             class="btn-submit"
           >
-
-            <svg
-              width="15"
-              height="15"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M5 13l4 4L19 7"
-              />
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
+            Editar caso
+          </a>
+        {% endif %}
 
-            Guardar cambios
-
-          </button>
-
-        </div>
-
-      </form>
-
-
-      <!-- ========================================================
-           FORMULARIOS OCULTOS
-           Fuera del formulario principal para evitar
-           formularios HTML anidados.
-           ======================================================== -->
-
-      {% for est in estudiantes %}
-
-      <form
-        id="form-eliminar-{{ est.estudiante_id }}"
-        method="POST"
-        action="{% url 'eliminar_estudiante_caso' caso.caso_id est.estudiante_id %}"
-        style="display:none;"
-      >
-
-        {% csrf_token %}
-
-      </form>
-
-      {% endfor %}
+      </div>
 
     </div>
 
   </section>
 
 </div>
-
 {% endblock %}

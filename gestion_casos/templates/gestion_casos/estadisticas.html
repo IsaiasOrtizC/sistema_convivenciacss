@@ -1044,6 +1044,15 @@
 
     if (tipo === 'pie') {
 
+      // Una torta solo muestra categorías con casos: los valores en 0
+      // no se dibujan y solo ensucian la leyenda (p. ej. meses sin casos).
+      const paresTorta = labels
+        .map((etiqueta, i) => [etiqueta, data[i]])
+        .filter(par => par[1] > 0);
+
+      const etiquetasTorta = paresTorta.map(par => par[0]);
+      const serieTorta = paresTorta.map(par => par[1]);
+
       opciones = {
         chart: {
           type: 'pie',
@@ -1055,9 +1064,9 @@
           }
         },
 
-        series: data,
+        series: serieTorta,
 
-        labels: labels,
+        labels: etiquetasTorta,
 
         colors: coloresPaleta,
 
@@ -1223,21 +1232,17 @@
     );
 
     /*
-     * La evolución mensual es una tendencia temporal.
-     * Si se selecciona torta, se muestran barras porque una torta
-     * de 12 meses no resulta legible.
+     * En torta se muestra la distribución de casos por mes
+     * (solo los meses con casos); en barras o líneas, la tendencia anual.
      */
-    const tipoParaMensual =
-      tipoGraficoActual === 'pie'
-        ? 'bar'
-        : tipoGraficoActual;
-
     renderChart(
       'chartMensual',
-      tipoParaMensual,
+      tipoGraficoActual,
       data.meses_labels,
       data.mensual_data,
-      'Evolución Mensual (Tendencia Anual)'
+      tipoGraficoActual === 'pie'
+        ? 'Casos por Mes'
+        : 'Evolución Mensual (Tendencia Anual)'
     );
   }
 
