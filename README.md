@@ -398,29 +398,6 @@ cuya gravedad sea Leve; casos graves o gravísimos no contribuyen a ese total y
 actualizar el mismo caso no lo incrementa. Este mapeo solo puede usarse cuando
 la regla aprobada declara unidad de anotaciones y un umbral de casos coincidente.
 
-### Disposiciones verificadas del Reglamento Interno 2026
-
-En el PDF oficial recibido, el Título IX está impreso en la página 32 (página 33
-del archivo); la página impresa 34 corresponde al Título XI. El Título XVIII
-comienza en la página impresa 48 (página 49 del archivo) y termina en la página
-impresa 57 (página 58 del archivo). El Título IX trata la relación entre la
-familia y el establecimiento y no aporta reglas de clasificación o sanción. El
-catálogo existente del Título XVIII conserva únicamente las disposiciones
-seleccionadas para clasificación y medidas disciplinarias, incluida la
-separación preventiva ya presente en ese conjunto. No se crean entradas para
-cada medida formativa, reparatoria o alternativa descrita en el Reglamento.
-La suspensión general y la excepción específica de faltas gravísimas se
-conservan como disposiciones distintas, pendientes de interpretación autorizada.
-
-Cada disposición del catálogo guarda la versión explícita, sección, página
-impresa y página del archivo, cita textual y tipo de medida. Los umbrales 3 y 5
-son anotaciones negativas asociadas a faltas leves y se representan por casos
-distintos de gravedad Leve, según el modelo operativo indicado para ConviData.
-No se cuentan actualizaciones de un mismo caso ni casos de otra gravedad. La
-revisión y activación están restringidas al
-rol Administrador en la aplicación; esto no sustituye la autorización del
-Director que exige el Reglamento para medidas que le reserva.
-
 Para agregar las disposiciones estructuradas, el administrador primero debe
 cargar y procesar exactamente el PDF oficial verificado en una versión borrador.
 La operación valida su SHA-256 y vuelve a cotejar cada cita y número de página
