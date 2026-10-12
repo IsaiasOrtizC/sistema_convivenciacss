@@ -570,6 +570,35 @@
     line-height: 1.45;
   }
 
+  .profile-edit-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: min(100%, 560px);
+  }
+
+  .profile-edit-form label {
+    display: grid;
+    gap: 5px;
+    color: var(--text-mid);
+    font-size: .68rem;
+    font-weight: 700;
+  }
+
+  .profile-edit-form input {
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text-dark);
+    font: inherit;
+  }
+
+  .profile-messages {
+    margin-top: 14px;
+  }
+
   .btn-goto-config {
     display: inline-flex;
 
@@ -692,6 +721,11 @@
       align-items: stretch;
 
       flex-direction: column;
+    }
+
+    .profile-edit-form {
+      grid-template-columns: 1fr;
+      width: 100%;
     }
 
     .btn-goto-config {
@@ -1049,45 +1083,29 @@
              ACCIÓN
              ====================================================== -->
 
+        {% if messages %}
+          <div class="profile-messages">
+            {% for message in messages %}
+              <div class="info-item full">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
         <div class="profile-action">
 
           <div class="profile-action-text">
-            Para modificar tus datos personales o contraseña,
-            utiliza el panel de configuración de la cuenta.
+            Actualiza tus datos personales desde esta página. La contraseña se administra en configuración.
           </div>
 
-
-          <a
-            href="{% url 'gestion_configuracion' %}"
-            class="btn-goto-config"
-          >
-
-            <svg
-              width="14"
-              height="14"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 01-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 01-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 001.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543-.826-3.31-2.37-2.37.996.608 2.296.07 2.572-1.065z"
-              />
-
-              <circle
-                cx="12"
-                cy="12"
-                r="3"
-              />
-
-            </svg>
-
-            Gestionar perfil
-
-          </a>
+          <form method="POST" action="{% url 'gestion_datos_publicos' %}" class="profile-edit-form">
+            {% csrf_token %}
+            <label>Nombres<input name="nombre" value="{{ perfil.usuario_nombre }}" required maxlength="100"></label>
+            <label>Apellido paterno<input name="apaterno" value="{{ perfil.usuario_apaterno }}" required maxlength="100"></label>
+            <label>Apellido materno<input name="amaterno" value="{{ perfil.usuario_amaterno }}" required maxlength="100"></label>
+            <label>Correo institucional<input type="email" name="correo" value="{{ perfil.usuario_correo }}" required maxlength="254"></label>
+            <button type="submit" class="btn-goto-config">Guardar datos</button>
+            <a href="{% url 'gestion_configuracion' %}" class="btn-goto-config">Cambiar contraseña</a>
+          </form>
 
         </div>
 

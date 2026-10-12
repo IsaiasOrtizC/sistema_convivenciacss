@@ -584,6 +584,49 @@
       var(--surface-soft) !important;
   }
 
+  .period-summary-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .period-summary-card {
+    min-width: 0;
+    padding: 15px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface-soft);
+  }
+
+  .period-summary-label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-lo);
+    font-size: .66rem;
+    font-weight: 800;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+  }
+
+  .period-summary-value {
+    display: block;
+    color: var(--text-dark);
+    font-size: .95rem;
+    font-weight: 800;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .period-summary-note {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-lo);
+    font-size: .68rem;
+    line-height: 1.4;
+  }
+
 
   /* =========================================================
      TABLA
@@ -682,6 +725,49 @@
   .recent-table tbody tr:last-child td {
     border-bottom:
       none;
+  }
+
+  .dashboard-pagination {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+    color: var(--text-lo);
+    font-size: .76rem;
+  }
+
+  .dashboard-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dashboard-pagination-link,
+  .dashboard-pagination-disabled {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 7px 11px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-dark);
+    background: var(--surface-soft);
+    font-size: .74rem;
+    font-weight: 750;
+    text-decoration: none;
+  }
+
+  .dashboard-pagination-link:hover {
+    border-color: var(--guinda);
+    color: var(--guinda);
+  }
+
+  .dashboard-pagination-disabled {
+    opacity: .45;
   }
 
 
@@ -1023,6 +1109,10 @@
         repeat(2, minmax(0, 1fr));
     }
 
+    .period-summary-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
   }
 
 
@@ -1048,6 +1138,20 @@
 
       margin-bottom:
         20px;
+    }
+
+    .period-summary-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 9px;
+    }
+
+    .period-summary-card {
+      padding: 12px;
+    }
+
+    .dashboard-pagination {
+      align-items: flex-start;
+      flex-direction: column;
     }
 
     .metric-card {
@@ -1441,9 +1545,45 @@
 
   </section>
 
+  <section class="dashboard-panel" aria-labelledby="resumen-periodo-title">
+
+    <div class="pane-header">
+      <h2 class="pane-title" id="resumen-periodo-title">
+        <span class="pane-title-mark" aria-hidden="true"></span>
+        Resumen de los últimos 30 días
+      </h2>
+      <span class="pane-meta">Comparado con los 30 días anteriores</span>
+    </div>
+
+    <div class="period-summary-grid">
+      <div class="period-summary-card">
+        <span class="period-summary-label">Total de casos</span>
+        <span class="period-summary-value">{{ casos_periodo }}</span>
+      </div>
+      <div class="period-summary-card">
+        <span class="period-summary-label">Curso con más incidentes</span>
+        <span class="period-summary-value">{{ curso_mas_incidentes }}</span>
+      </div>
+      <div class="period-summary-card">
+        <span class="period-summary-label">Tipo de falta más frecuente</span>
+        <span class="period-summary-value">{{ tipo_falta_frecuente }}</span>
+      </div>
+      <div class="period-summary-card">
+        <span class="period-summary-label">Zona con más conflictos</span>
+        <span class="period-summary-value">{{ zona_mas_conflictos }}</span>
+      </div>
+      <div class="period-summary-card">
+        <span class="period-summary-label">Variación del período</span>
+        <span class="period-summary-value">{{ variacion_periodo }}%</span>
+        <span class="period-summary-note">Respecto a los 30 días anteriores</span>
+      </div>
+    </div>
+
+  </section>
+
 
   <!-- =======================================================
-       ÚLTIMAS BITÁCORAS
+       LISTADO DE CASOS
        ======================================================= -->
 
   <section class="dashboard-panel">
@@ -1458,7 +1598,7 @@
         ></span>
 
         <span>
-          Últimas Bitácoras Registradas
+          Listado de casos
         </span>
 
       </h2>
@@ -1629,6 +1769,29 @@
       </div>
 
     {% endif %}
+
+    <div class="dashboard-pagination" aria-label="Paginación del listado de casos">
+      <span>
+        Página {{ pagina_casos.number }} de {{ pagina_casos.paginator.num_pages }}
+        · {{ pagina_casos.paginator.count }} casos
+      </span>
+      <div class="dashboard-pagination-controls">
+        {% if pagina_casos.has_previous %}
+          <a class="dashboard-pagination-link" href="?pagina={{ pagina_casos.previous_page_number }}" aria-label="Página anterior">
+            Anterior
+          </a>
+        {% else %}
+          <span class="dashboard-pagination-disabled" aria-disabled="true">Anterior</span>
+        {% endif %}
+        {% if pagina_casos.has_next %}
+          <a class="dashboard-pagination-link" href="?pagina={{ pagina_casos.next_page_number }}" aria-label="Página siguiente">
+            Siguiente
+          </a>
+        {% else %}
+          <span class="dashboard-pagination-disabled" aria-disabled="true">Siguiente</span>
+        {% endif %}
+      </div>
+    </div>
 
   </section>
 

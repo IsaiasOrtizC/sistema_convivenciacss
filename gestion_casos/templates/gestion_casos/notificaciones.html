@@ -12,32 +12,9 @@
 
   .notifications-page {
     width: 100%;
-    max-width: 900px;
+    max-width: 1100px;
+    margin: 0 auto;
   }
-.notif-form {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-.notif-card {
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.notif-card:not(:disabled) {
-  width: 100%;
-}
-
-.notif-card:disabled {
-  cursor: default;
-}
-
-.notif-card:focus-visible {
-  outline: 3px solid rgba(212, 160, 23, .45);
-  outline-offset: 2px;
-}
 
   /* ============================================================
      BREADCRUMB
@@ -137,9 +114,23 @@
     display: flex;
     flex-direction: column;
 
-    gap: 10px;
+    gap: 14px;
 
     width: 100%;
+  }
+
+  .notif-entry {
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #e2d9d3;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, .07);
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
+
+  .notif-entry:hover {
+    border-color: rgba(123, 26, 26, .28);
+    box-shadow: 0 7px 20px rgba(0, 0, 0, .11);
   }
 
 
@@ -156,37 +147,8 @@
     gap: 14px;
 
     width: 100%;
-
-    padding: 16px 18px;
-
-    /*
-     * IMPORTANTE:
-     * Las notificaciones son sólidas.
-     * No usamos transparencia ni backdrop-filter.
-     */
-
-    background: #ffffff;
-
-    border: 1px solid #e2d9d3;
-
-    border-radius: var(--radius);
-
-    box-shadow:
-      0 3px 12px rgba(0, 0, 0, .07);
-
-    transition:
-      transform var(--transition),
-      border-color var(--transition),
-      box-shadow var(--transition);
-  }
-
-  .notif-card:hover {
-    transform: translateY(-1px);
-
-    border-color: rgba(123, 26, 26, .28);
-
-    box-shadow:
-      0 7px 20px rgba(0, 0, 0, .11);
+    padding: 18px 20px;
+    background: transparent;
   }
 
 
@@ -195,16 +157,15 @@
      ============================================================ */
 
   .notif-unread {
-    border-left: 4px solid var(--guinda);
-
     background: #fffdfa;
-
-    box-shadow:
-      0 4px 16px rgba(123, 26, 26, .09);
   }
 
-  .notif-unread:hover {
-    border-left-color: var(--gold);
+  .notif-entry-unread {
+    border-left: 4px solid var(--gold);
+  }
+
+  .notif-entry-unread:hover {
+    border-left-color: var(--gold-bright);
   }
 
 
@@ -266,13 +227,13 @@
 
     gap: 6px;
 
-    font-size: .91rem;
+    font-size: .98rem;
 
     line-height: 1.35;
 
     font-weight: 750;
 
-    color: #1c0a0a;
+    color: var(--text-dark);
 
     margin-bottom: 5px;
   }
@@ -283,11 +244,11 @@
      ============================================================ */
 
   .notif-text {
-    font-size: .82rem;
+    font-size: .9rem;
 
     line-height: 1.55;
 
-    color: #5c4c43;
+    color: var(--text-mid);
 
     overflow-wrap: anywhere;
   }
@@ -305,11 +266,12 @@
 
     margin-top: 9px;
 
-    font-size: .71rem;
+    flex-wrap: wrap;
+    font-size: .75rem;
 
     line-height: 1.3;
 
-    color: #8b7a70;
+    color: var(--text-lo);
 
     font-weight: 600;
   }
@@ -325,6 +287,131 @@
     background: var(--gold);
 
     flex-shrink: 0;
+  }
+
+  .notif-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 12px;
+    padding: 14px 20px 16px 80px;
+    border-top: 1px solid var(--border-soft);
+    background: rgba(123, 26, 26, .025);
+  }
+
+  .notif-actions form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 10px;
+    margin: 0;
+  }
+
+  .notif-actions label {
+    display: grid;
+    gap: 5px;
+    color: var(--text-mid);
+    font-size: .75rem;
+    font-weight: 700;
+  }
+
+  .notif-actions select,
+  .notif-actions input {
+    min-height: 40px;
+    padding: 8px 11px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-solid);
+    color: var(--text-dark);
+    font: inherit;
+    font-size: .83rem;
+  }
+
+  .notif-actions select {
+    min-width: 190px;
+  }
+
+  .notif-actions input {
+    min-width: min(250px, 40vw);
+  }
+
+  .notif-actions button {
+    min-height: 40px;
+    padding: 9px 14px;
+    border: 1px solid var(--guinda);
+    border-radius: var(--radius-sm);
+    background: var(--guinda);
+    color: #fff;
+    font: inherit;
+    font-size: .8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background var(--transition), transform var(--transition);
+  }
+
+  .notif-actions button:hover {
+    background: var(--guinda-dark);
+    transform: translateY(-1px);
+  }
+
+  .notif-actions button:focus-visible,
+  .notif-actions select:focus-visible,
+  .notif-actions input:focus-visible,
+  .notif-history summary:focus-visible {
+    outline: 3px solid rgba(212, 160, 23, .55);
+    outline-offset: 2px;
+  }
+
+  .notif-read-form button {
+    background: transparent;
+    color: var(--guinda);
+  }
+
+  .notif-read-form button:hover {
+    background: rgba(123, 26, 26, .08);
+    color: var(--guinda-dark);
+  }
+
+  .notif-history {
+    margin-top: 12px;
+    color: var(--text-mid);
+    font-size: .78rem;
+  }
+
+  .notif-history summary {
+    width: fit-content;
+    color: var(--guinda);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .notif-history-item {
+    margin-top: 8px;
+    padding-left: 12px;
+    border-left: 2px solid var(--gold);
+    line-height: 1.5;
+  }
+
+  .notif-manage {
+    margin-left: auto;
+    color: var(--text-mid);
+    font-size: .77rem;
+  }
+
+  .notif-manage summary {
+    padding: 9px 3px;
+    color: var(--guinda);
+    font-weight: 750;
+    cursor: pointer;
+  }
+
+  .notif-manage form {
+    padding-top: 8px;
+  }
+
+  .notif-expired {
+    color: #b42318;
+    font-weight: 800;
   }
 
 
@@ -355,6 +442,134 @@
     text-transform: uppercase;
 
     white-space: nowrap;
+  }
+
+  .notif-event-badge,
+  .notif-category {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 4px 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-mid);
+    font-size: .68rem;
+    line-height: 1.2;
+    font-weight: 750;
+  }
+
+  .notif-event-badge.is-update {
+    border-color: rgba(110, 91, 71, .2);
+    background: rgba(110, 91, 71, .07);
+  }
+
+  .notif-category.is-leve {
+    border-color: rgba(42, 122, 77, .25);
+    background: rgba(42, 122, 77, .08);
+    color: #24633f;
+  }
+
+  .notif-category.is-grave {
+    border-color: rgba(184, 112, 20, .3);
+    background: rgba(184, 112, 20, .09);
+    color: #85510f;
+  }
+
+  .notif-category.is-gravisima {
+    border-color: rgba(172, 44, 44, .25);
+    background: rgba(172, 44, 44, .08);
+    color: #9f2828;
+  }
+
+  .notif-recommendation {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border: 1px solid rgba(212, 160, 23, .35);
+    border-left: 3px solid var(--gold);
+    border-radius: var(--radius-sm);
+    background: rgba(212, 160, 23, .06);
+    color: var(--text-dark);
+    font-size: .82rem;
+    line-height: 1.55;
+  }
+
+  .notif-recommendation-label {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--guinda);
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .notif-human-review {
+    display: block;
+    margin-top: 7px;
+    color: var(--text-lo);
+    font-size: .72rem;
+    font-weight: 600;
+  }
+
+  .notif-rule-evidence {
+    margin-top: 9px;
+    color: var(--text-mid);
+    font-size: .75rem;
+  }
+
+  .notif-rule-evidence summary {
+    width: fit-content;
+    color: var(--guinda);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .notif-rule-evidence blockquote {
+    margin: 8px 0 0;
+    padding-left: 10px;
+    border-left: 2px solid var(--gold);
+    line-height: 1.5;
+  }
+
+  .notif-rule-source {
+    margin-top: 6px;
+    color: var(--text-lo);
+  }
+
+  .notif-no-recommendation {
+    margin-top: 10px;
+    color: var(--text-lo);
+    font-size: .76rem;
+    line-height: 1.45;
+  }
+
+  .notif-detail-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    width: fit-content;
+    margin-top: 12px;
+    padding: 8px 12px;
+    border: 1px solid rgba(123, 26, 26, .24);
+    border-radius: var(--radius-sm);
+    color: var(--guinda);
+    font-size: .78rem;
+    font-weight: 800;
+    text-decoration: none;
+    transition: background var(--transition), border-color var(--transition);
+  }
+
+  .notif-detail-link:hover {
+    border-color: var(--guinda);
+    background: rgba(123, 26, 26, .06);
+    text-decoration: none;
+  }
+
+  .notif-detail-link:focus-visible,
+  .notif-manage summary:focus-visible {
+    outline: 3px solid rgba(212, 160, 23, .55);
+    outline-offset: 2px;
   }
 
 
@@ -423,35 +638,23 @@
     color: var(--text-dark);
   }
 
-  html[data-theme="dark"] .notif-card {
-    /*
-     * También sólido en modo oscuro.
-     */
+  html[data-theme="dark"] .notif-entry {
     background: #21191b;
-
     border-color: rgba(255, 255, 255, .11);
-
-    box-shadow:
-      0 5px 18px rgba(0, 0, 0, .38);
+    box-shadow: 0 5px 18px rgba(0, 0, 0, .38);
   }
 
-  html[data-theme="dark"] .notif-card:hover {
+  html[data-theme="dark"] .notif-entry:hover {
     border-color: rgba(255, 255, 255, .19);
-
-    box-shadow:
-      0 8px 24px rgba(0, 0, 0, .48);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .48);
   }
 
   html[data-theme="dark"] .notif-unread {
     background: #281d20;
-
-    border-left-color: var(--gold);
-
-    box-shadow:
-      0 5px 20px rgba(0, 0, 0, .42);
   }
 
-  html[data-theme="dark"] .notif-unread:hover {
+  html[data-theme="dark"] .notif-entry-unread,
+  html[data-theme="dark"] .notif-entry-unread:hover {
     border-left-color: var(--gold-bright);
   }
 
@@ -508,6 +711,86 @@
     color: #aaa09a;
   }
 
+  html[data-theme="dark"] .notif-actions {
+    border-top-color: rgba(255, 255, 255, .09);
+    background: rgba(255, 255, 255, .025);
+  }
+
+  html[data-theme="dark"] .notif-actions select,
+  html[data-theme="dark"] .notif-actions input {
+    border-color: rgba(255, 255, 255, .14);
+    background: #171416;
+    color: #f4eeee;
+  }
+
+  html[data-theme="dark"] .notif-event-badge,
+  html[data-theme="dark"] .notif-category {
+    border-color: rgba(255, 255, 255, .14);
+    background: rgba(255, 255, 255, .05);
+    color: #ded8d5;
+  }
+
+  html[data-theme="dark"] .notif-event-badge.is-update {
+    background: rgba(255, 255, 255, .04);
+  }
+
+  html[data-theme="dark"] .notif-category.is-leve {
+    border-color: rgba(109, 196, 140, .3);
+    background: rgba(65, 143, 94, .14);
+    color: #9fddb4;
+  }
+
+  html[data-theme="dark"] .notif-category.is-grave {
+    border-color: rgba(238, 183, 94, .32);
+    background: rgba(184, 112, 20, .15);
+    color: #f2c77e;
+  }
+
+  html[data-theme="dark"] .notif-category.is-gravisima {
+    border-color: rgba(255, 125, 125, .3);
+    background: rgba(172, 44, 44, .16);
+    color: #ffaaaa;
+  }
+
+  html[data-theme="dark"] .notif-recommendation {
+    border-color: rgba(240, 192, 48, .28);
+    border-left-color: var(--gold-bright);
+    background: rgba(240, 192, 48, .07);
+    color: #f0e9e5;
+  }
+
+  html[data-theme="dark"] .notif-recommendation-label,
+  html[data-theme="dark"] .notif-rule-evidence summary,
+  html[data-theme="dark"] .notif-detail-link,
+  html[data-theme="dark"] .notif-manage summary {
+    color: var(--gold-bright);
+  }
+
+  html[data-theme="dark"] .notif-detail-link {
+    border-color: rgba(240, 192, 48, .3);
+  }
+
+  html[data-theme="dark"] .notif-detail-link:hover {
+    background: rgba(240, 192, 48, .08);
+  }
+
+  html[data-theme="dark"] .notif-read-form button {
+    border-color: rgba(240, 192, 48, .45);
+    color: var(--gold-bright);
+  }
+
+  html[data-theme="dark"] .notif-read-form button:hover {
+    background: rgba(240, 192, 48, .1);
+  }
+
+  html[data-theme="dark"] .notif-history summary {
+    color: var(--gold-bright);
+  }
+
+  html[data-theme="dark"] .notif-expired {
+    color: #ff8b82;
+  }
+
 
   /* ============================================================
      RESPONSIVE
@@ -533,7 +816,6 @@
 
     .notif-card {
       gap: 11px;
-
       padding: 14px;
     }
 
@@ -560,6 +842,43 @@
 
     .badge-unread {
       font-size: .57rem;
+    }
+
+    .notif-actions {
+      align-items: stretch;
+      padding: 12px 14px 14px;
+    }
+
+    .notif-actions form {
+      width: 100%;
+    }
+
+    .notif-actions label {
+      flex: 1 1 100%;
+    }
+
+    .notif-actions select,
+    .notif-actions input {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .notif-actions button {
+      width: 100%;
+    }
+
+    .notif-manage {
+      width: 100%;
+      margin-left: 0;
+    }
+
+    .notif-manage form {
+      width: 100%;
+    }
+
+    .notif-detail-link {
+      width: 100%;
+      justify-content: center;
     }
   }
 
@@ -593,13 +912,12 @@
 
   @media (prefers-reduced-motion: reduce) {
 
-    .notif-card {
+    .notif-card,
+    .notif-entry {
       transition: none;
     }
 
-    .notif-card:hover {
-      transform: none;
-    }
+    .notif-entry:hover { box-shadow: 0 3px 12px rgba(0, 0, 0, .07); }
   }
 
 </style>
@@ -659,20 +977,8 @@
 
       {% for n in notificaciones %}
 
-       <form
-  method="POST"
-  action="{% url 'marcar_notificacion_leida' n.notificacion_id %}"
-  class="notif-form"
->
-  {% csrf_token %}
-
-  <button
-    type="submit"
-    class="notif-card {% if not n.notificacion_leido %}notif-unread{% endif %}"
-    {% if n.notificacion_leido %}
-      disabled
-    {% endif %}
-  >
+      <div class="notif-entry {% if not n.notificacion_leido %}notif-entry-unread{% endif %}">
+      <article id="notificacion-{{ n.notificacion_id }}" class="notif-card {% if not n.notificacion_leido %}notif-unread{% endif %}">
 
     <!-- ICONO -->
 
@@ -691,31 +997,135 @@
           {{ n.notificacion_titulo }}
         </span>
 
-        {% if not n.notificacion_leido %}
-
+        {% if n.evento_tipo == 'caso_actualizado' %}
+          <span class="notif-event-badge is-update">Actualización</span>
+        {% elif not n.notificacion_leido %}
           <span class="badge-unread">
             Nueva
           </span>
-
         {% endif %}
 
       </div>
 
+      {% if n.caso_id %}
+        <div class="notif-category is-{{ n.categoria_css }}">
+          {{ n.categoria_falta }}
+        </div>
+      {% endif %}
 
-      <div class="notif-text">
-        {{ n.notificacion_mensaje }}
-      </div>
+      {% if n.regla_operativa %}
+        <div class="notif-recommendation">
+          <span class="notif-recommendation-label">Orientación según disposición vigente</span>
+          {{ n.notificacion_mensaje }}
+            <span class="notif-human-review">
+              Orientación para revisión: no aplica automáticamente una medida.
+            </span>
+            <details class="notif-rule-evidence">
+            <summary>Ver evidencia y referencia del Reglamento</summary>
+            <blockquote>{{ n.regla.evidencia_textual }}</blockquote>
+            <div class="notif-rule-source">
+              {{ n.regla.titulo_fuente }} · {{ n.regla.seccion_fuente }}
+              {% if n.regla.pagina_impresa %}
+                · Página impresa {{ n.regla.pagina_impresa }}
+              {% endif %}
+              {% if n.regla.pagina_pdf %}
+                · Página PDF {{ n.regla.pagina_pdf }}
+              {% endif %}
+              {% if n.version_reglamento %}
+                · Versión {{ n.version_reglamento.numero }}
+              {% endif %}
+            </div>
+          </details>
+        </div>
+      {% else %}
+        <div class="notif-text">
+          {{ n.notificacion_mensaje }}
+        </div>
+        {% if n.caso_id and not n.regla %}
+          <div class="notif-no-recommendation">
+            Esta alerta informa el registro del caso; no propone una sanción.
+            Si no hay una disposición aprobada y vigente asociada, el proceder
+            requiere revisión del personal autorizado.
+          </div>
+        {% endif %}
+      {% endif %}
 
 
       <div class="notif-meta">
         {{ n.notificacion_fecha|date:"d M, Y · H:i" }}
+        · {{ n.get_estado_display }}
+        {% if n.fecha_limite %}
+          · Límite: {{ n.fecha_limite|date:"d/m/Y" }}
+          {% if n.fecha_limite < hoy %}
+            <strong class="notif-expired" role="alert">Vencida</strong>
+          {% endif %}
+        {% endif %}
+        {% if n.version_reglamento %}
+          · Reglamento v{{ n.version_reglamento.numero }}
+        {% endif %}
       </div>
+
+      {% if n.caso_id %}
+        <a class="notif-detail-link" href="{% url 'detalle_caso' n.caso_id %}">
+          Ver detalle del caso
+          <span aria-hidden="true">→</span>
+        </a>
+      {% elif n.url_caso %}
+        <a class="notif-detail-link" href="{{ n.url_caso }}">
+          Ver casos registrados ese día
+          <span aria-hidden="true">→</span>
+        </a>
+      {% endif %}
+
+      {% if n.historial_estados.all %}
+        <details class="notif-history">
+          <summary>Historial de cambios</summary>
+          {% for cambio in n.historial_estados.all %}
+            <div class="notif-history-item">
+              {{ cambio.cambiado_en|date:"d/m/Y H:i" }} · {{ cambio.get_estado_display }}
+              {% if cambio.cambiado_por %}
+                · {{ cambio.cambiado_por.usuario_nombre }} {{ cambio.cambiado_por.usuario_apaterno }}
+              {% endif %}
+              · {{ cambio.motivo }}
+            </div>
+          {% endfor %}
+        </details>
+      {% endif %}
 
     </div>
 
-  </button>
+      </article>
 
-</form>
+      <div class="notif-actions">
+        {% if not n.notificacion_leido %}
+          <form class="notif-read-form" method="POST" action="{% url 'marcar_notificacion_leida' n.notificacion_id %}">
+            {% csrf_token %}
+            <button type="submit">Marcar como leída</button>
+          </form>
+        {% endif %}
+        {% if puede_gestionar %}
+          <details class="notif-manage">
+            <summary>Gestionar estado</summary>
+            <form method="POST" action="{% url 'cambiar_estado_notificacion' n.notificacion_id %}">
+              {% csrf_token %}
+              <label>
+                Estado
+                <select name="estado" aria-label="Estado de la notificación" required>
+                  {% for valor, etiqueta in estados_notificacion %}
+                    <option value="{{ valor }}" {% if n.estado == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                Motivo del cambio
+                <input type="text" name="motivo" maxlength="500" placeholder="Indica por qué cambia el estado" required>
+              </label>
+              <button type="submit">Guardar estado</button>
+            </form>
+          </details>
+        {% endif %}
+      </div>
+      </div>
 
       {% endfor %}
 
@@ -740,6 +1150,8 @@
     {% endif %}
 
   </div>
+
+  {% include 'gestion_casos/seguimiento.html' %}
 
 </div>
 

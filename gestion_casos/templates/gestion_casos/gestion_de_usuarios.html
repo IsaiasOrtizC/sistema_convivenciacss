@@ -493,6 +493,13 @@
     color: var(--text-mid);
   }
 
+  .form-hint {
+    margin: 0;
+    color: var(--text-lo);
+    font-size: .76rem;
+    line-height: 1.5;
+  }
+
   .form-control {
     padding: 9px 12px;
 
@@ -2121,17 +2128,11 @@
 
         <div class="form-group">
 
-          <label class="form-label">
-            Contraseña de Acceso
-          </label>
-
-          <input
-            type="password"
-            name="contrasena"
-            class="form-control"
-            placeholder="••••••••"
-            required
-          />
+          <div class="form-label">Contraseña temporal</div>
+          <p class="form-hint">
+            Se generará automáticamente y se enviará al correo institucional.
+            El funcionario deberá cambiarla al iniciar sesión.
+          </p>
 
         </div>
 

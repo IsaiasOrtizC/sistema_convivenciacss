@@ -1,0 +1,120 @@
+<style>
+  .tracking-page { width: 100%; max-width: 1180px; }
+  .tracking-card {
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin: 14px 0;
+    padding: 18px;
+  }
+  .tracking-meta, .tracking-actions, .tracking-history {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .tracking-card label { display: block; margin: 8px 0; }
+  .tracking-card input, .tracking-card select, .tracking-card button {
+    margin: 4px;
+    padding: 7px;
+  }
+  .tracking-overdue { color: #a20f0f; font-weight: 700; }
+  .tracking-toggle {
+    cursor: pointer;
+    font-size: 1.2rem;
+    font-weight: 700;
+    padding: 14px 0;
+  }
+</style>
+
+<section class="tracking-page" aria-labelledby="tracking-heading">
+  <details id="seguimiento" open>
+    <summary class="tracking-toggle" id="tracking-heading">Seguimiento de casos</summary>
+    <p>Estado, acciones pendientes, responsables, plazos e historial. Los estudiantes se muestran mediante su identificador no sensible. El avance asigna el mismo peso a cada acción requerida.</p>
+
+    <form method="GET" action="{% url 'notificaciones' %}#seguimiento">
+      <label for="estado-seguimiento">Filtrar por estado</label>
+      <select id="estado-seguimiento" name="estado_seguimiento">
+        <option value="">Todos</option>
+        <option value="abierto" {% if filtro_estado == 'abierto' %}selected{% endif %}>En seguimiento</option>
+        <option value="solucionado" {% if filtro_estado == 'solucionado' %}selected{% endif %}>Solucionado</option>
+      </select>
+      <button type="submit">Filtrar</button>
+    </form>
+
+    {% for fila in filas_seguimiento %}
+      <article class="tracking-card">
+        <h2>Caso #{{ fila.caso.caso_id }}</h2>
+        <p><a href="{% url 'detalle_caso' fila.caso.caso_id %}">Ver detalle del caso y sus evidencias</a></p>
+        <div class="tracking-meta">
+          <div>Estudiante: {{ fila.estudiante_id }}</div>
+          <div>Tipo/categoría: {{ fila.categoria|default:"No especificada" }}</div>
+          <div>Fecha del caso: {{ fila.caso.caso_fecha|date:"d/m/Y" }}</div>
+          <div>Estado: {{ fila.estado_label }}</div>
+          {% if fila.caso.caso_creado_en %}
+            <div>Registrado: {{ fila.caso.caso_creado_en|date:"d/m/Y H:i" }}</div>
+          {% endif %}
+          {% if fila.caso.evidencia %}
+            <div>Hay evidencia asociada al caso.</div>
+          {% endif %}
+          {% if fila.avance != None %}
+            <div>Acciones completadas: {{ fila.avance }}%</div>
+          {% else %}
+            <div>No hay acciones requeridas configuradas; no se calcula porcentaje.</div>
+          {% endif %}
+        </div>
+
+        <section class="tracking-actions">
+          <h3>Acciones requeridas</h3>
+          {% for accion in fila.acciones %}
+            <article>
+              <strong>{{ accion.titulo }}</strong>
+              <div>Estado: {{ accion.get_estado_display }}</div>
+              <div>Responsable: {{ accion.responsable.get_full_name|default:accion.responsable_rol|default:"Sin asignar" }}</div>
+              {% if accion.fecha_limite %}
+                <div class="{% if accion.estado == 'pendiente' and accion.fecha_limite < hoy %}tracking-overdue{% endif %}">
+                  Fecha límite: {{ accion.fecha_limite|date:"d/m/Y" }}
+                  {% if accion.estado == 'pendiente' and accion.fecha_limite < hoy %}· Vencida{% endif %}
+                </div>
+              {% endif %}
+              {% if puede_gestionar %}
+                <form method="POST" action="{% url 'actualizar_accion_seguimiento' accion.pk %}">
+                  {% csrf_token %}
+                  <select name="estado" required>
+                    <option value="pendiente" {% if accion.estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                    <option value="completada" {% if accion.estado == 'completada' %}selected{% endif %}>Completada</option>
+                  </select>
+                  <input type="text" name="motivo" maxlength="500" placeholder="Motivo del cambio" required>
+                  <button type="submit">Guardar acción</button>
+                </form>
+              {% endif %}
+            </article>
+          {% empty %}
+            <p>No hay acciones requeridas vinculadas a reglas aprobadas para este caso.</p>
+          {% endfor %}
+        </section>
+
+        {% if fila.seguimiento.historial.all %}
+          <section class="tracking-history">
+            <h3>Historial de seguimiento</h3>
+            {% for entrada in fila.seguimiento.historial.all %}
+              <div>{{ entrada.cambiado_en|date:"d/m/Y H:i" }} · {{ entrada.get_estado_display }} · {{ entrada.motivo }}</div>
+            {% endfor %}
+          </section>
+        {% endif %}
+
+        {% if puede_gestionar and fila.estado != 'solucionado' and fila.estudiante_pk %}
+          <form method="POST" action="{% url 'cerrar_seguimiento' fila.caso.caso_id fila.estudiante_pk %}">
+            {% csrf_token %}
+            <label>Motivo del cierre
+              <input type="text" name="motivo" maxlength="1000" required>
+            </label>
+            <button type="submit">Cerrar seguimiento</button>
+          </form>
+        {% endif %}
+      </article>
+    {% empty %}
+      <p>No se encontraron casos de seguimiento.</p>
+    {% endfor %}
+  </details>
+</section>

@@ -593,7 +593,6 @@
 
   .form-actions {
     display: flex;
-
     align-items: center;
     justify-content: space-between;
 
@@ -604,6 +603,13 @@
     padding-top: 18px;
 
     border-top: 1px solid var(--border);
+  }
+
+  .form-action-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 9px;
   }
 
   .btn-cancel {
@@ -923,6 +929,19 @@
     border: 1px solid var(--border);
   }
 
+  .evidencia-documento {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--guinda);
+    background: var(--surface-soft);
+    font-weight: 750;
+    text-decoration: none;
+  }
+
   a.btn-submit {
     text-decoration: none;
   }
@@ -1123,13 +1142,17 @@
             <div class="section-title">Evidencia adjunta</div>
           </div>
 
-          {% with 'evidencias/'|add:nombre_foto as ruta_foto %}
+          {% if evidencia_es_imagen %}
             <img
-              src="{% static ruta_foto %}"
+              src="{{ evidencia_url }}"
               alt="Evidencia del caso #{{ caso.caso_id }}"
               class="evidencia-img"
             >
-          {% endwith %}
+          {% else %}
+            <a class="evidencia-documento" href="{{ evidencia_url }}" target="_blank" rel="noopener">
+              Abrir o descargar {{ nombre_foto|cut:"evidencias/" }}
+            </a>
+          {% endif %}
 
         </section>
 
@@ -1149,7 +1172,14 @@
           Volver al listado
         </a>
 
-        {% if request.session.usuario_rol|lower == 'administrador' or es_mi_caso %}
+        <div class="form-action-group">
+          <a href="{% url 'descargar_caso_pdf' caso.caso_id %}" class="btn-cancel">
+            Descargar PDF
+          </a>
+          <a href="{% url 'descargar_caso_xlsx' caso.caso_id %}" class="btn-cancel">
+            Descargar Excel
+          </a>
+        {% if puede_editar %}
           <a
             href="{% url 'editar_caso' caso.caso_id %}"
             class="btn-submit"
@@ -1160,6 +1190,7 @@
             Editar caso
           </a>
         {% endif %}
+        </div>
 
       </div>
 

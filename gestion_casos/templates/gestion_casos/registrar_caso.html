@@ -1479,6 +1479,9 @@
       <p>
         Registra los antecedentes del hecho, identifica a los estudiantes
         involucrados y adjunta evidencia de respaldo cuando corresponda.
+        {% if requiere_aprobacion %}
+          El reporte será enviado a revisión y no aparecerá en la bitácora oficial hasta que sea aprobado.
+        {% endif %}
       </p>
 
     </div>
@@ -1487,7 +1490,11 @@
 
       <span class="registro-status-dot"></span>
 
-      Registro oficial
+      {% if requiere_aprobacion %}
+        Envío para revisión
+      {% else %}
+        Registro oficial
+      {% endif %}
 
     </div>
 
@@ -2202,19 +2209,19 @@
               <div class="evidence-content">
 
                 <div class="evidence-title">
-                  Adjuntar imagen de respaldo
+                  Adjuntar archivo de respaldo
                 </div>
 
                 <div class="evidence-help">
-                  Opcional · PNG, JPG o JPEG. El archivo será almacenado
-                  como evidencia asociada al caso.
+                  Opcional · PDF, Word, Excel, texto o imagen (máximo 20 MB).
+                  El archivo quedará asociado al caso.
                 </div>
 
                 <input
                   type="file"
                   name="evidencia_foto"
                   id="evidencia_foto"
-                  accept="image/*"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.png,.jpg,.jpeg"
                   class="evidence-input"
                   style="margin-top: 10px;"
                 >
@@ -2257,8 +2264,12 @@
             </svg>
 
             <span>
-              Verifica los antecedentes antes de guardar.
-              El expediente quedará registrado en el sistema.
+              {% if requiere_aprobacion %}
+                El caso quedará en espera de revisión y no se registrará hasta ser aprobado.
+              {% else %}
+                Verifica los antecedentes antes de guardar.
+                El expediente quedará registrado en el sistema.
+              {% endif %}
             </span>
 
           </div>
@@ -2284,7 +2295,11 @@
               />
             </svg>
 
-            Guardar expediente
+            {% if requiere_aprobacion %}
+              Enviar a revisión
+            {% else %}
+              Guardar expediente
+            {% endif %}
 
           </button>
 

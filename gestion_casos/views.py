@@ -1,5 +1,7 @@
 import os
 import io
+import hashlib
+import logging
 import secrets
 import string
 import resend
@@ -8,16 +10,36 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db import connection, transaction
 from django.conf import settings
-from django.core.files.storage import FileSystemStorage
-from django.http import HttpResponse, JsonResponse
+from django.urls import reverse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.core.paginator import Paginator
-from .models import Caso, Lugar, Estudiante, Involucran, Curso, Usuario, Rol, Notificacion, HistorialUsuario, DocumentoInstitucional, ProfesorJefe, Administrador, Inspector, PConvivencia, SesionActiva, _quitar_tildes
+from .models import (
+    AccionSeguimiento, Administrador, Caso, Curso, DocumentoInstitucional,
+    Estudiante, Inspector,
+    HistorialAccionSeguimiento, HistorialImportacionEstudiantes,
+    HistorialNotificacion, HistorialSeguimientoCaso,
+    HistorialUsuario, Involucran, Lugar, Notificacion, PConvivencia,
+    ProfesorJefe, ReglaInstitucional, Rol, SeguimientoCaso, SesionActiva,
+    SolicitudCaso, Usuario, VersionReglamento, _quitar_tildes,
+)
+from .reglamento import (
+    ErrorProcesamientoPDF,
+    extraer_paginas_pdf,
+    evaluar_reglas_para_caso,
+    guardar_candidatas,
+)
 from django.contrib.messages import get_messages
 from django.utils import timezone
+from django.utils.dateparse import parse_date
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
+from django.core.files.storage import default_storage
+from django.templatetags.static import static
 from django.db.models import Count
 from django.db.models.functions import ExtractMonth
 import json
 from datetime import timedelta
+from xml.sax.saxutils import escape
 from django.db.models import Count, Value, Q
 from django.db.models.functions import Concat
 from django.db import transaction, connection
@@ -34,6 +56,24 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill, Font
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import BarChart, PieChart, LineChart, Reference
+
+logger = logging.getLogger(__name__)
+
+
+def _programar_tarea_correo(request, tarea, argumentos, mensaje_error):
+    def encolar():
+        try:
+            tarea.delay(*argumentos)
+        except Exception:
+            logger.exception("No se pudo encolar el envío de correo.")
+            messages.warning(request, mensaje_error)
+
+    transaction.on_commit(encolar)
+
+
+def _generar_contrasena_temporal():
+    alfabeto = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alfabeto) for _ in range(14))
 
 
 #PANTALLA LOGIN
@@ -92,7 +132,7 @@ def login_view(request):
                 return redirect('login')
                 
             except Usuario.DoesNotExist:
-                messages.error(request, "El correo electrónico ingresado no corresponde a ningún funcionario activo.")
+                messages.error(request, "Usuario no existente: el correo ingresado no está registrado.")
                 return redirect('login')
             except Exception as e:
                 messages.error(request, f"Error en el servidor de correos: {str(e)}")
@@ -166,7 +206,7 @@ def login_view(request):
                     return redirect('login')
                     
             except Usuario.DoesNotExist:
-                messages.error(request, "El correo electrónico no se encuentra registrado en el sistema.")
+                messages.error(request, "Usuario no existente: el correo ingresado no está registrado en el sistema.")
                 return redirect('login')
 
     return render(request, 'gestion_casos/login.html')
@@ -199,6 +239,69 @@ def _bloquear_si_profesor_jefe(request, mensaje=None):
     return None
 
 
+def _puede_editar_caso(rol, caso, momento=None):
+    if rol == 'Administrador':
+        return True
+    if rol not in ('Inspector', 'PConvivencia') or not caso.caso_creado_en:
+        return False
+    diferencia = (momento or timezone.now()) - caso.caso_creado_en
+    return timedelta(0) <= diferencia <= timedelta(hours=48)
+
+
+ROLES_SEGUIMIENTO = ('Administrador', 'PConvivencia', 'Inspector')
+ROLES_GESTION_SEGUIMIENTO = ('Administrador', 'PConvivencia')
+ROLES_APROBACION_CASOS = ('Administrador', 'PConvivencia', 'Inspector')
+
+
+def _rol_seguimiento_permitido(request, roles=ROLES_SEGUIMIENTO):
+    if 'usuario_id' not in request.session:
+        return False
+    return request.session.get('usuario_rol') in roles
+
+
+def _identificador_estudiante(estudiante):
+    return estudiante.estudiante_identificador or f'Estudiante #{estudiante.estudiante_id}'
+
+
+def _regla_notificacion_operativa(regla):
+    return bool(
+        regla
+        and regla.estado == ReglaInstitucional.Estado.APROBADA
+        and regla.version.estado == VersionReglamento.Estado.VIGENTE
+        and not regla.solo_presentacion
+        and regla.activador != ReglaInstitucional.Activador.MANUAL
+        and regla.accion_requerida.strip()
+    )
+
+
+def _mensaje_notificacion_seguro(notificacion):
+    if (
+        notificacion.notificacion_titulo in (
+            'Nueva Bitácora Registrada',
+            'Nuevo caso registrado',
+        )
+        or getattr(notificacion, 'evento_tipo', '')
+        == Notificacion.TipoEvento.CASO_CREADO
+    ):
+        return (
+            'Se registró un caso nuevo. Revisa sus antecedentes y el detalle '
+            'antes de definir acciones.'
+        )
+    return notificacion.notificacion_mensaje
+
+
+def _url_caso_notificacion(notificacion):
+    if notificacion.caso_id:
+        return reverse('detalle_caso', args=[notificacion.caso_id])
+    if notificacion.notificacion_titulo == 'Nueva Bitácora Registrada':
+        fecha = timezone.localtime(notificacion.notificacion_fecha).date().isoformat()
+        return (
+            f"{reverse('historial_casos')}?"
+            f"fecha_desde={fecha}&fecha_hasta={fecha}"
+        )
+    return ''
+
+
 def dashboard_view(request):
     # 1. Seguridad: Validar que el usuario haya iniciado sesión
     if 'usuario_id' not in request.session:
@@ -215,12 +318,22 @@ def dashboard_view(request):
     casos_graves = Involucran.objects.filter(tipo_falta='Grave').values('caso_id').distinct().count()
     casos_gravisimas = Involucran.objects.filter(tipo_falta='Gravísima').values('caso_id').distinct().count()
 
+    hoy = timezone.localdate()
+    fecha_inicio = hoy - timedelta(days=29)
+    fecha_inicio_anterior = fecha_inicio - timedelta(days=30)
+    fecha_fin_anterior = fecha_inicio - timedelta(days=1)
+    casos_periodo = Caso.objects.filter(caso_fecha__range=(fecha_inicio, hoy))
+    total_casos_periodo = casos_periodo.count()
+    total_casos_periodo_anterior = Caso.objects.filter(
+        caso_fecha__range=(fecha_inicio_anterior, fecha_fin_anterior)
+    ).count()
+
     # CASOS POR ZONA
-    hace_30_dias = timezone.localdate() - timedelta(days=30)
-    casos_por_zona = Caso.objects.filter(caso_fecha__gte=hace_30_dias) \
-                                 .values('lugar__lugar_nombre') \
-                                 .annotate(total=Count('caso_id')) \
-                                 .order_by('-total')
+    casos_por_zona = list(
+        casos_periodo.values('lugar__lugar_nombre')
+        .annotate(total=Count('caso_id', distinct=True))
+        .order_by('-total', 'lugar__lugar_nombre')
+    )
 
     zonas_labels = []
     zonas_data = []
@@ -229,12 +342,59 @@ def dashboard_view(request):
         zonas_labels.append(nombre_zona)
         zonas_data.append(registro['total'])
 
-    # ULTIMOS REGISTROS
-    casos_query = Caso.objects.select_related('lugar').all().order_by('-caso_id')[:5]
-    
-    #PARA VER EL TITULO DEL CASO
+    resumen_tipo = (
+        Involucran.objects.filter(caso__caso_fecha__range=(fecha_inicio, hoy))
+        .values('tipo_falta')
+        .annotate(total=Count('caso_id', distinct=True))
+        .order_by('-total', 'tipo_falta')
+        .first()
+    )
+    resumen_curso = (
+        casos_periodo.values(
+            'estudiantes__curso__curso_grado',
+            'estudiantes__curso__curso_letra',
+        )
+        .annotate(total=Count('caso_id', distinct=True))
+        .order_by(
+            '-total',
+            'estudiantes__curso__curso_grado',
+            'estudiantes__curso__curso_letra',
+        )
+        .first()
+    )
+    if total_casos_periodo_anterior:
+        variacion_periodo = round(
+            (total_casos_periodo - total_casos_periodo_anterior)
+            / total_casos_periodo_anterior * 100,
+            1,
+        )
+    else:
+        variacion_periodo = 100.0 if total_casos_periodo else 0.0
+
+    curso_mas_incidentes = (
+        f"{resumen_curso['estudiantes__curso__curso_grado']} "
+        f"{resumen_curso['estudiantes__curso__curso_letra']}"
+        if resumen_curso else "Sin datos"
+    )
+    tipo_falta_frecuente = (
+        resumen_tipo['tipo_falta'] if resumen_tipo else "Sin datos"
+    )
+    zona_mas_conflictos = (
+        (casos_por_zona[0]['lugar__lugar_nombre'] or "No asignado")
+        if casos_por_zona else "Sin datos"
+    )
+
+    # El listado completo se pagina y prioriza los incidentes más recientes.
+    casos_query = Caso.objects.select_related('lugar').order_by(
+        '-caso_fecha', '-caso_id',
+    )
+    pagina_casos = Paginator(casos_query, 10).get_page(
+        request.GET.get('pagina'),
+    )
+
+    # PARA VER EL TITULO DEL CASO
     lista_casos_dashboard = []
-    for caso in casos_query:
+    for caso in pagina_casos:
         texto_completo = caso.caso_descripcion if caso.caso_descripcion else ""
         
         if "]" in texto_completo and "-" in texto_completo:
@@ -256,6 +416,12 @@ def dashboard_view(request):
         'casos_graves': casos_graves,
         'casos_gravisimas': casos_gravisimas,
         'casos_recientes': lista_casos_dashboard,
+        'pagina_casos': pagina_casos,
+        'casos_periodo': total_casos_periodo,
+        'curso_mas_incidentes': curso_mas_incidentes,
+        'tipo_falta_frecuente': tipo_falta_frecuente,
+        'zona_mas_conflictos': zona_mas_conflictos,
+        'variacion_periodo': variacion_periodo,
         'zonas_labels_json': json.dumps(zonas_labels),
         'zonas_data_json': json.dumps(zonas_data),
     }
@@ -338,6 +504,7 @@ def historial_casos_view(request):
             'fecha': caso.caso_fecha,
             'usuario_id': caso.usuario_id,
             'puede_eliminar': puede_eliminar,
+            'puede_editar': _puede_editar_caso(rol_usuario, caso, ahora),
         })
 
     total_casos_filtrados = len(lista_casos_formateada)
@@ -391,6 +558,34 @@ def eliminar_caso_view(request, caso_id):
 
         with transaction.atomic():
             caso_id_eliminado = caso.caso_id
+            creador = caso.usuario
+            if (
+                creador
+                and creador.usuario_id != usuario_instancia.usuario_id
+            ):
+                clave = (
+                    f'caso_eliminado:{caso_id_eliminado}:'
+                    f'creador:{creador.usuario_id}'
+                )
+                notificacion, creada = Notificacion.objects.get_or_create(
+                    evento_clave=clave,
+                    defaults={
+                        'usuario': creador,
+                        'notificacion_titulo': 'Caso eliminado',
+                        'notificacion_mensaje': (
+                            f'El caso #{caso_id_eliminado} que registraste fue '
+                            'eliminado por otro usuario.'
+                        ),
+                        'notificacion_icono': '🗑️',
+                    },
+                )
+                if creada:
+                    HistorialNotificacion.objects.create(
+                        notificacion=notificacion,
+                        estado=notificacion.estado,
+                        cambiado_por=usuario_instancia,
+                        motivo='Notificación creada al eliminar un caso de otro usuario.',
+                    )
             caso.delete()  # El CASCADE elimina también sus filas en 'involucran'
 
             if usuario_instancia:
@@ -405,6 +600,62 @@ def eliminar_caso_view(request, caso_id):
         messages.error(request, f"Ocurrió un error al eliminar el caso: {str(e)}")
 
     return redirect('historial_casos')
+
+
+def _notificar_caso_gravisimo(request, caso, tipo_falta, lugar):
+    destinatarios = list(
+        Usuario.objects.filter(
+            rol__rol_nombre='Administrador',
+            usuario_activo=True,
+            usuario_bloqueado=False,
+        ).exclude(usuario_correo='').order_by('usuario_id')
+    )
+    if not destinatarios:
+        logger.warning(
+            "El caso gravísimo #%s no tiene administradores activos con correo.",
+            caso.caso_id,
+        )
+        return
+
+    for destinatario in destinatarios:
+        clave = f'caso_gravisimo:{caso.caso_id}:admin:{destinatario.usuario_id}'
+        notificacion, creada = Notificacion.objects.get_or_create(
+            evento_clave=clave,
+            defaults={
+                'usuario': destinatario,
+                'notificacion_titulo': f'Caso gravísimo #{caso.caso_id}',
+                'notificacion_mensaje': (
+                    f'Se registró el caso #{caso.caso_id} como {tipo_falta} '
+                    f'en {lugar.lugar_nombre}. Revisa sus antecedentes.'
+                ),
+                'notificacion_icono': '🚨',
+                'caso': caso,
+                'evento_tipo': Notificacion.TipoEvento.CASO_CREADO,
+            },
+        )
+        if creada:
+            HistorialNotificacion.objects.create(
+                notificacion=notificacion,
+                estado=notificacion.estado,
+                cambiado_por_id=request.session['usuario_id'],
+                motivo='Alerta creada por el registro de un caso gravísimo.',
+            )
+
+    from .tasks import enviar_alerta_caso_gravisimo
+
+    _programar_tarea_correo(
+        request,
+        enviar_alerta_caso_gravisimo,
+        (
+            [usuario.usuario_correo for usuario in destinatarios],
+            caso.caso_id,
+            caso.caso_fecha.strftime('%d/%m/%Y'),
+            lugar.lugar_nombre,
+            tipo_falta,
+        ),
+        "El caso se registró, pero no se pudo encolar el correo de alerta a los administradores.",
+    )
+
 
 def _verificar_alerta_curso_mas_de_10_casos(curso):
     """
@@ -520,13 +771,181 @@ def _verificar_alerta_curso_mas_de_10_casos(curso):
             notificacion_icono="⚠️"
         )
 # FORMULARIO DE REGISTRAR CASO
+def _crear_caso_persistido(
+    request,
+    usuario_instancia,
+    fecha,
+    titulo,
+    descripcion_cuerpo,
+    evidencia,
+    lugar_instancia,
+    tipo_falta,
+    estudiantes_data,
+):
+    nuevo_caso = Caso.objects.create(
+        caso_fecha=fecha,
+        caso_descripcion=f"[{titulo}] - {descripcion_cuerpo}",
+        evidencia=evidencia,
+        lugar=lugar_instancia,
+        usuario=usuario_instancia,
+    )
+    identificadores_involucrados = []
+    estudiantes_involucrados = []
+    cursos_alerta_ids = set()
+
+    for datos in estudiantes_data:
+        nom_clean = datos['nombre'].strip()
+        apat_clean = datos['apellido_paterno'].strip()
+        amat_clean = datos['apellido_materno'].strip()
+        curso_instancia = Curso.objects.get(pk=datos['curso_id'])
+        cursos_alerta_ids.add(curso_instancia.curso_id)
+        estudiante_id = datos.get('estudiante_id')
+
+        if estudiante_id:
+            try:
+                estudiante_instancia = Estudiante.objects.get(
+                    pk=estudiante_id,
+                    estudiante_activo=True,
+                )
+            except Estudiante.DoesNotExist:
+                if Estudiante.objects.filter(pk=estudiante_id).exists():
+                    raise ValidationError(
+                        "No se pueden asociar alumnos inactivos a casos nuevos."
+                    )
+                estudiante_instancia, _ = Estudiante.objects.get_or_create(
+                    estudiante_nombre=nom_clean,
+                    estudiante_apaterno=apat_clean,
+                    estudiante_amaterno=amat_clean,
+                    curso=curso_instancia,
+                )
+        else:
+            estudiante_instancia, _ = Estudiante.objects.get_or_create(
+                estudiante_nombre=nom_clean,
+                estudiante_apaterno=apat_clean,
+                estudiante_amaterno=amat_clean,
+                curso=curso_instancia,
+            )
+
+        if estudiante_instancia.curso_id != curso_instancia.curso_id:
+            raise ValidationError(
+                "El curso del estudiante seleccionado no coincide con el formulario."
+            )
+        if not estudiante_instancia.estudiante_activo:
+            raise ValidationError(
+                "No se pueden asociar alumnos inactivos a casos nuevos."
+            )
+
+        numero_lista = datos.get('numero_lista')
+        if numero_lista is not None:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE estudiante SET estudiante_numero_lista = %s "
+                    "WHERE estudiante_id = %s",
+                    [numero_lista, estudiante_instancia.estudiante_id],
+                )
+            estudiante_instancia.estudiante_numero_lista = numero_lista
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO involucran (estudiante_id, caso_id, tipo_falta)
+                VALUES (%s, %s, %s)
+                """,
+                [
+                    estudiante_instancia.estudiante_id,
+                    nuevo_caso.caso_id,
+                    tipo_falta,
+                ],
+            )
+
+        identificadores_involucrados.append(
+            _identificador_estudiante(estudiante_instancia)
+        )
+        estudiantes_involucrados.append(estudiante_instancia)
+
+    for curso_id_alerta in cursos_alerta_ids:
+        _verificar_alerta_curso_mas_de_10_casos(
+            Curso.objects.get(pk=curso_id_alerta)
+        )
+
+    evaluar_reglas_para_caso(
+        nuevo_caso,
+        estudiantes_involucrados,
+        usuario_instancia,
+    )
+
+    lista_identificadores = ", ".join(identificadores_involucrados)
+    notificacion_nueva, notificacion_creada = Notificacion.objects.get_or_create(
+        evento_clave=(
+            f'caso_creado:{nuevo_caso.caso_id}:'
+            f'usuario:{usuario_instancia.usuario_id}'
+        ),
+        defaults={
+            'usuario': usuario_instancia,
+            'notificacion_titulo': 'Nuevo caso registrado',
+            'notificacion_mensaje': (
+                f"Se registró el caso #{nuevo_caso.caso_id} para "
+                f"{lista_identificadores} en la zona "
+                f"{lugar_instancia.lugar_nombre}."
+            ),
+            'notificacion_icono': '🚨',
+            'caso': nuevo_caso,
+            'evento_tipo': Notificacion.TipoEvento.CASO_CREADO,
+        },
+    )
+    if notificacion_creada:
+        HistorialNotificacion.objects.create(
+            notificacion=notificacion_nueva,
+            estado=notificacion_nueva.estado,
+            cambiado_por=usuario_instancia,
+            motivo='Notificación creada al registrar un caso.',
+        )
+
+    if _quitar_tildes(tipo_falta.casefold()) == 'gravisima':
+        _notificar_caso_gravisimo(
+            request,
+            nuevo_caso,
+            tipo_falta,
+            lugar_instancia,
+        )
+
+    HistorialUsuario.objects.create(
+        usuario=usuario_instancia,
+        historial_accion="Creación",
+        historial_detalle=(
+            f"Registró exitosamente el caso #{nuevo_caso.caso_id} "
+            f"con {len(estudiantes_involucrados)} estudiante(s): "
+            + ", ".join(
+                f"{estudiante.estudiante_nombre} "
+                f"{estudiante.estudiante_apaterno} "
+                f"{estudiante.estudiante_amaterno}"
+                for estudiante in estudiantes_involucrados
+            )
+            + "."
+        ),
+    )
+    return nuevo_caso
+
+
 def registrar_caso_view(request):
     if 'usuario_id' not in request.session:
         return redirect('login')
 
-    redireccion = _bloquear_si_profesor_jefe(request, "Acceso denegado: como Profesor Jefe no puedes registrar casos, solo consultarlos.")
-    if redireccion:
-        return redireccion
+    es_profesor_jefe = request.session.get('usuario_rol') == 'Profesor Jefe'
+    curso_profesor = _validar_profesor_jefe(request) if es_profesor_jefe else None
+    if es_profesor_jefe and not curso_profesor:
+        messages.error(
+            request,
+            "No se encontró un curso asignado para tu cuenta de Profesor Jefe.",
+        )
+        return redirect('mis_casos_curso')
+    if not es_profesor_jefe:
+        redireccion = _bloquear_si_profesor_jefe(
+            request,
+            "Acceso denegado: como Profesor Jefe solo puedes reportar casos de tu curso.",
+        )
+        if redireccion:
+            return redireccion
 
     # ZONA HORARIA LOCAL
     fecha_hoy = timezone.localdate().strftime('%Y-%m-%d')
@@ -548,118 +967,161 @@ def registrar_caso_view(request):
         # Si está vacío, significa que se debe crear un alumno nuevo con los datos tipeados.
         estudiantes_ids = request.POST.getlist('estudiante_id[]')
 
-        if fecha > fecha_hoy:
-            messages.error(request, "Error: No se pueden registrar casos con fechas posteriores al día de hoy.")
+        fecha_validada = parse_date(fecha) if fecha else None
+        if not fecha_validada or fecha_validada > timezone.localdate():
+            messages.error(
+                request,
+                "La fecha del caso debe ser válida y no puede ser posterior al día de hoy.",
+            )
+            return redirect('registrar_caso')
+        if (
+            not titulo
+            or len(titulo.strip()) > 180
+            or not descripcion_cuerpo
+            or tipo_falta not in ('Leve', 'Grave', 'Gravísima')
+        ):
+            messages.error(
+                request,
+                "Completa el título, la descripción y una clasificación de gravedad válida.",
+            )
             return redirect('registrar_caso')
 
-        descripcion_final = f"[{titulo}] - {descripcion_cuerpo}"
+        listas_estudiantes = (
+            nombres, apaternos, amaternos, num_listas, cursos_ids, estudiantes_ids,
+        )
+        if not nombres or any(len(lista) != len(nombres) for lista in listas_estudiantes):
+            messages.error(request, "Completa los datos de todos los estudiantes involucrados.")
+            return redirect('registrar_caso')
 
         foto_adjunta = request.FILES.get('evidencia_foto')
         nombre_foto_guardado = None
-        
+        if foto_adjunta:
+            extension = os.path.splitext(foto_adjunta.name)[1].lower()
+            extensiones_permitidas = {
+                '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt',
+                '.png', '.jpg', '.jpeg',
+            }
+            if extension not in extensiones_permitidas:
+                messages.error(
+                    request,
+                    "Adjunta un documento PDF, Word, Excel, texto o una imagen válida.",
+                )
+                return redirect('registrar_caso')
+            if foto_adjunta.size > 20 * 1024 * 1024:
+                messages.error(request, "El archivo adjunto supera el límite de 20 MB.")
+                return redirect('registrar_caso')
+
         if foto_adjunta:
             try:
-                ruta_evidencias = os.path.join(settings.BASE_DIR, 'static', 'evidencias')
-                fs = FileSystemStorage(location=ruta_evidencias)
-                nombre_foto_guardado = fs.save(foto_adjunta.name, foto_adjunta)
+                nombre_seguro = os.path.basename(foto_adjunta.name)
+                nombre_foto_guardado = default_storage.save(
+                    f'evidencias/{nombre_seguro}',
+                    foto_adjunta,
+                )
             except Exception:
-                pass 
+                logger.exception("No se pudo guardar la evidencia adjunta del caso.")
+                messages.error(
+                    request,
+                    "No se pudo guardar el archivo adjunto. Intenta nuevamente.",
+                )
+                return redirect('registrar_caso')
+
+        estudiantes_data = []
+        try:
+            for nom, apat, amat, num_lista, curso_id, estudiante_id in zip(
+                nombres, apaternos, amaternos, num_listas, cursos_ids, estudiantes_ids,
+            ):
+                if not nom.strip() or not apat.strip() or not curso_id:
+                    raise ValidationError(
+                        "Completa nombre, apellido y curso de cada estudiante."
+                    )
+                curso_id = int(curso_id)
+                if es_profesor_jefe and curso_id != curso_profesor.pk:
+                    raise ValidationError(
+                        "Solo puedes reportar estudiantes de tu curso asignado."
+                    )
+                if num_lista and not num_lista.isdigit():
+                    raise ValidationError(
+                        "El número de lista debe ser un número entero."
+                    )
+                estudiante_id_valido = int(estudiante_id) if estudiante_id else None
+                nombre_final = nom.strip()
+                apellido_paterno_final = apat.strip()
+                apellido_materno_final = amat.strip()
+                numero_lista_final = int(num_lista) if num_lista else None
+                if es_profesor_jefe and estudiante_id_valido:
+                    estudiante_existente = Estudiante.objects.filter(
+                        pk=estudiante_id_valido,
+                        curso_id=curso_profesor.pk,
+                        estudiante_activo=True,
+                    ).first()
+                    if not estudiante_existente:
+                        raise ValidationError(
+                            "El estudiante seleccionado no pertenece a tu curso o está inactivo."
+                        )
+                    nombre_final = estudiante_existente.estudiante_nombre
+                    apellido_paterno_final = estudiante_existente.estudiante_apaterno
+                    apellido_materno_final = estudiante_existente.estudiante_amaterno
+                    numero_lista_final = estudiante_existente.estudiante_numero_lista
+                estudiantes_data.append({
+                    'nombre': nombre_final,
+                    'apellido_paterno': apellido_paterno_final,
+                    'apellido_materno': apellido_materno_final,
+                    'numero_lista': numero_lista_final,
+                    'curso_id': curso_id,
+                    'estudiante_id': estudiante_id_valido,
+                })
+        except (ValueError, ValidationError) as error:
+            if nombre_foto_guardado:
+                default_storage.delete(nombre_foto_guardado)
+            messages.error(request, str(error))
+            return redirect('registrar_caso')
+
+        if es_profesor_jefe:
+            try:
+                with transaction.atomic():
+                    solicitud = SolicitudCaso.objects.create(
+                        solicitante=Usuario.objects.get(
+                            pk=request.session['usuario_id']
+                        ),
+                        lugar=Lugar.objects.get(pk=lugar_id),
+                        fecha_evento=fecha,
+                        titulo=(titulo or '').strip(),
+                        descripcion=(descripcion_cuerpo or '').strip(),
+                        tipo_falta=tipo_falta or '',
+                        evidencia=nombre_foto_guardado or '',
+                        estudiantes=estudiantes_data,
+                    )
+                messages.success(
+                    request,
+                    f"El caso quedó en espera de revisión (solicitud #{solicitud.pk}).",
+                )
+                return redirect('mis_casos_curso')
+            except Exception:
+                if nombre_foto_guardado:
+                    default_storage.delete(nombre_foto_guardado)
+                logger.exception("No se pudo guardar la solicitud de caso del profesor.")
+                messages.error(
+                    request,
+                    "No se pudo enviar el caso para revisión. Intenta nuevamente.",
+                )
+                return redirect('registrar_caso')
 
         try:
             with transaction.atomic():
                 lugar_instancia = Lugar.objects.get(pk=lugar_id)
                 usuario_id_sesion = request.session.get('usuario_id')
                 usuario_instancia = Usuario.objects.get(pk=usuario_id_sesion)
-
-                # 1. Crear la cabecera del Caso
-                nuevo_caso = Caso(
-                    caso_fecha=fecha,
-                    caso_descripcion=descripcion_final,
-                    evidencia=nombre_foto_guardado,
-                    lugar=lugar_instancia,
-                    usuario=usuario_instancia
-                )
-                nuevo_caso.save() 
-
-                nombres_involucrados = []
-                cursos_alerta_ids = set()
-
-                # 2. Recorrer todos los estudiantes ingresados en el formulario
-                for nom, apat, amat, num_list, c_id, est_id_existente in zip(nombres, apaternos, amaternos, num_listas, cursos_ids, estudiantes_ids):
-                    nom_clean = nom.strip()
-                    apat_clean = apat.strip()
-                    amat_clean = amat.strip()
-                    num_lista_val = int(num_list) if num_list and num_list.isdigit() else None
-
-                    curso_instancia = Curso.objects.get(pk=c_id)
-                    cursos_alerta_ids.add(curso_instancia.curso_id)
-
-                    # Si se eligió un alumno ya existente desde el buscador, se reutiliza
-                    # directamente (evita crear un duplicado por variaciones de tipeo).
-                    if est_id_existente:
-                        try:
-                            estudiante_instancia = Estudiante.objects.get(pk=est_id_existente)
-                            creado = False
-                        except Estudiante.DoesNotExist:
-                            estudiante_instancia, creado = Estudiante.objects.get_or_create(
-                                estudiante_nombre=nom_clean,
-                                estudiante_apaterno=apat_clean,
-                                estudiante_amaterno=amat_clean,
-                                curso=curso_instancia
-                            )
-                    else:
-                        # Buscar o crear estudiante (comportamiento original)
-                        estudiante_instancia, creado = Estudiante.objects.get_or_create(
-                            estudiante_nombre=nom_clean,
-                            estudiante_apaterno=apat_clean,
-                            estudiante_amaterno=amat_clean,
-                            curso=curso_instancia
-                        )
-
-                    # Forzar el guardado/actualización del número de lista en PostgreSQL
-                    if num_lista_val is not None:
-                        with connection.cursor() as cursor:
-                            cursor.execute(
-                                "UPDATE estudiante SET estudiante_numero_lista = %s WHERE estudiante_id = %s",
-                                [num_lista_val, estudiante_instancia.estudiante_id]
-                            )
-                        estudiante_instancia.estudiante_numero_lista = num_lista_val
-
-                    # Insertar en la tabla intermedia 'involucran'
-                    query_insert_intermedia = """
-                        INSERT INTO involucran (estudiante_id, caso_id, tipo_falta)
-                        VALUES (%s, %s, %s)
-                    """
-                    with connection.cursor() as cursor:
-                        cursor.execute(query_insert_intermedia, [
-                            estudiante_instancia.estudiante_id, 
-                            nuevo_caso.caso_id, 
-                            tipo_falta
-                        ])
-
-                    nombres_involucrados.append(f"{nom_clean} {apat_clean}")
-
-                # RF-33 / RF-34
-                # Verificar si alguno de los cursos involucrados
-                # superó los 10 casos durante la semana actual.
-                for curso_id_alerta in cursos_alerta_ids:
-                    curso_alerta = Curso.objects.get(pk=curso_id_alerta)
-                    _verificar_alerta_curso_mas_de_10_casos(curso_alerta)
-
-                # 3. Notificación e Historial
-                lista_nombres_str = ", ".join(nombres_involucrados)
-
-                Notificacion.objects.create(
-                    usuario=usuario_instancia,
-                    notificacion_titulo="Nueva Bitácora Registrada",
-                    notificacion_mensaje=f"Se ha creado el caso #{nuevo_caso.caso_id} [{titulo}] asociado a: {lista_nombres_str} en la zona: {lugar_instancia.lugar_nombre}.",
-                    notificacion_icono="🚨"
-                )
-                
-                HistorialUsuario.objects.create(
-                    usuario=usuario_instancia,
-                    historial_accion="Creación",
-                    historial_detalle=f"Registró exitosamente una nueva bitácora de caso: #{nuevo_caso.caso_id} [{titulo}] con {len(nombres_involucrados)} alumno(s) involucrado(s)."
+                nuevo_caso = _crear_caso_persistido(
+                    request,
+                    usuario_instancia,
+                    fecha,
+                    titulo,
+                    descripcion_cuerpo,
+                    nombre_foto_guardado,
+                    lugar_instancia,
+                    tipo_falta,
+                    estudiantes_data,
                 )
 
             messages.success(request, f"Caso registrado exitosamente por {usuario_instancia.usuario_nombre}.")
@@ -670,18 +1132,169 @@ def registrar_caso_view(request):
             return redirect('registrar_caso')
 
     lugares = Lugar.objects.all().order_by('lugar_nombre')
-    cursos = Curso.objects.all().order_by('curso_grado', 'curso_letra')
-    estudiantes_existentes = Estudiante.objects.select_related('curso').order_by(
+    cursos = Curso.objects.filter(pk=curso_profesor.pk) if curso_profesor else Curso.objects.all()
+    cursos = cursos.order_by('curso_grado', 'curso_letra')
+    estudiantes_existentes = Estudiante.objects.filter(
+        estudiante_activo=True
+    ).select_related('curso').order_by(
         'estudiante_apaterno', 'estudiante_amaterno', 'estudiante_nombre'
     )
+    if curso_profesor:
+        estudiantes_existentes = estudiantes_existentes.filter(curso=curso_profesor)
     
     context = {
         'lugares': lugares,
         'cursos': cursos,
         'fecha_hoy': fecha_hoy,
         'estudiantes_existentes': estudiantes_existentes,
+        'requiere_aprobacion': es_profesor_jefe,
     }
     return render(request, 'gestion_casos/registrar_caso.html', context)
+
+
+def solicitudes_casos_pendientes_view(request):
+    if 'usuario_id' not in request.session:
+        return redirect('login')
+    if request.session.get('usuario_rol') not in ROLES_APROBACION_CASOS:
+        return HttpResponseForbidden(
+            "No tienes permisos para revisar solicitudes de casos."
+        )
+
+    if request.method == 'POST':
+        solicitud_id = request.POST.get('solicitud_id')
+        decision = request.POST.get('decision')
+        comentario = request.POST.get('comentario', '').strip()
+        if decision not in ('aprobar', 'rechazar'):
+            messages.error(request, "La decisión de revisión no es válida.")
+            return redirect('solicitudes_casos_pendientes')
+
+        mensaje_resultado = ''
+        try:
+            with transaction.atomic():
+                solicitud = get_object_or_404(
+                    SolicitudCaso.objects.select_for_update(),
+                    pk=solicitud_id,
+                )
+                if solicitud.estado != SolicitudCaso.Estado.PENDIENTE:
+                    messages.warning(
+                        request,
+                        "Esta solicitud ya fue revisada por otro usuario.",
+                    )
+                    return redirect('solicitudes_casos_pendientes')
+
+                revisor = Usuario.objects.get(pk=request.session['usuario_id'])
+                if decision == 'aprobar':
+                    estudiantes_data = solicitud.estudiantes
+                    if not estudiantes_data:
+                        raise ValidationError(
+                            "La solicitud no contiene estudiantes involucrados."
+                        )
+                    if solicitud.solicitante and solicitud.solicitante.rol.rol_nombre == 'Profesor Jefe':
+                        perfil_profesor = ProfesorJefe.objects.select_related(
+                            'curso'
+                        ).filter(usuario_id=solicitud.solicitante_id).first()
+                        curso_profesor = (
+                            perfil_profesor.curso if perfil_profesor else None
+                        )
+                        if not curso_profesor or any(
+                            int(estudiante['curso_id']) != curso_profesor.pk
+                            for estudiante in estudiantes_data
+                        ):
+                            raise ValidationError(
+                                "El curso asignado al profesor cambió; no se puede aprobar "
+                                "esta solicitud hasta corregir su información."
+                            )
+
+                    caso = _crear_caso_persistido(
+                        request,
+                        solicitud.solicitante or revisor,
+                        solicitud.fecha_evento,
+                        solicitud.titulo,
+                        solicitud.descripcion,
+                        solicitud.evidencia,
+                        solicitud.lugar,
+                        solicitud.tipo_falta,
+                        estudiantes_data,
+                    )
+                    solicitud.estado = SolicitudCaso.Estado.APROBADA
+                    solicitud.comentario_revision = comentario
+                    mensaje_resultado = (
+                        f"Solicitud aprobada. El caso #{caso.caso_id} ya está registrado."
+                    )
+                else:
+                    solicitud.estado = SolicitudCaso.Estado.RECHAZADA
+                    solicitud.comentario_revision = comentario or "Solicitud rechazada."
+                    mensaje_resultado = "La solicitud fue rechazada."
+
+                solicitud.revisada_por = revisor
+                solicitud.revisada_en = timezone.now()
+                solicitud.save(update_fields=[
+                    'estado',
+                    'comentario_revision',
+                    'revisada_por',
+                    'revisada_en',
+                ])
+                HistorialUsuario.objects.create(
+                    usuario=revisor,
+                    historial_accion=(
+                        "Aprobación de caso"
+                        if decision == 'aprobar'
+                        else "Rechazo de caso"
+                    ),
+                    historial_detalle=(
+                        f"Revisó la solicitud #{solicitud.pk} del Profesor Jefe "
+                        f"{solicitud.solicitante.usuario_nombre if solicitud.solicitante else 'sin usuario'}: "
+                        f"{solicitud.get_estado_display()}."
+                    ),
+                )
+            messages.success(request, mensaje_resultado)
+        except (SolicitudCaso.DoesNotExist, Usuario.DoesNotExist):
+            messages.error(request, "No se encontró la solicitud o el usuario revisor.")
+        except ValidationError as error:
+            messages.error(request, str(error))
+        except Exception:
+            logger.exception("No se pudo completar la revisión de la solicitud de caso.")
+            messages.error(
+                request,
+                "No se pudo completar la revisión; la solicitud permanece sin cambios.",
+            )
+        return redirect('solicitudes_casos_pendientes')
+
+    solicitudes = list(SolicitudCaso.objects.select_related(
+        'solicitante__rol', 'lugar', 'revisada_por',
+    ).filter(estado=SolicitudCaso.Estado.PENDIENTE))
+    cursos = Curso.objects.in_bulk({
+        estudiante['curso_id']
+        for solicitud in solicitudes
+        for estudiante in solicitud.estudiantes
+    })
+    elementos_solicitud = []
+    for solicitud in solicitudes:
+        estudiantes = []
+        for estudiante in solicitud.estudiantes:
+            curso = cursos.get(estudiante['curso_id'])
+            estudiantes.append({
+                **estudiante,
+                'curso': (
+                    f"{curso.curso_grado} {curso.curso_letra}"
+                    if curso else "Curso no disponible"
+                ),
+            })
+        elementos_solicitud.append({
+            'solicitud': solicitud,
+            'estudiantes': estudiantes,
+            'evidencia_url': (
+                default_storage.url(solicitud.evidencia)
+                if solicitud.evidencia
+                and default_storage.exists(solicitud.evidencia)
+                else ''
+            ),
+        })
+    return render(
+        request,
+        'gestion_casos/solicitudes_casos_pendientes.html',
+        {'solicitudes': elementos_solicitud},
+    )
 
 
 # DETALLE DE CASO
@@ -756,6 +1369,21 @@ def detalle_caso_view(request, caso_id):
     if caso.usuario and caso.usuario.usuario_id == request.session.get('usuario_id'):
         es_mi_caso = True
 
+    evidencia_url = ''
+    evidencia_es_imagen = False
+    if caso.evidencia:
+        nombre_evidencia = caso.evidencia
+        extension_evidencia = os.path.splitext(nombre_evidencia)[1].lower()
+        evidencia_es_imagen = extension_evidencia in {'.png', '.jpg', '.jpeg'}
+        if default_storage.exists(nombre_evidencia):
+            evidencia_url = default_storage.url(nombre_evidencia)
+        else:
+            evidencia_url = static(
+                nombre_evidencia
+                if nombre_evidencia.startswith('evidencias/')
+                else f'evidencias/{nombre_evidencia}'
+            )
+
     context = {
         'caso': caso,
         'titulo': titulo,
@@ -763,9 +1391,200 @@ def detalle_caso_view(request, caso_id):
         'tipo_falta': tipo_falta,
         'relaciones': relaciones,
         'es_mi_caso': es_mi_caso,
+        'puede_editar': _puede_editar_caso(
+            request.session.get('usuario_rol', ''),
+            caso,
+        ),
         'nombre_foto': caso.evidencia, 
+        'evidencia_url': evidencia_url,
+        'evidencia_es_imagen': evidencia_es_imagen,
     }
     return render(request, 'gestion_casos/detalle_caso.html', context)
+
+def _datos_reporte_caso(caso):
+    texto = caso.caso_descripcion or ''
+    titulo = f'Caso #{caso.caso_id}'
+    descripcion = texto
+    if texto.startswith('[') and '] - ' in texto:
+        titulo, descripcion = texto[1:].split('] - ', 1)
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT e.estudiante_identificador, e.estudiante_nombre,
+                   e.estudiante_apaterno, e.estudiante_amaterno,
+                   cu.curso_grado, cu.curso_letra, i.tipo_falta
+            FROM involucran i
+            JOIN estudiante e ON e.estudiante_id = i.estudiante_id
+            JOIN curso cu ON cu.curso_id = e.curso_id
+            WHERE i.caso_id = %s
+            ORDER BY e.estudiante_apaterno, e.estudiante_nombre
+            """,
+            [caso.caso_id],
+        )
+        involucrados = cursor.fetchall()
+
+    return {
+        'id': caso.caso_id,
+        'titulo': titulo.strip(),
+        'descripcion': descripcion.strip(),
+        'fecha': caso.caso_fecha,
+        'lugar': caso.lugar.lugar_nombre if caso.lugar else 'No especificado',
+        'involucrados': [
+            {
+                'identificador': identificador or '',
+                'nombre': f'{nombre} {apaterno} {amaterno}'.strip(),
+                'curso': f'{grado} {letra}',
+                'tipo_falta': tipo_falta,
+            }
+            for identificador, nombre, apaterno, amaterno, grado, letra, tipo_falta
+            in involucrados
+        ],
+    }
+
+
+def _validar_acceso_exportacion_caso(request, caso_id):
+    if 'usuario_id' not in request.session:
+        return None
+    rol = request.session.get('usuario_rol')
+    if rol not in ('Administrador', 'Inspector', 'PConvivencia', 'Profesor Jefe'):
+        messages.error(request, "Acceso denegado: no tienes permisos para descargar este caso.")
+        return None
+    caso = get_object_or_404(
+        Caso.objects.select_related('lugar'),
+        pk=caso_id,
+    )
+    if rol == 'Profesor Jefe':
+        curso = _validar_profesor_jefe(request)
+        if not curso or not Estudiante.objects.filter(
+            involucran__caso_id=caso_id,
+            curso=curso,
+        ).exists():
+            messages.error(request, "Acceso denegado: ese caso no corresponde a tu curso.")
+            return None
+    return caso
+
+
+def _valor_xlsx_seguro(valor):
+    if isinstance(valor, str) and valor.startswith(('=', '+', '-', '@')):
+        return f"'{valor}"
+    return valor
+
+
+def descargar_caso_pdf_view(request, caso_id):
+    caso = _validar_acceso_exportacion_caso(request, caso_id)
+    if caso is None:
+        if 'usuario_id' not in request.session:
+            return redirect('login')
+        return redirect('historial_casos')
+
+    datos = _datos_reporte_caso(caso)
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(letter),
+        topMargin=32,
+        bottomMargin=32,
+        leftMargin=36,
+        rightMargin=36,
+    )
+    estilos = getSampleStyleSheet()
+    elementos = [
+        Paragraph('Reporte de caso de convivencia', estilos['Title']),
+        Spacer(1, 10),
+        Paragraph(
+            f"<b>Caso:</b> #{datos['id']} · {escape(datos['titulo'])}",
+            estilos['Normal'],
+        ),
+        Paragraph(
+            f"<b>Fecha:</b> {datos['fecha'].strftime('%d/%m/%Y') if datos['fecha'] else 'Sin fecha'}"
+            f" · <b>Zona:</b> {escape(datos['lugar'])}",
+            estilos['Normal'],
+        ),
+        Paragraph(
+            f"<b>Descripción:</b> {escape(datos['descripcion'])}",
+            estilos['Normal'],
+        ),
+        Spacer(1, 14),
+        Paragraph('Estudiantes involucrados', estilos['Heading2']),
+    ]
+    filas = [['Identificador', 'Estudiante', 'Curso', 'Tipo de falta']]
+    filas.extend([
+        [
+            item['identificador'],
+            item['nombre'],
+            item['curso'],
+            item['tipo_falta'],
+        ]
+        for item in datos['involucrados']
+    ])
+    if len(filas) == 1:
+        filas.append(['', 'Sin estudiantes asociados', '', ''])
+    tabla = Table(filas, repeatRows=1, colWidths=[95, 220, 120, 130])
+    tabla.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#7B1A1A')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#D8D0C9')),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F7F3ED')]),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+    elementos.append(tabla)
+    doc.build(elementos)
+    response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="caso_{datos["id"]}.pdf"'
+    return response
+
+
+def descargar_caso_xlsx_view(request, caso_id):
+    caso = _validar_acceso_exportacion_caso(request, caso_id)
+    if caso is None:
+        if 'usuario_id' not in request.session:
+            return redirect('login')
+        return redirect('historial_casos')
+
+    datos = _datos_reporte_caso(caso)
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = 'Caso'
+    hoja.append(['Campo', 'Detalle'])
+    hoja.append(['ID', datos['id']])
+    hoja.append(['Título', _valor_xlsx_seguro(datos['titulo'])])
+    hoja.append(['Descripción', _valor_xlsx_seguro(datos['descripcion'])])
+    hoja.append(['Fecha', datos['fecha']])
+    hoja.append(['Zona', _valor_xlsx_seguro(datos['lugar'])])
+    for celda in hoja[1]:
+        celda.fill = PatternFill(start_color='7B1A1A', end_color='7B1A1A', fill_type='solid')
+        celda.font = Font(color='FFFFFF', bold=True)
+    hoja.column_dimensions['A'].width = 20
+    hoja.column_dimensions['B'].width = 72
+    hoja.freeze_panes = 'A2'
+
+    involucrados = libro.create_sheet('Estudiantes')
+    involucrados.append(['Identificador', 'Estudiante', 'Curso', 'Tipo de falta'])
+    for item in datos['involucrados']:
+        involucrados.append([
+            _valor_xlsx_seguro(item['identificador']),
+            _valor_xlsx_seguro(item['nombre']),
+            _valor_xlsx_seguro(item['curso']),
+            _valor_xlsx_seguro(item['tipo_falta']),
+        ])
+    for celda in involucrados[1]:
+        celda.fill = PatternFill(start_color='7B1A1A', end_color='7B1A1A', fill_type='solid')
+        celda.font = Font(color='FFFFFF', bold=True)
+    for columna, ancho in enumerate([18, 36, 22, 24], 1):
+        involucrados.column_dimensions[get_column_letter(columna)].width = ancho
+    involucrados.freeze_panes = 'A2'
+
+    buffer = io.BytesIO()
+    libro.save(buffer)
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = f'attachment; filename="caso_{datos["id"]}.xlsx"'
+    return response
+
 
 def gestion_datos_publicos_view(request):
     if 'usuario_id' not in request.session:
@@ -773,7 +1592,36 @@ def gestion_datos_publicos_view(request):
         
     usuario_id_sesion = request.session.get('usuario_id')
     usuario_perfil = get_object_or_404(Usuario.objects.select_related('rol'), pk=usuario_id_sesion)
-    
+
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre', '').strip()
+        apaterno = request.POST.get('apaterno', '').strip()
+        amaterno = request.POST.get('amaterno', '').strip()
+        correo = request.POST.get('correo', '').strip()
+        try:
+            if not all((nombre, apaterno, amaterno, correo)):
+                raise ValidationError("Completa todos los datos personales.")
+            validate_email(correo)
+            if Usuario.objects.filter(usuario_correo__iexact=correo).exclude(
+                pk=usuario_perfil.pk
+            ).exists():
+                raise ValidationError("Ese correo ya está asociado a otra cuenta.")
+
+            usuario_perfil.usuario_nombre = nombre
+            usuario_perfil.usuario_apaterno = apaterno
+            usuario_perfil.usuario_amaterno = amaterno
+            usuario_perfil.usuario_correo = correo
+            usuario_perfil.save()
+            request.session['usuario_nombre'] = f'{nombre} {apaterno}'
+            request.session['usuario_correo'] = correo
+            messages.success(request, "Tus datos personales se actualizaron correctamente.")
+            return redirect('gestion_datos_publicos')
+        except ValidationError as exc:
+            messages.error(request, ' '.join(exc.messages))
+        except Exception:
+            logger.exception("Error actualizando el perfil del usuario %s", usuario_id_sesion)
+            messages.error(request, "No fue posible actualizar tus datos personales.")
+
     context = {
         'perfil': usuario_perfil
     }
@@ -790,15 +1638,19 @@ def gestion_de_usuarios_view(request):
 
     # NUEVO USUARIO
     if request.method == 'POST':
-        nombre = request.POST.get('nombre').strip()
-        apaterno = request.POST.get('apaterno').strip()
-        amaterno = request.POST.get('amaterno').strip()
-        correo = request.POST.get('correo').strip()
-        contrasena = request.POST.get('contrasena')
+        nombre = request.POST.get('nombre', '').strip()
+        apaterno = request.POST.get('apaterno', '').strip()
+        amaterno = request.POST.get('amaterno', '').strip()
+        correo = request.POST.get('correo', '').strip()
         rol_id = request.POST.get('rol')
         curso_id = request.POST.get('curso')  # Solo se usa si el rol es "Profesor Jefe"
 
         try:
+            validate_email(correo)
+            if not (nombre and apaterno and amaterno):
+                messages.error(request, "Completa los nombres y apellidos del funcionario.")
+                return redirect('gestion_de_usuarios')
+
             #PARA VER SI EL CORREO EXISTE
             if Usuario.objects.filter(usuario_correo=correo).exists():
                 messages.error(request, f"El correo {correo} ya se encuentra registrado.")
@@ -813,13 +1665,15 @@ def gestion_de_usuarios_view(request):
                         return redirect('gestion_de_usuarios')
                     curso_instancia = Curso.objects.get(pk=curso_id)
 
+                contrasena_temporal = _generar_contrasena_temporal()
                 with transaction.atomic():
                     nuevo_usuario = Usuario(
                         usuario_nombre=nombre,
                         usuario_apaterno=apaterno,
                         usuario_amaterno=amaterno,
                         usuario_correo=correo,
-                        usuario_contrasena=make_password(contrasena),
+                        usuario_contrasena=make_password(contrasena_temporal),
+                        usuario_primer_ingreso=True,
                         rol=rol_instancia
                     )
                     nuevo_usuario.save()
@@ -847,10 +1701,22 @@ def gestion_de_usuarios_view(request):
                             profesor_amaterno=amaterno
                         )
 
-                messages.success(request, f"Funcionario {nombre} {apaterno} creado exitosamente.")
+                    from .tasks import enviar_credenciales_usuario
+
+                    _programar_tarea_correo(
+                        request,
+                        enviar_credenciales_usuario,
+                        (correo, nombre, apaterno, contrasena_temporal),
+                        "La cuenta se creó, pero no se pudo encolar el correo con la contraseña temporal. Contacta al administrador del sistema.",
+                    )
+
+                messages.success(request, f"Funcionario {nombre} {apaterno} creado. Se enviará una contraseña temporal a su correo institucional.")
                 return redirect('gestion_de_usuarios')
 
+        except ValidationError:
+            messages.error(request, "Ingresa un correo institucional válido.")
         except Exception as e:
+            logger.exception("No se pudo crear el usuario institucional.")
             messages.error(request, "Ocurrió un error al intentar registrar al usuario.")
 
     
@@ -1470,17 +2336,64 @@ def estadisticas_xlsx_view(request):
 def notificaciones_view(request):
     if 'usuario_id' not in request.session:
         return redirect('login')
+    if not _rol_seguimiento_permitido(request):
+        return HttpResponseForbidden("No tienes permiso para consultar el módulo de seguimiento.")
 
     id_usuario = request.session['usuario_id']
 
-    alertas_reales = (
+    alertas_reales = list(
         Notificacion.objects
-        .filter(usuario_id=id_usuario)
+        .filter(Q(usuario_id=id_usuario) | Q(regla__isnull=False))
+        .select_related(
+            'caso', 'estudiante', 'regla', 'regla__version',
+            'version_reglamento', 'responsable',
+        )
+        .prefetch_related('historial_estados__cambiado_por')
+        .distinct()
         .order_by('-notificacion_fecha')
     )
+    caso_ids = {alerta.caso_id for alerta in alertas_reales if alerta.caso_id}
+    categorias_por_caso = {}
+    for caso_id, categoria in Involucran.objects.filter(
+        caso_id__in=caso_ids,
+    ).values_list('caso_id', 'tipo_falta'):
+        categorias_por_caso.setdefault(caso_id, set()).add(categoria)
 
+    categoria_css_por_gravedad = {
+        'Leve': 'leve',
+        'Grave': 'grave',
+        'Gravísima': 'gravisima',
+    }
+    for alerta in alertas_reales:
+        alerta.url_caso = _url_caso_notificacion(alerta)
+        alerta.notificacion_mensaje = _mensaje_notificacion_seguro(alerta)
+        categorias = sorted(categorias_por_caso.get(alerta.caso_id, set()))
+        alerta.categoria_falta = ', '.join(categorias) or 'No especificada'
+        alerta.categoria_css = (
+            categoria_css_por_gravedad.get(categorias[0], 'sin-clasificar')
+            if len(categorias) == 1
+            else 'sin-clasificar'
+        )
+        regla = alerta.regla
+        alerta.regla_operativa = _regla_notificacion_operativa(regla)
+        if regla and not alerta.regla_operativa:
+            alerta.notificacion_titulo = 'Referencia reglamentaria para revisión'
+            alerta.notificacion_mensaje = (
+                'La disposición asociada no está actualmente aprobada y vigente '
+                'para orientar acciones. Revisa el detalle del caso y consulta '
+                'al personal autorizado.'
+            )
+
+    filtro_estado = request.GET.get('estado_seguimiento', '')
+    if filtro_estado not in ('', *SeguimientoCaso.Estado.values):
+        filtro_estado = ''
     context = {
-        'notificaciones': alertas_reales
+        'notificaciones': alertas_reales,
+        'filas_seguimiento': _obtener_filas_seguimiento(filtro_estado),
+        'filtro_estado': filtro_estado,
+        'puede_gestionar': request.session.get('usuario_rol') in ROLES_GESTION_SEGUIMIENTO,
+        'hoy': timezone.localdate(),
+        'estados_notificacion': Notificacion.Estado.choices,
     }
 
     return render(
@@ -1490,25 +2403,231 @@ def notificaciones_view(request):
     )
 
 
+def _obtener_filas_seguimiento(filtro_estado=''):
+    if filtro_estado not in ('', *SeguimientoCaso.Estado.values):
+        filtro_estado = ''
+    casos = list(
+        Caso.objects.select_related('lugar')
+        .prefetch_related('estudiantes')
+        .order_by('-caso_fecha', '-caso_id')[:100]
+    )
+    caso_ids = [caso.caso_id for caso in casos]
+    estudiante_ids = {
+        estudiante.estudiante_id
+        for caso in casos
+        for estudiante in caso.estudiantes.all()
+    }
+    seguimientos = SeguimientoCaso.objects.filter(
+        caso_id__in=caso_ids,
+        estudiante_id__in=estudiante_ids,
+    ).prefetch_related('acciones', 'historial')
+    seguimiento_por_clave = {
+        (item.caso_id, item.estudiante_id): item for item in seguimientos
+    }
+    categorias = {}
+    for relacion in Involucran.objects.filter(caso_id__in=caso_ids).values(
+        'caso_id', 'estudiante_id', 'tipo_falta'
+    ):
+        categorias.setdefault((relacion['caso_id'], relacion['estudiante_id']), set()).add(
+            relacion['tipo_falta']
+        )
+
+    filas = []
+    for caso in casos:
+        estudiantes = list(caso.estudiantes.all())
+        if not estudiantes:
+            estudiantes = [None]
+        for estudiante in estudiantes:
+            seguimiento = (
+                seguimiento_por_clave.get((caso.caso_id, estudiante.estudiante_id))
+                if estudiante else None
+            )
+            estado = seguimiento.estado if seguimiento else SeguimientoCaso.Estado.ABIERTO
+            if filtro_estado and estado != filtro_estado:
+                continue
+            acciones = list(seguimiento.acciones.all()) if seguimiento else []
+            filas.append({
+                'caso': caso,
+                'estudiante_id': (
+                    _identificador_estudiante(estudiante) if estudiante else 'Sin estudiante asociado'
+                ),
+                'estudiante_pk': estudiante.estudiante_id if estudiante else None,
+                'categoria': ', '.join(sorted(categorias.get(
+                    (caso.caso_id, estudiante.estudiante_id), set()
+                ))) if estudiante else '',
+                'seguimiento': seguimiento,
+                'estado': estado,
+                'estado_label': (
+                    seguimiento.get_estado_display() if seguimiento else 'En seguimiento'
+                ),
+                'acciones': acciones,
+                'avance': (
+                    round(
+                        sum(a.estado == AccionSeguimiento.Estado.COMPLETADA for a in acciones)
+                        * 100 / len(acciones)
+                    ) if acciones else None
+                ),
+            })
+    return filas
+
+
+def _redirect_to_seguimiento():
+    return redirect(f"{reverse('notificaciones')}#seguimiento")
+
+
 def marcar_notificacion_leida_view(request, notificacion_id):
     if 'usuario_id' not in request.session:
         return redirect('login')
+    if not _rol_seguimiento_permitido(request):
+        return HttpResponseForbidden("No tienes permiso para modificar esta notificación.")
 
     if request.method != 'POST':
         return redirect('notificaciones')
 
     notificacion = get_object_or_404(
-        Notificacion,
+        Notificacion.objects.filter(
+            Q(usuario_id=request.session['usuario_id']) | Q(regla__isnull=False)
+        ),
         pk=notificacion_id,
-        usuario_id=request.session['usuario_id']
     )
 
-    notificacion.notificacion_leido = True
-    notificacion.save(
-        update_fields=['notificacion_leido']
-    )
+    if not notificacion.notificacion_leido:
+        notificacion.notificacion_leido = True
+        notificacion.save(update_fields=['notificacion_leido'])
 
     return redirect('notificaciones')
+
+
+def cambiar_estado_notificacion_view(request, notificacion_id):
+    if 'usuario_id' not in request.session:
+        return redirect('login')
+    if not _rol_seguimiento_permitido(request, ROLES_GESTION_SEGUIMIENTO):
+        return HttpResponseForbidden("Solo el Administrador o Convivencia pueden gestionar notificaciones.")
+    if request.method != 'POST':
+        return HttpResponseForbidden("La acción requiere una solicitud POST.")
+
+    notificacion = get_object_or_404(
+        Notificacion.objects.filter(
+            Q(usuario_id=request.session['usuario_id']) | Q(regla__isnull=False)
+        ),
+        pk=notificacion_id,
+    )
+    estado = request.POST.get('estado', '')
+    motivo = request.POST.get('motivo', '').strip()
+    if estado not in Notificacion.Estado.values:
+        messages.error(request, "Selecciona un estado válido.")
+        return redirect('notificaciones')
+    if not motivo:
+        messages.error(request, "Debes indicar el motivo del cambio de estado.")
+        return redirect('notificaciones')
+    if notificacion.estado == estado:
+        return redirect('notificaciones')
+
+    with transaction.atomic():
+        notificacion.estado = estado
+        notificacion.save(update_fields=['estado'])
+        HistorialNotificacion.objects.create(
+            notificacion=notificacion,
+            estado=estado,
+            cambiado_por_id=request.session['usuario_id'],
+            motivo=motivo,
+        )
+    return redirect('notificaciones')
+
+
+def seguimiento_view(request):
+    if 'usuario_id' not in request.session:
+        return redirect('login')
+    if not _rol_seguimiento_permitido(request):
+        return HttpResponseForbidden("No tienes permiso para consultar el módulo de seguimiento.")
+
+    return _redirect_to_seguimiento()
+
+
+def actualizar_accion_seguimiento_view(request, accion_id):
+    if 'usuario_id' not in request.session:
+        return redirect('login')
+    if not _rol_seguimiento_permitido(request, ROLES_GESTION_SEGUIMIENTO):
+        return HttpResponseForbidden("Solo el Administrador o Convivencia pueden gestionar acciones.")
+    if request.method != 'POST':
+        return HttpResponseForbidden("La acción requiere una solicitud POST.")
+
+    accion = get_object_or_404(AccionSeguimiento, pk=accion_id)
+    estado = request.POST.get('estado', '')
+    motivo = request.POST.get('motivo', '').strip()
+    if estado not in AccionSeguimiento.Estado.values or not motivo:
+        messages.error(request, "El estado y el motivo del cambio son obligatorios.")
+        return _redirect_to_seguimiento()
+    if accion.estado == estado:
+        return _redirect_to_seguimiento()
+
+    with transaction.atomic():
+        accion.estado = estado
+        accion.completada_en = (
+            timezone.now() if estado == AccionSeguimiento.Estado.COMPLETADA else None
+        )
+        accion.save(update_fields=['estado', 'completada_en'])
+        HistorialAccionSeguimiento.objects.create(
+            accion=accion,
+            estado=estado,
+            cambiado_por_id=request.session['usuario_id'],
+            motivo=motivo,
+        )
+    return _redirect_to_seguimiento()
+
+
+def cerrar_seguimiento_view(request, caso_id, estudiante_id):
+    if 'usuario_id' not in request.session:
+        return redirect('login')
+    if not _rol_seguimiento_permitido(request, ROLES_GESTION_SEGUIMIENTO):
+        return HttpResponseForbidden("Solo el Administrador o Convivencia pueden cerrar un seguimiento.")
+    if request.method != 'POST':
+        return HttpResponseForbidden("La acción requiere una solicitud POST.")
+
+    caso = get_object_or_404(Caso, pk=caso_id)
+    estudiante = get_object_or_404(Estudiante, pk=estudiante_id)
+    if not caso.estudiantes.filter(pk=estudiante.pk).exists():
+        return HttpResponseForbidden("El estudiante no está asociado a este caso.")
+    motivo = request.POST.get('motivo', '').strip()
+    if not motivo:
+        messages.error(request, "Debes indicar el motivo del cierre.")
+        return _redirect_to_seguimiento()
+
+    with transaction.atomic():
+        seguimiento, _ = SeguimientoCaso.objects.get_or_create(
+            caso=caso, estudiante=estudiante,
+        )
+        seguimiento = SeguimientoCaso.objects.select_for_update().get(pk=seguimiento.pk)
+        if seguimiento.acciones.exclude(estado=AccionSeguimiento.Estado.COMPLETADA).exists():
+            messages.error(request, "Completa todas las acciones requeridas antes de cerrar el seguimiento.")
+            return _redirect_to_seguimiento()
+        if seguimiento.estado != SeguimientoCaso.Estado.SOLUCIONADO:
+            seguimiento.estado = SeguimientoCaso.Estado.SOLUCIONADO
+            seguimiento.solucionado_en = timezone.now()
+            seguimiento.solucionado_por_id = request.session['usuario_id']
+            seguimiento.motivo_cierre = motivo
+            seguimiento.save(update_fields=[
+                'estado', 'solucionado_en', 'solucionado_por', 'motivo_cierre',
+            ])
+            HistorialSeguimientoCaso.objects.create(
+                seguimiento=seguimiento,
+                estado=seguimiento.estado,
+                cambiado_por_id=request.session['usuario_id'],
+                motivo=motivo,
+            )
+            notificaciones = Notificacion.objects.filter(
+                caso=caso, estudiante=estudiante,
+            ).exclude(estado=Notificacion.Estado.SOLUCIONADO)
+            for notificacion in notificaciones:
+                notificacion.estado = Notificacion.Estado.SOLUCIONADO
+                notificacion.save(update_fields=['estado'])
+                HistorialNotificacion.objects.create(
+                    notificacion=notificacion,
+                    estado=notificacion.estado,
+                    cambiado_por_id=request.session['usuario_id'],
+                    motivo=f'Cierre autorizado del seguimiento: {motivo}',
+                )
+    return _redirect_to_seguimiento()
 # editar un caso
 def editar_caso_view(request, caso_id):
     # 1. Seguridad: Validar sesión activa
@@ -1526,12 +2645,18 @@ def editar_caso_view(request, caso_id):
     caso = get_object_or_404(Caso, pk=caso_id)
     creador_caso = caso.usuario
     usuario_id_sesion = request.session['usuario_id']
-    rol_usuario = request.session.get('usuario_rol', '').lower() # Asegúrate de que guardas el rol en la sesión al loguear
+    rol_usuario = request.session.get('usuario_rol', '')
 
-    # 3. 🚨 REGLA DE NEGOCIO RF-40: Validar permisos de edición
-    # Si no es Administrador y el caso pertenece a otro usuario, se le deniega el acceso
-    if rol_usuario != 'administrador' and caso.usuario_id != usuario_id_sesion:
-        messages.error(request, "Acceso denegado: Solo puedes editar los casos registrados por ti mismo.")
+    if not _puede_editar_caso(rol_usuario, caso):
+        if rol_usuario == 'Administrador':
+            messages.error(request, "No fue posible validar el plazo de edición del caso.")
+        elif rol_usuario in ('Inspector', 'PConvivencia'):
+            messages.error(
+                request,
+                "Solo puedes editar casos dentro de las 48 horas desde su creación.",
+            )
+        else:
+            messages.error(request, "Acceso denegado: no tienes permisos para editar este caso.")
         return redirect('historial_casos')
 
     # 4. Obtener TODOS los estudiantes involucrados en el caso (antes traía solo 1 con LIMIT 1)
@@ -1588,23 +2713,49 @@ def editar_caso_view(request, caso_id):
                     with connection.cursor() as cursor:
                         cursor.execute(query_update_intermedia, [tipo_falta, caso.caso_id, est_id])
 
+                evaluar_reglas_para_caso(
+                    caso,
+                    estudiantes_involucrados,
+                    usuario_instancia,
+                    evento_tipo=Notificacion.TipoEvento.CASO_ACTUALIZADO,
+                    fecha_evento=timezone.now(),
+                )
+
                 # Notificar al creador si otro usuario modificó el caso
                 if creador_caso and creador_caso.usuario_id != usuario_instancia.usuario_id:
-                    Notificacion.objects.create(
+                    notificacion_modificacion = Notificacion.objects.create(
                         usuario=creador_caso,
-                        notificacion_titulo="Caso modificado",
+                        notificacion_titulo="Caso actualizado",
                         notificacion_mensaje=(
                             f"El caso #{caso.caso_id} fue modificado por "
                             f"{usuario_instancia.usuario_nombre} "
                             f"{usuario_instancia.usuario_apaterno}."
                         ),
-                        notificacion_icono="✏️"
+                        notificacion_icono="✏️",
+                        caso=caso,
+                        evento_tipo=Notificacion.TipoEvento.CASO_ACTUALIZADO,
+                    )
+                    HistorialNotificacion.objects.create(
+                        notificacion=notificacion_modificacion,
+                        estado=notificacion_modificacion.estado,
+                        cambiado_por=usuario_instancia,
+                        motivo='Notificación creada al modificar un caso.',
                     )
 
                 HistorialUsuario.objects.create(
                     usuario=usuario_instancia,
                     historial_accion="Modificación",
-                    historial_detalle=f"Modificó los registros de la bitácora del caso #{caso.caso_id} [{titulo}]."
+                    historial_detalle=(
+                        f"Modificó los registros del caso #{caso.caso_id}. "
+                        "Estudiantes: "
+                        + ", ".join(
+                            f"{estudiante.estudiante_nombre} "
+                            f"{estudiante.estudiante_apaterno} "
+                            f"{estudiante.estudiante_amaterno}"
+                            for estudiante in estudiantes_involucrados
+                        )
+                        + "."
+                    )
                 )
 
             messages.success(request, f"El caso #{caso.caso_id} ha sido modificado exitosamente.")
@@ -1639,13 +2790,22 @@ def editar_caso_view(request, caso_id):
 def eliminar_estudiante_caso_view(request, caso_id, estudiante_id):
     if 'usuario_id' not in request.session:
         return redirect('login')
+    if request.method != 'POST':
+        return HttpResponseForbidden("La acción requiere una solicitud POST.")
 
     caso = get_object_or_404(Caso, pk=caso_id)
-    rol_usuario = request.session.get('usuario_rol', '').lower()
-    usuario_id_sesion = request.session['usuario_id']
-
-    if rol_usuario != 'administrador' and caso.usuario_id != usuario_id_sesion:
-        messages.error(request, "Acceso denegado: Solo puedes editar los casos registrados por ti mismo.")
+    rol_usuario = request.session.get('usuario_rol', '')
+    if not _puede_editar_caso(rol_usuario, caso):
+        if rol_usuario in ('Inspector', 'PConvivencia'):
+            messages.error(
+                request,
+                "Solo puedes editar casos dentro de las 48 horas desde su creación.",
+            )
+        else:
+            messages.error(
+                request,
+                "Acceso denegado: no tienes permisos para editar este caso.",
+            )
         return redirect('historial_casos')
 
     # No permitir dejar un caso sin ningún alumno involucrado
@@ -1662,15 +2822,12 @@ def eliminar_estudiante_caso_view(request, caso_id, estudiante_id):
 def historial_usuarios_view(request):
     if 'usuario_id' not in request.session:
         return redirect('login')
-        
-    rol_actual = request.session.get('usuario_rol', '').lower()
-    if rol_actual != 'administrador':
-        messages.error(request, "Acceso denegado: Solo el Administrador puede visualizar la bitácora de usuarios.")
-        return redirect('dashboard')
+
     from django.utils.dateparse import parse_date
 
     # Filtros combinables: usuario responsable, tipo de acción y rango de fechas
     filtro_usuario = request.GET.get('usuario', '').strip()
+    filtro_busqueda = request.GET.get('busqueda', '').strip()
     filtro_accion = request.GET.get('accion', '').strip()
     filtro_fecha_desde = request.GET.get('fecha_desde', '').strip()
     filtro_fecha_hasta = request.GET.get('fecha_hasta', '').strip()
@@ -1688,6 +2845,16 @@ def historial_usuarios_view(request):
                 Q(usuario__usuario_apaterno__unaccent__icontains=termino_norm) |
                 Q(usuario__usuario_amaterno__unaccent__icontains=termino_norm) |
                 Q(usuario__usuario_correo__icontains=termino)
+            )
+
+    if filtro_busqueda:
+        for termino in filtro_busqueda.split():
+            termino_norm = _quitar_tildes(termino)
+            registros_auditoria = registros_auditoria.filter(
+                Q(historial_detalle__unaccent__icontains=termino_norm)
+                | Q(usuario__usuario_nombre__icontains=termino)
+                | Q(usuario__usuario_apaterno__icontains=termino)
+                | Q(usuario__usuario_amaterno__icontains=termino)
             )
 
     # Tipo de acción
@@ -1735,11 +2902,15 @@ def historial_usuarios_view(request):
         'usuarios_historial': usuarios_historial,
         'filtros': {
             'usuario': filtro_usuario,
+            'busqueda': filtro_busqueda,
             'accion': filtro_accion,
             'fecha_desde': filtro_fecha_desde,
             'fecha_hasta': filtro_fecha_hasta,
         },
-        'hay_filtros_activos': bool(filtro_usuario or filtro_accion or filtro_fecha_desde or filtro_fecha_hasta),
+        'hay_filtros_activos': bool(
+            filtro_usuario or filtro_busqueda or filtro_accion
+            or filtro_fecha_desde or filtro_fecha_hasta
+        ),
     }
     return render(request, 'gestion_casos/historial_de_usuarios.html', context)
 
@@ -1761,13 +2932,18 @@ def gestion_de_estudiantes_view(request):
         messages.error(request, "Acceso denegado: No tienes permisos de Administrador.")
         return redirect('dashboard')
     if request.method == 'POST':
-        nombre = request.POST.get('nombre').strip()
-        apaterno = request.POST.get('apaterno').strip()
-        amaterno = request.POST.get('amaterno').strip()
+        nombre = request.POST.get('nombre', '').strip()
+        apaterno = request.POST.get('apaterno', '').strip()
+        amaterno = request.POST.get('amaterno', '').strip()
+        correo = request.POST.get('correo', '').strip()
         curso_id = request.POST.get('curso')
         numero_lista = request.POST.get('numero_lista', '').strip()
 
         try:
+            if not all((nombre, apaterno, amaterno)):
+                raise ValidationError("Completa los nombres y apellidos del alumno.")
+            if correo:
+                validate_email(correo)
             curso_instancia = Curso.objects.get(pk=curso_id)
             numero_lista_val = int(numero_lista) if numero_lista.isdigit() else None
 
@@ -1783,6 +2959,7 @@ def gestion_de_estudiantes_view(request):
                 estudiante_nombre=nombre,
                 estudiante_apaterno=apaterno,
                 estudiante_amaterno=amaterno,
+                estudiante_correo=correo or None,
                 curso=curso_instancia,
                 estudiante_numero_lista=numero_lista_val,
             )
@@ -1802,8 +2979,11 @@ def gestion_de_estudiantes_view(request):
                 )
             return redirect('gestion_de_alumnos')
                 
-        except Exception as e:
-            messages.error(request, "Ocurrió un error al intentar registrar al alumno.")
+        except ValidationError as exc:
+            messages.error(request, ' '.join(exc.messages))
+        except Exception:
+            logger.exception("Error registrando alumno %s %s", nombre, apaterno)
+            messages.error(request, "No fue posible registrar al alumno. Revisa el curso y vuelve a intentarlo.")
 
     from urllib.parse import urlencode
 
@@ -1811,6 +2991,7 @@ def gestion_de_estudiantes_view(request):
     filtro_busqueda = request.GET.get('busqueda', '').strip()
     filtro_curso = request.GET.get('curso', '').strip()
     filtro_lista = request.GET.get('numero_lista', '').strip()
+    filtro_estado = request.GET.get('estado', '').strip()
 
     estudiantes_registrados = Estudiante.objects.select_related('curso').all().order_by(
         'curso__curso_grado',
@@ -1842,11 +3023,19 @@ def gestion_de_estudiantes_view(request):
     else:
         filtro_lista = ''
 
+    if filtro_estado in ('activo', 'inactivo'):
+        estudiantes_registrados = estudiantes_registrados.filter(
+            estudiante_activo=(filtro_estado == 'activo')
+        )
+    else:
+        filtro_estado = ''
+
     cursos_disponibles = Curso.objects.all().order_by('curso_grado', 'curso_letra')
 
     # Para que los enlaces de paginación conserven los filtros activos
     parametros = {k: val for k, val in (
-        ('busqueda', filtro_busqueda), ('curso', filtro_curso), ('numero_lista', filtro_lista)
+        ('busqueda', filtro_busqueda), ('curso', filtro_curso),
+        ('numero_lista', filtro_lista), ('estado', filtro_estado)
     ) if val}
     querystring_filtros = ('&' + urlencode(parametros)) if parametros else ''
 
@@ -1862,9 +3051,11 @@ def gestion_de_estudiantes_view(request):
             'busqueda': filtro_busqueda,
             'curso': filtro_curso,
             'numero_lista': filtro_lista,
+            'estado': filtro_estado,
         },
         'hay_filtros_activos': bool(parametros),
         'querystring_filtros': querystring_filtros,
+        'historial_importaciones': HistorialImportacionEstudiantes.objects.all()[:10],
     }
     return render(request, 'gestion_casos/gestion_de_estudiantes.html', context)
 
@@ -1874,37 +3065,38 @@ def eliminar_estudiante_view(request, estudiante_id):
     if request.session.get('usuario_rol') != 'Administrador':
         messages.error(request, "Acceso denegado: No tienes permisos de Administrador.")
         return redirect('dashboard')
+    if request.method != 'POST':
+        return redirect('gestion_de_alumnos')
 
     estudiante = get_object_or_404(Estudiante, pk=estudiante_id)
-    nombre_completo = f"{estudiante.estudiante_nombre} {estudiante.estudiante_apaterno}"
+    estudiante.estudiante_activo = False
+    estudiante.save(update_fields=['estudiante_activo'])
+    messages.success(
+        request,
+        f"El alumno {estudiante.estudiante_nombre} {estudiante.estudiante_apaterno} fue desactivado. "
+        "Sus datos y antecedentes se conservaron.",
+    )
 
-    try:
-        with transaction.atomic():
-            # Antes de eliminar al alumno, identificamos en qué casos participaba
-            casos_afectados_ids = list(
-                Involucran.objects.filter(estudiante=estudiante).values_list('caso_id', flat=True).distinct()
-            )
+    return redirect('gestion_de_alumnos')
 
-            estudiante.delete()  # El CASCADE también elimina sus filas en 'involucran'
 
-            # Si algún caso quedó sin ningún alumno involucrado, se elimina también
-            casos_eliminados = 0
-            for caso_id in casos_afectados_ids:
-                if not Involucran.objects.filter(caso_id=caso_id).exists():
-                    Caso.objects.filter(pk=caso_id).delete()
-                    casos_eliminados += 1
+def cambiar_estado_estudiante_view(request, estudiante_id):
+    if 'usuario_id' not in request.session:
+        return redirect('login')
+    if request.session.get('usuario_rol') != 'Administrador':
+        messages.error(request, "Acceso denegado: No tienes permisos de Administrador.")
+        return redirect('dashboard')
+    if request.method != 'POST':
+        return redirect('gestion_de_alumnos')
 
-        if casos_eliminados > 0:
-            messages.success(
-                request,
-                f"Alumno(a) {nombre_completo} eliminado(a). Además, se eliminaron {casos_eliminados} "
-                f"caso(s) de convivencia que quedaron sin ningún alumno asociado."
-            )
-        else:
-            messages.success(request, f"Alumno(a) {nombre_completo} eliminado(a) exitosamente.")
-    except Exception as e:
-        messages.error(request, f"Ocurrió un error al intentar eliminar al alumno: {str(e)}")
-
+    estudiante = get_object_or_404(Estudiante, pk=estudiante_id)
+    estudiante.estudiante_activo = not estudiante.estudiante_activo
+    estudiante.save(update_fields=['estudiante_activo'])
+    estado = 'activado' if estudiante.estudiante_activo else 'desactivado'
+    messages.success(
+        request,
+        f"El alumno {estudiante.estudiante_nombre} {estudiante.estudiante_apaterno} fue {estado}.",
+    )
     return redirect('gestion_de_alumnos')
 
 
@@ -1939,6 +3131,8 @@ def importar_estudiantes_view(request):
     creados = 0
     omitidos = 0
     errores = []
+    alumnos_agregados = []
+    duplicados_detectados = []
 
     # Fila 1 = encabezados. Los datos parten en la fila 2.
     # Columnas esperadas: A) Nombres  B) Apellido Paterno  C) Apellido Materno  D) Curso (Grado)  E) Curso (Letra)  F) N° Lista (opcional)
@@ -1998,13 +3192,38 @@ def importar_estudiantes_view(request):
             )
             if creado:
                 creados += 1
+                alumnos_agregados.append(
+                    f"{nombre} {apaterno} {amaterno} ({curso_instancia})"
+                )
             else:
                 omitidos += 1
-                errores.append(f"Fila {num_fila}: {nombre} {apaterno} {amaterno} ya existía en ese curso, se omitió.")
+                duplicado = f"{nombre} {apaterno} {amaterno} ({curso_instancia})"
+                duplicados_detectados.append(duplicado)
+                errores.append(f"Fila {num_fila}: {duplicado} ya existía, se omitió.")
 
         except Exception as e:
+            logger.exception("Error importando alumno desde fila %s del archivo %s", num_fila, archivo.name)
             errores.append(f"Fila {num_fila}: error inesperado ({str(e)}).")
             omitidos += 1
+
+    try:
+        usuario_importador = Usuario.objects.only('usuario_correo').get(
+            pk=request.session['usuario_id']
+        )
+        HistorialImportacionEstudiantes.objects.create(
+            archivo=archivo.name[:255],
+            usuario_id_importo=usuario_importador.pk,
+            usuario_correo_importo=usuario_importador.usuario_correo,
+            alumnos_agregados=alumnos_agregados,
+            duplicados_detectados=duplicados_detectados,
+            filas_omitidas=omitidos,
+        )
+    except Exception:
+        logger.exception("No fue posible registrar la auditoría de importación de alumnos")
+        messages.error(
+            request,
+            "La importación se procesó, pero no se pudo guardar su registro de auditoría. Contacta al administrador.",
+        )
 
     if creados > 0:
         messages.success(request, f"Importación completada: {creados} alumno(s) nuevo(s) registrado(s), {omitidos} fila(s) omitida(s).")
@@ -2033,10 +3252,15 @@ def editar_estudiante_view(request, estudiante_id):
         nombre = request.POST.get('nombre', '').strip()
         apaterno = request.POST.get('apaterno', '').strip()
         amaterno = request.POST.get('amaterno', '').strip()
+        correo = request.POST.get('correo', '').strip()
         curso_id = request.POST.get('curso')
         numero_lista = request.POST.get('numero_lista', '').strip()
 
         try:
+            if not all((nombre, apaterno, amaterno)):
+                raise ValidationError("Completa los nombres y apellidos del alumno.")
+            if correo:
+                validate_email(correo)
             curso_instancia = Curso.objects.get(pk=curso_id)
             numero_lista_val = int(numero_lista) if numero_lista.isdigit() else None
 
@@ -2051,12 +3275,16 @@ def editar_estudiante_view(request, estudiante_id):
             estudiante.estudiante_nombre = nombre
             estudiante.estudiante_apaterno = apaterno
             estudiante.estudiante_amaterno = amaterno
+            estudiante.estudiante_correo = correo or None
             estudiante.curso = curso_instancia
             estudiante.estudiante_numero_lista = numero_lista_val
             estudiante.save()  # recalcula el identificador automáticamente
             messages.success(request, f"Alumno(a) {nombre} {apaterno} actualizado(a) exitosamente.")
-        except Exception as e:
-            messages.error(request, f"Ocurrió un error al actualizar al alumno: {str(e)}")
+        except ValidationError as exc:
+            messages.error(request, ' '.join(exc.messages))
+        except Exception:
+            logger.exception("Error actualizando estudiante %s", estudiante_id)
+            messages.error(request, "No fue posible actualizar al alumno. Revisa los datos ingresados.")
 
     return redirect('gestion_de_alumnos')
 
@@ -2127,36 +3355,437 @@ def gestion_documentos_view(request):
             messages.error(request, "Debes seleccionar un archivo para subir.")
             return redirect('gestion_documentos')
 
-        # Validación: solo archivos PDF (por extensión y por tipo MIME)
-        if not archivo.name.lower().endswith('.pdf') or archivo.content_type != 'application/pdf':
-            messages.error(request, "Solo se permiten archivos en formato PDF.")
+        if not archivo.name.lower().endswith('.pdf'):
+            messages.error(request, "Solo se permiten archivos PDF.")
             return redirect('gestion_documentos')
 
-        # Límite de tamaño: 20 MB
-        if archivo.size > 20 * 1024 * 1024:
-            messages.error(request, "El archivo supera el tamaño máximo permitido (20 MB).")
+        limite_bytes = getattr(settings, 'REGLAMENTO_PDF_MAX_BYTES', 20 * 1024 * 1024)
+        if not archivo.size:
+            messages.error(request, "El archivo PDF está vacío.")
+            return redirect('gestion_documentos')
+        if archivo.size > limite_bytes:
+            messages.error(
+                request,
+                f"El archivo supera el tamaño máximo permitido "
+                f"({limite_bytes // (1024 * 1024)} MB).",
+            )
+            return redirect('gestion_documentos')
+
+        tipo_mime = getattr(archivo, 'content_type', '')
+        if tipo_mime not in ('', 'application/pdf', 'application/octet-stream'):
+            messages.error(request, "El tipo de contenido del archivo no corresponde a un PDF.")
+            return redirect('gestion_documentos')
+
+        contenido = archivo.read()
+        archivo.seek(0)
+        if not contenido.startswith(b'%PDF-'):
+            messages.error(request, "El contenido del archivo no es un PDF válido.")
             return redirect('gestion_documentos')
 
         try:
             usuario_instancia = Usuario.objects.get(pk=request.session['usuario_id'])
-            DocumentoInstitucional.objects.create(
+            documento = DocumentoInstitucional.objects.create(
                 tipo_documento=tipo_documento,
                 titulo=titulo if titulo else archivo.name,
                 archivo=archivo,
-                usuario=usuario_instancia
+                usuario=usuario_instancia,
+                estado_procesamiento=DocumentoInstitucional.EstadoProcesamiento.PROCESANDO,
+                checksum_sha256=hashlib.sha256(contenido).hexdigest(),
             )
-            messages.success(request, "Documento subido y publicado exitosamente.")
-        except Exception as e:
-            messages.error(request, f"Ocurrió un error al subir el documento: {str(e)}")
+        except Exception as error:
+            logger.error(
+                "Error al almacenar un documento institucional (%s).",
+                type(error).__name__,
+            )
+            messages.error(request, "No se pudo almacenar el documento. Revisa la configuración de Cloudinary.")
+            return redirect('gestion_documentos')
+
+        try:
+            candidatas_count = _procesar_documento_institucional(
+                documento,
+                contenido,
+                usuario_instancia,
+            )
+            if tipo_documento == 'Reglamento':
+                messages.success(
+                    request,
+                    f"Reglamento almacenado y procesado. "
+                    f"Se detectaron {candidatas_count} propuestas, todas pendientes de revisión.",
+                )
+            else:
+                messages.success(request, "Documento institucional almacenado y procesado.")
+        except ErrorProcesamientoPDF as error:
+            documento.estado_procesamiento = DocumentoInstitucional.EstadoProcesamiento.ERROR
+            documento.error_procesamiento = str(error)
+            documento.save(update_fields=['estado_procesamiento', 'error_procesamiento'])
+            messages.error(request, str(error))
+        except Exception as error:
+            logger.error(
+                "Error al extraer texto del documento institucional %s (%s).",
+                documento.documento_id,
+                type(error).__name__,
+            )
+            documento.estado_procesamiento = DocumentoInstitucional.EstadoProcesamiento.ERROR
+            documento.error_procesamiento = (
+                'Ocurrió un error interno durante la extracción. '
+                'Revisa el archivo y vuelve a intentarlo.'
+            )
+            documento.save(update_fields=['estado_procesamiento', 'error_procesamiento'])
+            messages.error(request, documento.error_procesamiento)
 
         return redirect('gestion_documentos')
 
     context = {
-        'reglamentos': DocumentoInstitucional.objects.filter(tipo_documento='Reglamento'),
-        'protocolos': DocumentoInstitucional.objects.filter(tipo_documento='Protocolo'),
+        'reglamentos': DocumentoInstitucional.objects.filter(
+            tipo_documento='Reglamento',
+        ).annotate(
+            version_count=Count('versiones_reglamento', distinct=True),
+            rule_count=Count('versiones_reglamento__reglas', distinct=True),
+        ),
+        'protocolos': DocumentoInstitucional.objects.filter(
+            tipo_documento='Protocolo',
+        ).annotate(
+            version_count=Count('versiones_reglamento', distinct=True),
+            rule_count=Count('versiones_reglamento__reglas', distinct=True),
+        ),
         'es_administrador': es_administrador,
+        'versiones_reglamento': VersionReglamento.objects.select_related(
+            'documento', 'creada_por', 'activada_por',
+        ).prefetch_related('reglas').order_by('-creada_en'),
+        'puede_revisar_reglas': es_administrador,
+        'estados_regla': ReglaInstitucional.Estado.choices,
+        'activadores_regla': ReglaInstitucional.Activador.choices,
+        'tipos_medida': ReglaInstitucional.TipoMedida.choices,
+        'roles_responsables': ReglaInstitucional.RolResponsable.choices,
+        'referencias_plazo': ReglaInstitucional.ReferenciaPlazo.choices,
+        'limite_pdf_mb': getattr(
+            settings, 'REGLAMENTO_PDF_MAX_BYTES', 20 * 1024 * 1024
+        ) // (1024 * 1024),
     }
     return render(request, 'gestion_casos/gestion_documentos.html', context)
+
+def _procesar_documento_institucional(documento, contenido, usuario):
+    paginas = extraer_paginas_pdf(contenido)
+    documento.texto_extraido = '\n\n'.join(paginas)
+    documento.numero_paginas = len(paginas)
+    documento.error_procesamiento = ''
+    documento.estado_procesamiento = DocumentoInstitucional.EstadoProcesamiento.COMPLETADO
+    documento.save(update_fields=[
+        'texto_extraido', 'numero_paginas', 'error_procesamiento',
+        'estado_procesamiento',
+    ])
+
+    if documento.tipo_documento != 'Reglamento':
+        return 0
+    if VersionReglamento.objects.filter(documento=documento).exists():
+        return 0
+
+    ultimo_numero = (
+        VersionReglamento.objects.filter(documento__tipo_documento='Reglamento')
+        .order_by('-numero')
+        .values_list('numero', flat=True)
+        .first()
+        or 0
+    )
+    with transaction.atomic():
+        version = VersionReglamento.objects.create(
+            documento=documento,
+            numero=ultimo_numero + 1,
+            creada_por=usuario,
+        )
+        candidatas = guardar_candidatas(version, paginas)
+    return len(candidatas)
+
+
+def reprocesar_documento_view(request, documento_id):
+    if 'usuario_id' not in request.session:
+        return redirect('login')
+    if request.session.get('usuario_rol') != 'Administrador':
+        return HttpResponseForbidden("Solo un Administrador puede reprocesar documentos.")
+    if request.method != 'POST':
+        return HttpResponseForbidden("El reprocesamiento requiere una solicitud POST.")
+
+    documento = get_object_or_404(DocumentoInstitucional, pk=documento_id)
+    if documento.estado_procesamiento != DocumentoInstitucional.EstadoProcesamiento.ERROR:
+        messages.error(request, "Solo se pueden reprocesar documentos que estén en estado de error.")
+        return redirect('gestion_documentos')
+
+    documento.estado_procesamiento = DocumentoInstitucional.EstadoProcesamiento.PROCESANDO
+    documento.error_procesamiento = ''
+    documento.save(update_fields=['estado_procesamiento', 'error_procesamiento'])
+    limite_bytes = getattr(settings, 'REGLAMENTO_PDF_MAX_BYTES', 20 * 1024 * 1024)
+    try:
+        with documento.archivo.open('rb') as archivo:
+            contenido = archivo.read(limite_bytes + 1)
+        if len(contenido) > limite_bytes:
+            raise ErrorProcesamientoPDF(
+                f'El PDF supera el límite de {limite_bytes // (1024 * 1024)} MB.'
+            )
+        if not contenido.startswith(b'%PDF-'):
+            raise ErrorProcesamientoPDF("El archivo almacenado no contiene un PDF válido.")
+
+        propuestas = _procesar_documento_institucional(
+            documento,
+            contenido,
+            Usuario.objects.get(pk=request.session['usuario_id']),
+        )
+        mensaje = "Documento reprocesado correctamente."
+        if documento.tipo_documento == 'Reglamento':
+            if propuestas:
+                mensaje += (
+                    f" Se crearon {propuestas} propuestas nuevas, pendientes de revisión."
+                )
+            else:
+                mensaje += " Se conservaron las versiones y reglas existentes."
+        messages.success(request, mensaje)
+    except ErrorProcesamientoPDF as error:
+        documento.estado_procesamiento = DocumentoInstitucional.EstadoProcesamiento.ERROR
+        documento.error_procesamiento = str(error)
+        documento.save(update_fields=['estado_procesamiento', 'error_procesamiento'])
+        messages.error(request, str(error))
+    except Exception as error:
+        logger.error(
+            "Error al reprocesar documento institucional %s (%s).",
+            documento.documento_id,
+            type(error).__name__,
+        )
+        documento.estado_procesamiento = DocumentoInstitucional.EstadoProcesamiento.ERROR
+        documento.error_procesamiento = (
+            'Ocurrió un error interno durante el reprocesamiento. '
+            'Comprueba el almacenamiento y la configuración del servidor.'
+        )
+        documento.save(update_fields=['estado_procesamiento', 'error_procesamiento'])
+        messages.error(request, documento.error_procesamiento)
+    return redirect('gestion_documentos')
+
+
+def crear_regla_manual_view(request, version_id):
+    if 'usuario_id' not in request.session:
+        return redirect('login')
+    if request.session.get('usuario_rol') != 'Administrador':
+        return HttpResponseForbidden("Solo un Administrador puede crear o revisar reglas.")
+    if request.method != 'POST':
+        return HttpResponseForbidden("La acción requiere una solicitud POST.")
+
+    version = get_object_or_404(
+        VersionReglamento.objects.select_related('documento'),
+        pk=version_id,
+        documento__estado_procesamiento=DocumentoInstitucional.EstadoProcesamiento.COMPLETADO,
+    )
+    if version.estado == VersionReglamento.Estado.VIGENTE:
+        messages.error(request, "Una versión vigente es inmutable. Sube una nueva versión para revisarla.")
+        return redirect('gestion_documentos')
+    evidencia = request.POST.get('evidencia_textual', '').strip()
+    if not evidencia or evidencia not in version.documento.texto_extraido:
+        messages.error(request, "La cita debe coincidir con texto extraído del documento.")
+        return redirect('gestion_documentos')
+
+    pagina = request.POST.get('pagina', '').strip()
+    referencia = f'Página {pagina}' if pagina.isdigit() else ''
+    regla = ReglaInstitucional.objects.create(
+        version=version,
+        titulo=request.POST.get('titulo', '').strip()[:180] or evidencia[:180],
+        evidencia_textual=evidencia,
+        referencia_origen=referencia,
+        hash_origen=hashlib.sha256(
+            f'manual\0{version.pk}\0{referencia}\0{evidencia}'.encode('utf-8')
+        ).hexdigest(),
+    )
+    HistorialUsuario.objects.create(
+        usuario_id=request.session['usuario_id'],
+        historial_accion='Creación',
+        historial_detalle=f'Creó una propuesta de regla para la versión {version.pk}.',
+    )
+    messages.success(request, "Propuesta creada; completa sus campos y revísala antes de aprobarla.")
+    return redirect('gestion_documentos')
+
+
+def revisar_regla_view(request, regla_id):
+    if 'usuario_id' not in request.session:
+        return redirect('login')
+    if request.session.get('usuario_rol') != 'Administrador':
+        return HttpResponseForbidden("Solo un Administrador puede revisar reglas.")
+    if request.method != 'POST':
+        return HttpResponseForbidden("La acción requiere una solicitud POST.")
+
+    regla = get_object_or_404(ReglaInstitucional, pk=regla_id)
+    if regla.version.estado == VersionReglamento.Estado.VIGENTE:
+        messages.error(request, "Una versión vigente es inmutable. Sube una nueva versión para cambiar sus reglas.")
+        return redirect('gestion_documentos')
+    estado = request.POST.get('estado', '')
+    activador = request.POST.get('activador', '')
+    tipo_medida = request.POST.get('tipo_medida', regla.tipo_medida)
+    titulo = request.POST.get('titulo', '').strip()
+    categoria = request.POST.get('categoria_falta', '').strip()
+    accion = request.POST.get('accion_requerida', '').strip()
+    responsable = request.POST.get('responsable_rol', '').strip()
+    umbral_raw = request.POST.get('umbral_casos', '').strip()
+    umbral_anotaciones_raw = request.POST.get('umbral_anotaciones', '').strip()
+    plazo_raw = request.POST.get('plazo_dias', '').strip()
+    plazo_desde = request.POST.get(
+        'plazo_desde', ReglaInstitucional.ReferenciaPlazo.SIN_DEFINIR,
+    )
+    if estado not in ReglaInstitucional.Estado.values:
+        messages.error(request, "Selecciona un estado de revisión válido.")
+        return redirect('gestion_documentos')
+    if activador not in ReglaInstitucional.Activador.values:
+        messages.error(request, "Selecciona un tipo de condición válido.")
+        return redirect('gestion_documentos')
+    if tipo_medida not in ReglaInstitucional.TipoMedida.values:
+        messages.error(request, "Selecciona un tipo de disposición válido.")
+        return redirect('gestion_documentos')
+    if responsable and responsable not in ReglaInstitucional.RolResponsable.values:
+        messages.error(request, "Selecciona un responsable válido.")
+        return redirect('gestion_documentos')
+    if plazo_desde not in ReglaInstitucional.ReferenciaPlazo.values:
+        messages.error(request, "Selecciona un inicio de plazo válido.")
+        return redirect('gestion_documentos')
+
+    try:
+        umbral = int(umbral_raw) if umbral_raw else None
+        umbral_anotaciones = (
+            int(umbral_anotaciones_raw) if umbral_anotaciones_raw else None
+        )
+        if (
+            umbral_anotaciones is None
+            and regla.unidad_umbral == ReglaInstitucional.UnidadUmbral.ANOTACIONES
+        ):
+            umbral_anotaciones = regla.cantidad_minima
+        plazo = int(plazo_raw) if plazo_raw else None
+    except ValueError:
+        messages.error(request, "El umbral y el plazo deben ser números enteros.")
+        return redirect('gestion_documentos')
+    if (
+        (umbral is not None and not 1 <= umbral <= 10000)
+        or (
+            umbral_anotaciones is not None
+            and not 1 <= umbral_anotaciones <= 10000
+        )
+        or (plazo is not None and not 0 <= plazo <= 3650)
+    ):
+        messages.error(request, "El umbral o el plazo están fuera del rango permitido.")
+        return redirect('gestion_documentos')
+    if activador == ReglaInstitucional.Activador.UMBRAL_CASOS and umbral is None:
+        messages.error(request, "La condición por umbral requiere un número de casos.")
+        return redirect('gestion_documentos')
+    if plazo_desde == ReglaInstitucional.ReferenciaPlazo.EVENTO and plazo is None:
+        messages.error(request, "Define los días del plazo antes de calcular su vencimiento.")
+        return redirect('gestion_documentos')
+    if estado == ReglaInstitucional.Estado.APROBADA and (
+        not regla.evidencia_textual.strip()
+        or not (
+            categoria
+            or regla.conducta_condicion.strip()
+            or regla.medida_asociada.strip()
+        )
+        or (
+            not regla.solo_presentacion
+            and (not categoria or not accion)
+        )
+    ):
+        messages.error(
+            request,
+            "Para aprobar, completa la disposición, su evidencia y los campos "
+            "requeridos por su modalidad.",
+        )
+        return redirect('gestion_documentos')
+    if (
+        estado == ReglaInstitucional.Estado.APROBADA
+        and regla.solo_presentacion
+        and (
+            tipo_medida == ReglaInstitucional.TipoMedida.NO_CLASIFICADA
+            or not regla.version_fuente.strip()
+            or not regla.titulo_fuente.strip()
+            or not regla.seccion_fuente.strip()
+            or not regla.pagina_impresa
+            or not regla.pagina_pdf
+        )
+    ):
+        messages.error(
+            request,
+            "Para aprobar una disposición de solo presentación, completa su tipo "
+            "y referencia verificable de versión, sección y páginas.",
+        )
+        return redirect('gestion_documentos')
+
+    with transaction.atomic():
+        if titulo:
+            regla.titulo = titulo[:180]
+        regla.tipo_medida = tipo_medida
+        regla.categoria_falta = categoria[:100]
+        regla.activador = activador
+        regla.umbral_casos = (
+            umbral if activador == ReglaInstitucional.Activador.UMBRAL_CASOS else None
+        )
+        regla.umbral_anotaciones = umbral_anotaciones
+        regla.accion_requerida = accion
+        regla.requiere_citacion_apoderado = request.POST.get('requiere_citacion') == 'on'
+        regla.plazo_dias = plazo
+        regla.plazo_desde = plazo_desde
+        regla.responsable_rol = responsable
+        regla.estado = estado
+        regla.revisada_por_id = request.session['usuario_id']
+        regla.revisada_en = timezone.now()
+        regla.save(update_fields=[
+            'titulo', 'tipo_medida', 'categoria_falta', 'activador', 'umbral_casos', 'accion_requerida',
+            'umbral_anotaciones', 'requiere_citacion_apoderado', 'plazo_dias',
+            'plazo_desde', 'responsable_rol',
+            'estado', 'revisada_por', 'revisada_en',
+        ])
+        HistorialUsuario.objects.create(
+            usuario_id=request.session['usuario_id'],
+            historial_accion='Modificación',
+            historial_detalle=(
+                f'Revisó la regla {regla.pk}: '
+                f'{regla.get_estado_display()} ({regla.referencia_origen or "sin referencia"}).'
+            ),
+        )
+    messages.success(request, "La revisión de la regla quedó registrada.")
+    return redirect('gestion_documentos')
+
+
+def activar_version_reglamento_view(request, version_id):
+    if 'usuario_id' not in request.session:
+        return redirect('login')
+    if request.session.get('usuario_rol') != 'Administrador':
+        return HttpResponseForbidden("Solo un Administrador puede activar una versión.")
+    if request.method != 'POST':
+        return HttpResponseForbidden("La acción requiere una solicitud POST.")
+
+    with transaction.atomic():
+        version = get_object_or_404(
+            VersionReglamento.objects.select_for_update().select_related('documento'),
+            pk=version_id,
+        )
+        reglas_aprobadas = list(
+            version.reglas.filter(estado=ReglaInstitucional.Estado.APROBADA)
+        )
+        if (
+            version.documento.estado_procesamiento != DocumentoInstitucional.EstadoProcesamiento.COMPLETADO
+            or not reglas_aprobadas
+            or any(not regla.puede_activarse() for regla in reglas_aprobadas)
+        ):
+            messages.error(
+                request,
+                "No se puede activar: el documento debe estar procesado y debe existir "
+                "al menos una disposición aprobada con evidencia y datos suficientes.",
+            )
+            return redirect('gestion_documentos')
+
+        VersionReglamento.objects.filter(estado=VersionReglamento.Estado.VIGENTE).exclude(
+            pk=version.pk
+        ).update(estado=VersionReglamento.Estado.REEMPLAZADA)
+        version.estado = VersionReglamento.Estado.VIGENTE
+        version.activada_en = timezone.now()
+        version.activada_por_id = request.session['usuario_id']
+        version.save(update_fields=['estado', 'activada_en', 'activada_por'])
+        HistorialUsuario.objects.create(
+            usuario_id=request.session['usuario_id'],
+            historial_accion='Modificación',
+            historial_detalle=f'Activó la versión {version.pk} del reglamento institucional.',
+        )
+    messages.success(request, "La versión aprobada ahora está vigente.")
+    return redirect('gestion_documentos')
 
 
 def eliminar_documento_view(request, documento_id):
@@ -2165,14 +3794,86 @@ def eliminar_documento_view(request, documento_id):
     if request.session.get('usuario_rol') != 'Administrador':
         messages.error(request, "Acceso denegado: No tienes permisos de Administrador.")
         return redirect('gestion_documentos')
+    if request.method != 'POST':
+        return HttpResponseForbidden("La eliminación requiere una solicitud POST.")
 
-    documento = get_object_or_404(DocumentoInstitucional, pk=documento_id)
     try:
-        documento.archivo.delete(save=False)  # elimina el archivo físico del servidor
-        documento.delete()
-        messages.success(request, "Documento eliminado correctamente.")
-    except Exception as e:
-        messages.error(request, f"Ocurrió un error al eliminar el documento: {str(e)}")
+        with transaction.atomic():
+            documento = (
+                DocumentoInstitucional.objects.select_for_update()
+                .filter(pk=documento_id)
+                .first()
+            )
+            if documento is None:
+                messages.info(
+                    request,
+                    "El documento ya no existe; puede que se haya eliminado "
+                    "desde otra sesión. Actualiza la página para ver el listado vigente.",
+                )
+                return redirect('gestion_documentos')
+
+            documento_id_auditoria = documento.pk
+            titulo = documento.titulo
+            nombre_archivo = documento.archivo.name
+            almacenamiento = documento.archivo.storage
+            cantidad_versiones = documento.versiones_reglamento.count()
+            cantidad_reglas = ReglaInstitucional.objects.filter(
+                version__documento=documento,
+            ).count()
+
+            Notificacion.objects.filter(
+                Q(regla__version__documento=documento)
+                | Q(version_reglamento__documento=documento)
+            ).update(
+                notificacion_titulo='Disposición reglamentaria retirada',
+                notificacion_mensaje=(
+                    'La disposición vinculada a esta notificación fue retirada '
+                    'al reemplazar el documento. No utilices la orientación anterior; '
+                    'solicita revisión del personal autorizado.'
+                ),
+                regla=None,
+                version_reglamento=None,
+            )
+            HistorialUsuario.objects.create(
+                usuario_id=request.session['usuario_id'],
+                historial_accion='Eliminación',
+                historial_detalle=(
+                    f'Eliminó el documento institucional "{titulo}" '
+                    f'(ID {documento.pk}), junto con {cantidad_versiones} versión(es) '
+                    f'y {cantidad_reglas} propuesta(s) asociada(s).'
+                ),
+            )
+            documento.delete()
+    except Exception:
+        logger.exception(
+            "Error al eliminar el documento institucional %s.", documento_id,
+        )
+        messages.error(
+            request,
+            "No se pudo eliminar el documento y sus propuestas. No se confirmó "
+            "la eliminación del archivo.",
+        )
+        return redirect('gestion_documentos')
+
+    try:
+        if nombre_archivo:
+            almacenamiento.delete(nombre_archivo)
+    except Exception:
+        logger.exception(
+            "El registro del documento %s se eliminó, pero falló la limpieza del archivo.",
+            documento_id_auditoria,
+        )
+        messages.warning(
+            request,
+            "El documento y sus versiones/propuestas se eliminaron, pero el archivo "
+            "almacenado no pudo limpiarse. Contacta al Administrador del sistema.",
+        )
+    else:
+        messages.success(
+            request,
+            f"Se eliminó «{titulo}» junto con {cantidad_versiones} versión(es) "
+            f"y {cantidad_reglas} propuesta(s). Ya puedes subir el reglamento de reemplazo.",
+        )
 
     return redirect('gestion_documentos')
 
@@ -2229,6 +3930,36 @@ def _obtener_casos_del_curso(curso):
     return resultado
 
 
+def _filtrar_casos_del_curso(request, curso):
+    desde_raw = request.GET.get('fecha_desde', '').strip()
+    hasta_raw = request.GET.get('fecha_hasta', '').strip()
+    gravedad = request.GET.get('gravedad', '').strip()
+    desde = parse_date(desde_raw) if desde_raw else None
+    hasta = parse_date(hasta_raw) if hasta_raw else None
+    if desde_raw and not desde:
+        messages.warning(request, "La fecha inicial no es válida y se ignoró.")
+    if hasta_raw and not hasta:
+        messages.warning(request, "La fecha final no es válida y se ignoró.")
+    if desde and hasta and desde > hasta:
+        desde, hasta = hasta, desde
+        messages.warning(request, "Las fechas estaban invertidas; se intercambiaron para aplicar el filtro.")
+
+    casos = _obtener_casos_del_curso(curso)
+    if desde:
+        casos = [caso for caso in casos if caso['fecha'] and caso['fecha'] >= desde]
+    if hasta:
+        casos = [caso for caso in casos if caso['fecha'] and caso['fecha'] <= hasta]
+    if gravedad in ('Leve', 'Grave', 'Gravísima'):
+        casos = [caso for caso in casos if caso['tipo_falta'] == gravedad]
+    else:
+        gravedad = ''
+    return casos, {
+        'fecha_desde': desde.isoformat() if desde else '',
+        'fecha_hasta': hasta.isoformat() if hasta else '',
+        'gravedad': gravedad,
+    }
+
+
 def _validar_profesor_jefe(request):
     """Valida sesión + rol + curso asignado. Devuelve el objeto Curso o None si algo falla."""
     if 'usuario_id' not in request.session:
@@ -2262,12 +3993,19 @@ def mis_casos_curso_view(request):
         messages.error(request, "No tienes un curso asignado actualmente. Contacta al Administrador.")
         return redirect('dashboard')
 
-    casos_del_curso = _obtener_casos_del_curso(profesor.curso)
+    casos_del_curso, filtros = _filtrar_casos_del_curso(request, profesor.curso)
+    from urllib.parse import urlencode
+    filtros_query = urlencode({key: value for key, value in filtros.items() if value})
 
     context = {
         'curso': profesor.curso,
         'casos': casos_del_curso,
-        'total_casos': len(casos_del_curso),  # RF-47
+        'total_casos': len(casos_del_curso),
+        'solicitudes_caso': SolicitudCaso.objects.filter(
+            solicitante_id=request.session['usuario_id'],
+        ).select_related('lugar', 'revisada_por')[:10],
+        'filtros': filtros,
+        'filtros_query': filtros_query,
     }
     return render(request, 'gestion_casos/mis_casos_curso.html', context)
 
@@ -2278,7 +4016,7 @@ def descargar_casos_pdf_view(request):
         messages.error(request, "Acceso denegado o no tienes un curso asignado como Profesor Jefe.")
         return redirect('dashboard')
 
-    casos = _obtener_casos_del_curso(curso)
+    casos, _ = _filtrar_casos_del_curso(request, curso)
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), topMargin=30, bottomMargin=30, leftMargin=25, rightMargin=25)
@@ -2331,7 +4069,7 @@ def descargar_casos_xlsx_view(request):
         messages.error(request, "Acceso denegado o no tienes un curso asignado como Profesor Jefe.")
         return redirect('dashboard')
 
-    casos = _obtener_casos_del_curso(curso)
+    casos, _ = _filtrar_casos_del_curso(request, curso)
 
     wb = Workbook()
     ws = wb.active
@@ -2501,6 +4239,11 @@ def detalle_estudiante_view(request, estudiante_id):
             'lugar': caso.lugar.lugar_nombre if caso.lugar else "No especificado",
             'gravedad': gravedad_caso,
         })
+
+    prioridad_gravedad = {'Gravísima': 0, 'Grave': 1, 'Leve': 2}
+    casos_detalle.sort(
+        key=lambda caso: prioridad_gravedad.get(caso['gravedad'], 3)
+    )
 
     total_casos = len(casos_detalle)
 

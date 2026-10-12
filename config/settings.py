@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 from dotenv import load_dotenv
 import os
 
@@ -24,10 +25,10 @@ RESEND_API_KEY = os.getenv('RESEND_API_KEY')
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-x1m5p-j)x(1_ucmpdj1rpw3(5c68#i^hu!)l7*^%se667*ue=1'
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
 ALLOWED_HOSTS = ['*']
 
@@ -44,6 +45,7 @@ INSTALLED_APPS = [
     'cloudinary_storage',
     'django.contrib.staticfiles',
     'cloudinary',
+    'rest_framework',
     'gestion_casos',
 ]
 
@@ -84,13 +86,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres.qdodfboqxpvtzhdycqzt',
-        'PASSWORD': 'Moncocolol12@',
-        'HOST': 'aws-0-us-west-2.pooler.supabase.com',
-        'PORT': '5432',
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "postgres"),
+        "USER": os.getenv("DB_USER"),
+        "PASSWORD": os.getenv("DB_PASSWORD"),
+        "HOST": os.getenv("DB_HOST"),
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
 
@@ -138,26 +140,59 @@ STATICFILES_DIRS = [
 # Archivos subidos por los usuarios (ej: PDFs de Reglamento Interno / Protocolos)
 # Se guardan en Cloudinary (nube) en vez del disco local, para que no se pierdan
 # cuando el servidor se reinicia o se vuelve a desplegar (ej: en Render).
-import cloudinary
 
-cloudinary.config(
-    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
-    api_key=os.environ.get('CLOUDINARY_API_KEY', ''),
-    api_secret=os.environ.get('CLOUDINARY_API_SECRET', ''),
-    secure=True
-)
+# Almacenamiento de archivos subidos por los usuarios
+
+# Cloudinary: credenciales desde .env
+import cloudinary
+import os
 
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
-    'API_KEY': os.environ.get('CLOUDINARY_API_KEY', ''),
-    'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET', ''),
+    "CLOUD_NAME": os.getenv("CLOUDINARY_CLOUD_NAME", ""),
+    "API_KEY": os.getenv("CLOUDINARY_API_KEY", ""),
+    "API_SECRET": os.getenv("CLOUDINARY_API_SECRET", ""),
 }
 
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-MEDIA_URL = '/media/'
+cloudinary.config(
+    cloud_name=CLOUDINARY_STORAGE["CLOUD_NAME"],
+    api_key=CLOUDINARY_STORAGE["API_KEY"],
+    api_secret=CLOUDINARY_STORAGE["API_SECRET"],
+    secure=True,
+)
+
+STORAGES = {
+    "default": {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+MEDIA_URL = "/media/"
+
+
 
 # Límite de tamaño para subir archivos (20 MB) antes de que Django los pase a disco temporal
-DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
+# Límites para extracción y OCR de reglamentos y protocolos.
+REGLAMENTO_PDF_MAX_BYTES = int(
+    os.getenv("REGLAMENTO_PDF_MAX_BYTES", str(20 * 1024 * 1024))
+)
+REGLAMENTO_PDF_MAX_PAGES = int(os.getenv("REGLAMENTO_PDF_MAX_PAGES", "500"))
+REGLAMENTO_PDF_MIN_TEXT_CHARS = int(
+    os.getenv("REGLAMENTO_PDF_MIN_TEXT_CHARS", "30")
+)
+REGLAMENTO_PDF_MIN_USEFUL_CHARS = int(
+    os.getenv("REGLAMENTO_PDF_MIN_USEFUL_CHARS", "30")
+)
+REGLAMENTO_OCR_MAX_PAGES = int(os.getenv("REGLAMENTO_OCR_MAX_PAGES", "50"))
+REGLAMENTO_OCR_DPI = int(os.getenv("REGLAMENTO_OCR_DPI", "200"))
+REGLAMENTO_OCR_TIMEOUT_SECONDS = int(
+    os.getenv("REGLAMENTO_OCR_TIMEOUT_SECONDS", "30")
+)
+TESSERACT_CMD = os.getenv("TESSERACT_CMD", "")
+TESSDATA_PREFIX = os.getenv("TESSDATA_PREFIX", "")
+DATA_UPLOAD_MAX_MEMORY_SIZE = REGLAMENTO_PDF_MAX_BYTES
 FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
 
 # Default primary key field type
@@ -165,6 +200,20 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'gestion_casos.authentication.UsuarioJWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
 
 
@@ -193,4 +242,3 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'America/Santiago'
 CELERY_ENABLE_UTC = True
-

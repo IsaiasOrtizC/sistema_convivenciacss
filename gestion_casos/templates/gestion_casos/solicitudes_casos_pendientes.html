@@ -1,0 +1,73 @@
+{% extends 'gestion_casos/base.html' %}
+
+{% block title %}Revisión de casos pendientes – ConviData{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-header-overline">Gestión de convivencia</div>
+    <h1>Casos pendientes de revisión</h1>
+    <p>Los reportes se incorporan a la bitácora oficial únicamente al ser aprobados.</p>
+  </div>
+</div>
+
+{% if solicitudes %}
+  {% for item in solicitudes %}
+  <section class="pane-card" style="margin-bottom:18px; padding:24px;">
+    <div class="pane-header">
+      <div class="pane-header-left">
+        <div class="pane-header-icon">#{{ item.solicitud.pk }}</div>
+        <div>
+          <div class="pane-title">{{ item.solicitud.titulo }}</div>
+          <div class="pane-subtitle">
+            Enviado por
+            {% if item.solicitud.solicitante %}
+              {{ item.solicitud.solicitante.usuario_nombre }}
+              {{ item.solicitud.solicitante.usuario_apaterno }}
+            {% else %}
+              usuario eliminado
+            {% endif %}
+            · {{ item.solicitud.creada_en|date:"d/m/Y H:i" }}
+          </div>
+        </div>
+      </div>
+      <span class="case-id-chip">En espera de revisión</span>
+    </div>
+
+    <div style="display:grid; gap:10px; margin:18px 0;">
+      <div><strong>Fecha del hecho:</strong> {{ item.solicitud.fecha_evento|date:"d/m/Y" }}</div>
+      <div><strong>Lugar:</strong> {{ item.solicitud.lugar.lugar_nombre }}</div>
+      <div><strong>Tipo de falta:</strong> {{ item.solicitud.tipo_falta }}</div>
+      <div><strong>Descripción:</strong> {{ item.solicitud.descripcion|linebreaksbr }}</div>
+      <div>
+        <strong>Estudiantes:</strong>
+        {% for estudiante in item.estudiantes %}
+          {{ estudiante.nombre }} {{ estudiante.apellido_paterno }}
+          ({{ estudiante.curso }}){% if not forloop.last %}; {% endif %}
+        {% endfor %}
+      </div>
+      {% if item.evidencia_url %}
+      <div><strong>Evidencia:</strong> <a href="{{ item.evidencia_url }}" target="_blank" rel="noopener">Abrir archivo adjunto</a></div>
+      {% endif %}
+    </div>
+
+    <form method="post" action="{% url 'solicitudes_casos_pendientes' %}" style="display:grid; gap:12px;">
+      {% csrf_token %}
+      <input type="hidden" name="solicitud_id" value="{{ item.solicitud.pk }}">
+      <label>
+        Comentario de revisión (opcional)
+        <textarea name="comentario" rows="2" maxlength="2000" style="display:block; width:100%; margin-top:6px;"></textarea>
+      </label>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn-download pdf" type="submit" name="decision" value="aprobar">Aprobar y registrar caso</button>
+        <button class="btn-download xlsx" type="submit" name="decision" value="rechazar">Rechazar reporte</button>
+      </div>
+    </form>
+  </section>
+  {% endfor %}
+{% else %}
+  <div class="pane-card" style="padding:24px;">
+    No hay casos pendientes de revisión.
+  </div>
+{% endif %}
+{% endblock %}

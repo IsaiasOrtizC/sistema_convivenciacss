@@ -38,6 +38,19 @@ El sistema contempla distintos roles de usuario, permitiendo controlar el acceso
 * JavaScript
 * Django Templates
 
+### API autenticada con JWT
+
+El sitio web conserva su autenticación de sesión. Para clientes de API:
+
+* `POST /api/auth/token/` recibe JSON `{"correo": "...", "contrasena": "..."}` y devuelve `access` y `refresh`.
+* `POST /api/auth/token/refresh/` recibe JSON `{"refresh": "..."}` y devuelve un nuevo `access`.
+* `GET /api/v1/me/` devuelve la identidad y el rol del usuario autenticado.
+
+Las solicitudes protegidas deben incluir `Authorization: Bearer <access>`.
+Los tokens de acceso vencen a los 15 minutos y los refresh a las 24 horas. Las
+cuentas inactivas, bloqueadas o pendientes de cambiar su contraseña temporal no
+pueden obtener ni renovar tokens.
+
 ### Herramientas
 
 * Git
@@ -154,38 +167,21 @@ pip install django-cloudinary-storage
 
 ---
 
-# Configuración de PostgreSQL
+# Configuración del entorno
 
-ConviData utiliza **PostgreSQL** como sistema de gestión de base de datos.
+La configuración local se carga desde `.env`. Crea el archivo a partir de la plantilla:
 
-Se debe crear una base de datos antes de ejecutar el proyecto.
-
-Ejemplo:
-
-```sql
-CREATE DATABASE convivencia_escolar;
+```powershell
+Copy-Item .env.example .env
 ```
 
-Luego se deben configurar las credenciales de la base de datos en `settings.py` o, preferentemente, mediante variables de entorno.
+En Linux o macOS:
 
-Ejemplo:
-
-```python
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'convivencia_escolar',
-        'USER': 'postgres',
-        'PASSWORD': 'TU_CONTRASEÑA',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
+```bash
+cp .env.example .env
 ```
 
-No se deben subir contraseñas reales al repositorio de GitHub.
-
-Se recomienda utilizar un archivo `.env` y agregarlo al `.gitignore`.
+Completa en `.env` la clave de Django y las credenciales PostgreSQL de Supabase. Las variables opcionales para Resend, Cloudinary y Celery también están documentadas en la plantilla. No subas `.env` al repositorio: contiene credenciales y está excluido por `.gitignore`.
 
 ---
 
@@ -369,4 +365,187 @@ Proyecto desarrollado por:
 
 **En desarrollo**
 
+---
 
+# Reglamento institucional, notificaciones y seguimiento
+
+Los administradores pueden cargar reglamentos PDF de hasta 20 MB. El backend
+valida la extensión y la firma PDF, almacena el archivo en Cloudinary y extrae
+texto seleccionable con `pypdf`. Las páginas escaneadas o con texto insuficiente
+se procesan con PyMuPDF y Tesseract en español (`spa`); los PDF mixtos conservan
+la extracción directa en las páginas que ya tienen texto. El extractor no
+convierte párrafos arbitrarios en propuestas: las 316 propuestas históricas se
+conservan intactas y no se reprocesan automáticamente. Las nuevas disposiciones
+deben provenir de citas verificadas, conservan la referencia impresa y la página
+real del PDF, y quedan pendientes de revisión humana.
+
+El procesamiento actual es síncrono: no se usa Celery porque no se ha confirmado
+un broker Redis operativo. Si el procesamiento falla, el documento conserva el
+estado y un error explicativo; Administrador puede iniciar manualmente un
+reprocesamiento desde la misma pantalla de documentos. Abrir o visualizar un PDF
+no inicia OCR. Reprocesar actualiza la extracción guardada, pero no cambia reglas
+ni versiones existentes; si un documento todavía no tiene versión, se crea una
+versión borrador y sus propuestas quedan pendientes de revisión humana.
+
+El modelo estructurado distingue anotaciones, faltas y reincidencias, y permite
+marcar una cantidad como definida, no especificada, no aplicable o aún no
+verificada. Las disposiciones verificadas del Reglamento 2026 se importan en
+modalidad de solo presentación: exponen evidencia y medida para revisión, sin
+crear sanciones, notificaciones ni acciones automáticamente. El sistema no tiene
+un registro separado de anotaciones. Para los umbrales expresamente asociados a
+anotaciones negativas de faltas leves, se cuentan casos distintos del estudiante
+cuya gravedad sea Leve; casos graves o gravísimos no contribuyen a ese total y
+actualizar el mismo caso no lo incrementa. Este mapeo solo puede usarse cuando
+la regla aprobada declara unidad de anotaciones y un umbral de casos coincidente.
+
+### Disposiciones verificadas del Reglamento Interno 2026
+
+En el PDF oficial recibido, el Título IX está impreso en la página 32 (página 33
+del archivo); la página impresa 34 corresponde al Título XI. El Título XVIII
+comienza en la página impresa 48 (página 49 del archivo) y termina en la página
+impresa 57 (página 58 del archivo). El Título IX trata la relación entre la
+familia y el establecimiento y no aporta reglas de clasificación o sanción. El
+catálogo existente del Título XVIII conserva únicamente las disposiciones
+seleccionadas para clasificación y medidas disciplinarias, incluida la
+separación preventiva ya presente en ese conjunto. No se crean entradas para
+cada medida formativa, reparatoria o alternativa descrita en el Reglamento.
+La suspensión general y la excepción específica de faltas gravísimas se
+conservan como disposiciones distintas, pendientes de interpretación autorizada.
+
+Cada disposición del catálogo guarda la versión explícita, sección, página
+impresa y página del archivo, cita textual y tipo de medida. Los umbrales 3 y 5
+son anotaciones negativas asociadas a faltas leves y se representan por casos
+distintos de gravedad Leve, según el modelo operativo indicado para ConviData.
+No se cuentan actualizaciones de un mismo caso ni casos de otra gravedad. La
+revisión y activación están restringidas al
+rol Administrador en la aplicación; esto no sustituye la autorización del
+Director que exige el Reglamento para medidas que le reserva.
+
+Para agregar las disposiciones estructuradas, el administrador primero debe
+cargar y procesar exactamente el PDF oficial verificado en una versión borrador.
+La operación valida su SHA-256 y vuelve a cotejar cada cita y número de página
+con el archivo almacenado:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py importar_disposiciones_reglamento_2026 --version-id <ID>
+```
+
+El comando es aditivo, no sobrescribe ni elimina reglas existentes, es
+idempotente para el catálogo verificado y deja las nuevas disposiciones
+pendientes de aprobación. No se
+mezcla con reglas históricas: si la versión indicada ya contiene propuestas,
+crea una nueva versión borrador para mantenerlas intactas y revisables. El comando
+informa el identificador de esa versión destino. No se debe ejecutar contra
+Supabase hasta que se aprueben el esquema y el procedimiento sobre la versión
+correspondiente.
+
+Despliegue reversible: crea y restaura un respaldo en staging que reproduzca
+tanto el esquema como el historial `django_migrations` de producción. Ejecuta
+allí `manage.py migrate --plan` y revisa cada operación antes de aplicar nada.
+El plan contra una base nueva incluye migraciones iniciales y creación de tablas;
+no demuestra qué migraciones están pendientes en Supabase ni autoriza aplicarlas
+sobre tablas preexistentes. Reconcilia primero el historial de migraciones con
+el esquema real; luego aplica en staging únicamente el plan aprobado y ejecuta
+`manage.py check` y las pruebas.
+
+En producción, respalda la base, verifica allí el plan real y la reconciliación
+del esquema, obtiene aprobación explícita y aplica únicamente las migraciones
+aprobadas antes de desplegar el código. Mantén el catálogo sin importar hasta
+completar la revisión humana; después, importa solo con autorización expresa y
+registra el ID de versión destino. Para volver atrás, revierte el código y deja
+las columnas aditivas y las disposiciones intactas; no reviertas ni elimines
+columnas o reglas con datos sin un respaldo y un procedimiento de restauración
+aprobado. La revisión autorizada debe confirmar excepciones, redacción impresa,
+permisos de Director y compatibilidad operativa antes de considerar el catálogo
+para uso real.
+
+### Instalar y configurar OCR
+
+Las dependencias Python se instalan junto al resto del proyecto:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+`requirements.txt` incluye `PyMuPDF`, `pytesseract` y `Pillow`; estos paquetes
+no instalan el ejecutable Tesseract ni sus archivos de idioma.
+
+En Windows, instala Tesseract OCR usando un instalador de Windows y selecciona
+el idioma Spanish (`spa`). Comprueba en PowerShell:
+
+```powershell
+tesseract --version
+tesseract --list-langs
+```
+
+La lista debe incluir `spa`. Si Tesseract no está en `PATH`, agrega al archivo
+local `.env` las rutas de la instalación y de la carpeta que contiene
+`spa.traineddata`:
+
+```dotenv
+TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
+TESSDATA_PREFIX=C:\Program Files\Tesseract-OCR\tessdata
+```
+
+En producción Linux, instala los paquetes del sistema en la imagen/entorno de
+ejecución, además de instalar `requirements.txt`:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y tesseract-ocr tesseract-ocr-spa
+tesseract --version
+tesseract --list-langs
+```
+
+Si el proveedor usa contenedores, incluye esos paquetes en la imagen. En
+plataformas administradas, instala las dependencias del sistema mediante el
+mecanismo admitido por ese proveedor y configura `TESSERACT_CMD` y
+`TESSDATA_PREFIX` si las rutas no están en `PATH` o en la ruta estándar. El
+repositorio no contiene configuración que permita confirmar cuál es el hosting
+de producción; verifica esto con el proveedor antes de desplegar.
+
+Los límites se configuran por variables de entorno: `REGLAMENTO_PDF_MAX_BYTES`
+(20 MiB), `REGLAMENTO_PDF_MAX_PAGES` (500), `REGLAMENTO_PDF_MIN_TEXT_CHARS`
+(30 por página para preferir OCR), `REGLAMENTO_PDF_MIN_USEFUL_CHARS` (30 por
+documento), `REGLAMENTO_OCR_MAX_PAGES` (50), `REGLAMENTO_OCR_DPI` (200) y
+`REGLAMENTO_OCR_TIMEOUT_SECONDS` (30 por página). Se pueden ajustar según los
+recursos disponibles en el hosting.
+
+Para probar con un reglamento real, instala Tesseract y `spa`, inicia Django,
+carga desde Documentos un PDF escaneado legible y verifica que el estado de
+procesamiento sea «Completado» y que el texto extraído aparezca en la revisión
+del reglamento. Las propuestas detectadas deben continuar pendientes hasta su
+aprobación manual. Para un documento que falló antes de instalar Tesseract, usa
+«Reprocesar texto» en esa misma pantalla. El OCR puede requerir tiempo para
+documentos largos; hay límites de tamaño, páginas, páginas OCR y tiempo por
+página.
+
+Las notificaciones y acciones se almacenan con claves de idempotencia, estados,
+responsables, fechas límite e historial. Administrador y `PConvivencia` pueden
+gestionarlas y cerrar seguimientos; Inspector solo consulta; Profesor Jefe no
+puede acceder al módulo. El progreso se calcula dando el mismo peso a cada
+acción requerida y no se muestra porcentaje cuando no existen acciones.
+
+El Profesor Jefe puede enviar reportes de incidentes solo para los estudiantes
+de su curso asignado. Estos se guardan como solicitudes pendientes separadas y
+no crean casos oficiales ni afectan la bitácora, estadísticas o antecedentes
+hasta que Administrador, Inspector o `PConvivencia` los apruebe desde «Revisar
+casos pendientes». Los reportes rechazados conservan el estado y comentario de
+revisión para que el profesor pueda consultarlos.
+
+Las nuevas tablas y columnas están descritas en las migraciones
+`gestion_casos/migrations/0008_documentoinstitucional_checksum_sha256_and_more.py`
+y `gestion_casos/migrations/0009_reglainstitucional_umbral_anotaciones.py`,
+`gestion_casos/migrations/0010_notificacion_evento_tipo_and_more.py`,
+`gestion_casos/migrations/0011_reglainstitucional_disposicion_verificada.py` y
+`gestion_casos/migrations/0014_solicitudcaso.py`.
+**No ejecutes `migrate` contra Supabase sin que el
+responsable de la base de datos revise primero las migraciones y autorice el
+cambio.** No se aplicaron migraciones durante el desarrollo.
+
+Para validar sin conectarse a Supabase:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py check --settings=config.test_settings
+.\.venv\Scripts\python.exe manage.py test gestion_casos.tests --settings=config.test_settings
+```

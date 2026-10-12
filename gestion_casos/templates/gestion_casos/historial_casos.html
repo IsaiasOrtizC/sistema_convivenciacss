@@ -2116,7 +2116,7 @@
 
                 <!-- EDITAR -->
 
-                {% if request.session.usuario_rol|lower == 'administrador' or caso.usuario_id == request.session.usuario_id %}
+                {% if caso.puede_editar %}
 
                 <a
                   href="{% url 'editar_caso' caso.caso_id %}"

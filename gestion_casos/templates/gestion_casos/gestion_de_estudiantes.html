@@ -1192,7 +1192,7 @@
 
   .filtros-grid {
     display: grid;
-    grid-template-columns: 1.7fr 1.2fr .8fr auto;
+    grid-template-columns: 1.7fr 1.2fr .9fr .8fr auto;
     gap: 12px;
     align-items: end;
   }
@@ -1546,6 +1546,17 @@
 
           </div>
 
+          <div class="form-group">
+            <label class="form-label">Correo del alumno (opcional)</label>
+            <input
+              type="email"
+              name="correo"
+              class="form-control"
+              placeholder="alumno@colegio.cl"
+              maxlength="254"
+            >
+          </div>
+
 
           <div class="form-group">
 
@@ -1784,6 +1795,15 @@
           </div>
 
           <div class="filtro-group">
+            <label class="filtro-label" for="f-estado">Estado</label>
+            <select id="f-estado" name="estado" class="filtro-control">
+              <option value="">Todos</option>
+              <option value="activo" {% if filtros.estado == 'activo' %}selected{% endif %}>Activos</option>
+              <option value="inactivo" {% if filtros.estado == 'inactivo' %}selected{% endif %}>Inactivos</option>
+            </select>
+          </div>
+
+          <div class="filtro-group">
 
             <label class="filtro-label" for="f-lista">
               N° de lista
@@ -1885,6 +1905,10 @@
                 Curso Actual
               </th>
 
+              <th>Correo</th>
+
+              <th>Estado</th>
+
               <th>
                 Identificador
               </th>
@@ -1912,7 +1936,6 @@
 
                 </td>
 
-
                 <td>
 
                   <span class="student-name">
@@ -1923,7 +1946,6 @@
 
                 </td>
 
-
                 <td>
 
                   <span class="badge-student-course">
@@ -1932,6 +1954,10 @@
                   </span>
 
                 </td>
+
+                <td>{{ e.estudiante_correo|default:"—" }}</td>
+
+                <td>{% if e.estudiante_activo %}Activo{% else %}Inactivo{% endif %}</td>
 
 
                 <td>
@@ -1967,7 +1993,8 @@
                         '{{ e.estudiante_apaterno|escapejs }}',
                         '{{ e.estudiante_amaterno|escapejs }}',
                         {{ e.curso_id|default:"null" }},
-                        {{ e.estudiante_numero_lista|default:"null" }}
+                        {{ e.estudiante_numero_lista|default:"null" }},
+                        '{{ e.estudiante_correo|default:""|escapejs }}'
                       )"
                     >
 
@@ -1990,16 +2017,15 @@
 
                     </button>
 
-
-                    <button
-                      type="button"
-                      class="btn-action-delete"
-
-                      onclick="abrirConfirmacionEliminar(
-                        '{{ e.estudiante_id }}',
-                        '{{ e.estudiante_nombre|escapejs }} {{ e.estudiante_apaterno|escapejs }}'
-                      )"
-                    >
+                    {% if e.estudiante_activo %}
+                      <button
+                        type="button"
+                        class="btn-action-delete"
+                        onclick="abrirConfirmacionEliminar(
+                          '{{ e.estudiante_id }}',
+                          '{{ e.estudiante_nombre|escapejs }} {{ e.estudiante_apaterno|escapejs }}'
+                        )"
+                      >
 
                       <svg
                         width="11"
@@ -2016,9 +2042,15 @@
                         />
                       </svg>
 
-                      Eliminar
+                      Desactivar
 
-                    </button>
+                      </button>
+                    {% else %}
+                      <form method="POST" action="{% url 'cambiar_estado_estudiante' e.estudiante_id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-action-edit">Activar</button>
+                      </form>
+                    {% endif %}
 
 
                     <form
@@ -2044,7 +2076,7 @@
               <tr>
 
                 <td
-                  colspan="5"
+                  colspan="7"
                   class="empty-table"
                 >
 
@@ -2210,6 +2242,53 @@
 
   </div>
 
+  <div class="pane-card" style="margin-top:20px;">
+    <div class="pane-title">Últimas importaciones de alumnos</div>
+    <div class="table-scroll">
+      <table class="user-table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Archivo</th>
+            <th>Responsable</th>
+            <th>Agregados</th>
+            <th>Duplicados</th>
+            <th>Filas omitidas</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for importacion in historial_importaciones %}
+            <tr>
+              <td>{{ importacion.realizado_en|date:"d/m/Y H:i" }}</td>
+              <td>{{ importacion.archivo }}</td>
+              <td>{{ importacion.usuario_correo_importo }}</td>
+              <td>
+                {{ importacion.alumnos_agregados|length }}
+                {% if importacion.alumnos_agregados %}
+                  <details>
+                    <summary>Ver alumnos</summary>
+                    <ul>{% for alumno in importacion.alumnos_agregados %}<li>{{ alumno }}</li>{% endfor %}</ul>
+                  </details>
+                {% endif %}
+              </td>
+              <td>
+                {{ importacion.duplicados_detectados|length }}
+                {% if importacion.duplicados_detectados %}
+                  <details>
+                    <summary>Ver duplicados</summary>
+                    <ul>{% for alumno in importacion.duplicados_detectados %}<li>{{ alumno }}</li>{% endfor %}</ul>
+                  </details>
+                {% endif %}
+              </td>
+              <td>{{ importacion.filas_omitidas }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="empty-table">Aún no hay importaciones registradas.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 
   <!-- =======================================================
        MODAL — CONFIRMAR ELIMINACIÓN
@@ -2249,17 +2328,15 @@
 
 
       <div class="confirm-modal-title">
-        ¿Eliminar alumno?
+        ¿Desactivar alumno?
       </div>
 
 
       <div class="confirm-modal-text">
 
-        Estás a punto de eliminar a
+        Estás a punto de desactivar a
         <strong id="confirmModalNombre"></strong>
-        del sistema.
-
-        Esta acción no se puede deshacer.
+        para que no pueda asociarse a nuevos casos. Sus antecedentes y datos se conservarán.
 
       </div>
 
@@ -2280,7 +2357,7 @@
           class="confirm-modal-btn eliminar"
           onclick="confirmarEliminarAlumno()"
         >
-          Sí, eliminar
+          Sí, desactivar
         </button>
 
       </div>
@@ -2381,6 +2458,17 @@
               required
             >
 
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Correo del alumno (opcional)</label>
+            <input
+              type="email"
+              name="correo"
+              id="editCorreo"
+              class="form-control"
+              maxlength="254"
+            >
           </div>
 
 
@@ -2489,7 +2577,8 @@
     apaterno,
     amaterno,
     cursoId,
-    numeroLista
+    numeroLista,
+    correo
   ) {
 
     const urlBase =
@@ -2517,6 +2606,10 @@
     document.getElementById(
       'editAmaterno'
     ).value = amaterno;
+
+    document.getElementById(
+      'editCorreo'
+    ).value = correo || '';
 
 
     document.getElementById(

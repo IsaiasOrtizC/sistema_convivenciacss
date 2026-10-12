@@ -1191,7 +1191,7 @@
         </div>
 
         <div class="filters-subtitle">
-          Combina usuario responsable, tipo de acción y rango de fechas.
+          Busca por funcionario, alumno o identificador de caso; combina también tipo de acción y fechas.
         </div>
 
       </div>
@@ -1204,6 +1204,18 @@
     >
 
       <div class="filtros-grid">
+
+        <div class="filtro-group">
+          <label class="filtro-label" for="f-busqueda">Alumno o caso</label>
+          <input
+            type="search"
+            id="f-busqueda"
+            name="busqueda"
+            class="filtro-control"
+            placeholder="Nombre de alumno o número de caso..."
+            value="{{ filtros.busqueda }}"
+          />
+        </div>
 
         <div class="filtro-group">
 

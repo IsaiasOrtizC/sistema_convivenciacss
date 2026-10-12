@@ -849,6 +849,123 @@
     transform: translateY(-1px);
   }
 
+  .delete-doc-dialog {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: min(520px, calc(100vw - 32px));
+    max-width: none;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-solid);
+    color: var(--text-dark);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .35);
+  }
+
+  .delete-doc-dialog::backdrop {
+    background: rgba(20, 10, 12, .72);
+    backdrop-filter: blur(3px);
+  }
+
+  .delete-doc-dialog-content {
+    padding: 24px;
+  }
+
+  .delete-doc-dialog h2 {
+    margin: 0 0 10px;
+    color: var(--guinda);
+    font-family: 'Merriweather', serif;
+    font-size: 1.12rem;
+  }
+
+  .delete-doc-dialog p {
+    margin: 8px 0;
+    color: var(--text-mid);
+    font-size: .86rem;
+    line-height: 1.55;
+  }
+
+  .delete-doc-dialog .delete-doc-impact {
+    margin: 14px 0;
+    padding: 12px 14px;
+    border-left: 3px solid #c0392b;
+    border-radius: var(--radius-sm);
+    background: rgba(192, 57, 43, .08);
+    color: var(--text-dark);
+    font-weight: 700;
+  }
+
+  .delete-doc-dialog .delete-doc-history-note {
+    font-size: .76rem;
+  }
+
+  .delete-doc-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin-top: 20px;
+  }
+
+  .delete-doc-dialog-actions button {
+    min-height: 40px;
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text-dark);
+    font: inherit;
+    font-size: .8rem;
+    font-weight: 750;
+    cursor: pointer;
+  }
+
+  .delete-doc-dialog-actions .delete-doc-confirm {
+    border-color: #a93226;
+    background: #a93226;
+    color: #fff;
+  }
+
+  .delete-doc-dialog-actions .delete-doc-confirm:hover {
+    background: #87281f;
+  }
+
+  .delete-doc-dialog button:focus-visible {
+    outline: 3px solid rgba(212, 160, 23, .65);
+    outline-offset: 2px;
+  }
+
+  html[data-theme="dark"] .delete-doc-dialog h2 {
+    color: var(--gold-bright);
+  }
+
+  html[data-theme="dark"] .delete-doc-dialog .delete-doc-impact {
+    background: rgba(192, 57, 43, .16);
+  }
+
+  html[data-theme="dark"] .delete-doc-dialog-actions button:not(.delete-doc-confirm) {
+    border-color: rgba(255, 255, 255, .16);
+    background: #21191b;
+    color: #f4eeee;
+  }
+
+  @media (max-width: 480px) {
+    .delete-doc-dialog-content {
+      padding: 19px;
+    }
+
+    .delete-doc-dialog-actions {
+      flex-direction: column-reverse;
+    }
+
+    .delete-doc-dialog-actions button {
+      width: 100%;
+    }
+  }
+
 
   /* ============================================================
      ESTADO VACÍO
@@ -1381,7 +1498,7 @@
             >
 
             <div class="form-hint">
-              Solo PDF. Tamaño máximo: 20 MB.
+              Solo PDF. Tamaño máximo: {{ limite_pdf_mb }} MB. Las páginas escaneadas se reconocen con OCR en español (Tesseract).
             </div>
 
           </div>
@@ -1596,10 +1713,25 @@
 
             </div>
 
+            <div class="doc-meta">
+              Procesamiento: {{ doc.get_estado_procesamiento_display }}
+              {% if doc.numero_paginas %}· {{ doc.numero_paginas }} página(s){% endif %}
+            </div>
+            {% if doc.error_procesamiento %}
+              <p role="alert">{{ doc.error_procesamiento }}</p>
+            {% endif %}
+
           </div>
 
 
           <div class="doc-actions">
+
+            {% if es_administrador and doc.estado_procesamiento == 'error' %}
+            <form method="POST" action="{% url 'reprocesar_documento' doc.documento_id %}">
+              {% csrf_token %}
+              <button type="submit" class="btn-view-doc">Reprocesar texto</button>
+            </form>
+            {% endif %}
 
             <button
               type="button"
@@ -1668,9 +1800,12 @@
             <button
               type="button"
               class="btn-delete-doc"
-              title="Eliminar documento"
-              aria-label="Eliminar documento"
-              onclick="if(confirm('¿Eliminar el documento «{{ doc.titulo }}»? Esta acción no se puede deshacer.')){ document.getElementById('form-eliminar-doc-{{ doc.documento_id }}').submit(); }"
+              title="Eliminar documento para reemplazarlo"
+              aria-label="Eliminar {{ doc.titulo|escape }}"
+              data-delete-url="{% url 'eliminar_documento' doc.documento_id %}"
+              data-document-title="{{ doc.titulo }}"
+              data-version-count="{{ doc.version_count }}"
+              data-rule-count="{{ doc.rule_count }}"
             >
 
               <svg
@@ -1691,18 +1826,6 @@
               </svg>
 
             </button>
-
-
-            <form
-              id="form-eliminar-doc-{{ doc.documento_id }}"
-              method="POST"
-              action="{% url 'eliminar_documento' doc.documento_id %}"
-              style="display:none;"
-            >
-
-              {% csrf_token %}
-
-            </form>
 
             {% endif %}
 
@@ -1804,10 +1927,25 @@
 
             </div>
 
+            <div class="doc-meta">
+              Procesamiento: {{ doc.get_estado_procesamiento_display }}
+              {% if doc.numero_paginas %}· {{ doc.numero_paginas }} página(s){% endif %}
+            </div>
+            {% if doc.error_procesamiento %}
+              <p role="alert">{{ doc.error_procesamiento }}</p>
+            {% endif %}
+
           </div>
 
 
           <div class="doc-actions">
+
+            {% if es_administrador and doc.estado_procesamiento == 'error' %}
+            <form method="POST" action="{% url 'reprocesar_documento' doc.documento_id %}">
+              {% csrf_token %}
+              <button type="submit" class="btn-view-doc">Reprocesar texto</button>
+            </form>
+            {% endif %}
 
             <button
               type="button"
@@ -1876,9 +2014,12 @@
             <button
               type="button"
               class="btn-delete-doc"
-              title="Eliminar documento"
-              aria-label="Eliminar documento"
-              onclick="if(confirm('¿Eliminar el documento «{{ doc.titulo }}»? Esta acción no se puede deshacer.')){ document.getElementById('form-eliminar-doc-{{ doc.documento_id }}').submit(); }"
+              title="Eliminar documento para reemplazarlo"
+              aria-label="Eliminar {{ doc.titulo|escape }}"
+              data-delete-url="{% url 'eliminar_documento' doc.documento_id %}"
+              data-document-title="{{ doc.titulo }}"
+              data-version-count="{{ doc.version_count }}"
+              data-rule-count="{{ doc.rule_count }}"
             >
 
               <svg
@@ -1900,18 +2041,6 @@
 
             </button>
 
-
-            <form
-              id="form-eliminar-doc-{{ doc.documento_id }}"
-              method="POST"
-              action="{% url 'eliminar_documento' doc.documento_id %}"
-              style="display:none;"
-            >
-
-              {% csrf_token %}
-
-            </form>
-
             {% endif %}
 
           </div>
@@ -1931,6 +2060,214 @@
     </section>
 
   </div>
+
+
+  {% if puede_revisar_reglas %}
+  <section class="pane-card" style="margin-top: 22px;">
+    <div class="pane-header">
+      <div>
+        <div class="pane-title">Revisión de reglas del reglamento</div>
+        <div class="pane-subtitle">
+          Las propuestas antiguas se conservan. Los párrafos de nuevos PDF no se convierten
+          automáticamente en reglas; cada disposición verificada requiere revisión y aprobación humana.
+        </div>
+      </div>
+    </div>
+
+    <div class="pane-inner">
+      {% for version in versiones_reglamento %}
+        <details style="margin-bottom: 18px;">
+          <summary>
+            {{ version.documento.titulo }} · versión {{ version.numero }} · {{ version.get_estado_display }}
+            · {{ version.reglas.count }} regla(s)
+          </summary>
+          <p>
+            Subida {{ version.documento.fecha_subida|date:"d/m/Y H:i" }}.
+            Extracción: {{ version.documento.get_estado_procesamiento_display }}.
+          </p>
+
+          {% for regla in version.reglas.all %}
+            <article style="border: 1px solid var(--border); padding: 14px; margin: 12px 0;">
+              {% if regla.solo_presentacion %}
+                <p><strong>Modalidad:</strong> solo presentación para revisión humana; no crea sanciones ni acciones automáticamente.</p>
+              {% endif %}
+              {% if regla.categoria_falta %}
+                <p><strong>Gravedad:</strong> {{ regla.categoria_falta }}</p>
+              {% endif %}
+              <p><strong>Tipo de disposición:</strong> {{ regla.get_tipo_medida_display }}</p>
+              {% if regla.conducta_condicion %}
+                <p><strong>Conducta o condición:</strong> {{ regla.conducta_condicion }}</p>
+              {% endif %}
+              <p><strong>Umbral:</strong>
+                {% if regla.estado_cantidad == 'definida' %}
+                  {{ regla.cantidad_minima }} {{ regla.get_unidad_umbral_display }}
+                {% else %}
+                  {{ regla.get_estado_cantidad_display }}
+                {% endif %}
+              </p>
+              {% if regla.medida_asociada %}
+                <p><strong>Medida:</strong> {{ regla.medida_asociada }}</p>
+              {% endif %}
+              {% if regla.duracion_minima_dias or regla.duracion_maxima_dias %}
+                <p><strong>Duración:</strong>
+                  {% if regla.duracion_minima_dias %}{{ regla.duracion_minima_dias }}{% else %}sin mínimo definido{% endif %}
+                  {% if regla.duracion_maxima_dias %}–{{ regla.duracion_maxima_dias }}{% endif %}
+                  {{ regla.get_unidad_duracion_display }}
+                </p>
+              {% endif %}
+              {% if regla.condiciones %}
+                <p><strong>Condiciones:</strong> {{ regla.condiciones }}</p>
+              {% endif %}
+              {% if regla.excepciones %}
+                <p><strong>Excepciones o aspectos por verificar:</strong> {{ regla.excepciones }}</p>
+              {% endif %}
+              <p><strong>Origen:</strong> {{ regla.titulo_fuente|default:"Fuente pendiente de verificación" }}
+                {% if regla.version_fuente %} · {{ regla.version_fuente }}{% endif %}
+                {% if regla.seccion_fuente %} · {{ regla.seccion_fuente }}{% endif %}
+                {% if regla.pagina_impresa %} · página impresa {{ regla.pagina_impresa }}{% if regla.pagina_impresa_hasta and regla.pagina_impresa_hasta != regla.pagina_impresa %}–{{ regla.pagina_impresa_hasta }}{% endif %}{% endif %}
+                {% if regla.pagina_pdf %} · página PDF {{ regla.pagina_pdf }}{% if regla.pagina_pdf_hasta and regla.pagina_pdf_hasta != regla.pagina_pdf %}–{{ regla.pagina_pdf_hasta }}{% endif %}{% endif %}
+              </p>
+              <p><strong>Evidencia original ({{ regla.referencia_origen|default:"referencia no detectada" }}):</strong></p>
+              <blockquote>{{ regla.evidencia_textual }}</blockquote>
+              <form method="POST" action="{% url 'revisar_regla' regla.pk %}">
+                {% csrf_token %}
+                <label>Título
+                  <input name="titulo" value="{{ regla.titulo }}" maxlength="180" required>
+                </label>
+                <label>Tipo de disposición
+                  <select name="tipo_medida" required>
+                    {% for valor, etiqueta in tipos_medida %}
+                      <option value="{{ valor }}" {% if regla.tipo_medida == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label>Categoría explícita de falta
+                  <input name="categoria_falta" value="{{ regla.categoria_falta }}" maxlength="100">
+                </label>
+                <label>Condición para evaluar
+                  <select name="activador" required>
+                    {% for valor, etiqueta in activadores_regla %}
+                      <option value="{{ valor }}" {% if regla.activador == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label>Umbral de casos (solo si corresponde)
+                  <input type="number" name="umbral_casos" min="1" max="10000" value="{{ regla.umbral_casos|default_if_none:'' }}">
+                </label>
+                <label>Umbral de anotaciones expresado en la cita
+                  <input type="number" name="umbral_anotaciones" min="1" max="10000" value="{{ regla.umbral_anotaciones|default_if_none:regla.cantidad_minima }}">
+                </label>
+                {% if regla.umbral_anotaciones or regla.unidad_umbral == 'anotaciones' %}
+                  <p>Este umbral queda registrado, pero no se automatiza: el sistema actual no cuenta anotaciones individuales.</p>
+                {% endif %}
+                <label>Acción requerida
+                  <textarea name="accion_requerida" rows="2">{{ regla.accion_requerida }}</textarea>
+                </label>
+                <label>
+                  <input type="checkbox" name="requiere_citacion" {% if regla.requiere_citacion_apoderado %}checked{% endif %}>
+                  Requiere citación al apoderado (confirmado por el revisor)
+                </label>
+                <label>Plazo expresado en días
+                  <input type="number" name="plazo_dias" min="0" max="3650" value="{{ regla.plazo_dias|default_if_none:'' }}">
+                </label>
+                <label>¿Desde cuándo corre el plazo?
+                  <select name="plazo_desde">
+                    {% for valor, etiqueta in referencias_plazo %}
+                      <option value="{{ valor }}" {% if regla.plazo_desde == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label>Responsable
+                  <select name="responsable_rol">
+                    <option value="">Sin asignación de rol</option>
+                    {% for valor, etiqueta in roles_responsables %}
+                      <option value="{{ valor }}" {% if regla.responsable_rol == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label>Estado de revisión
+                  <select name="estado" required>
+                    {% for valor, etiqueta in estados_regla %}
+                      <option value="{{ valor }}" {% if regla.estado == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <button type="submit">Guardar revisión</button>
+              </form>
+            </article>
+          {% empty %}
+            <p>No se detectaron propuestas automáticamente. Puedes agregar una citando texto del documento.</p>
+          {% endfor %}
+
+          <details>
+            <summary>Crear propuesta manual con evidencia exacta</summary>
+            <form method="POST" action="{% url 'crear_regla_manual' version.pk %}">
+              {% csrf_token %}
+              <label>Título
+                <input name="titulo" maxlength="180">
+              </label>
+              <label>Texto literal, copiado del documento procesado
+                <textarea name="evidencia_textual" rows="3" required></textarea>
+              </label>
+              <label>Página
+                <input type="number" name="pagina" min="1">
+              </label>
+              <button type="submit">Crear propuesta pendiente</button>
+            </form>
+          </details>
+
+          <details>
+            <summary>Consultar texto extraído</summary>
+            <pre style="white-space: pre-wrap; max-height: 360px; overflow: auto;">{{ version.documento.texto_extraido }}</pre>
+          </details>
+
+          {% if version.estado != 'vigente' %}
+            <form method="POST" action="{% url 'activar_version_reglamento' version.pk %}">
+              {% csrf_token %}
+              <button type="submit">Activar esta versión aprobada</button>
+            </form>
+          {% endif %}
+        </details>
+      {% empty %}
+        <p>Aún no hay versiones procesadas de reglamentos.</p>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+
+  {% if es_administrador %}
+  <dialog
+    class="delete-doc-dialog"
+    id="deleteDocumentDialog"
+    aria-labelledby="deleteDocumentTitle"
+    aria-describedby="deleteDocumentDescription"
+  >
+    <div class="delete-doc-dialog-content">
+      <h2 id="deleteDocumentTitle">Eliminar documento institucional</h2>
+      <p id="deleteDocumentDescription">
+        Vas a eliminar definitivamente <strong id="deleteDocumentName"></strong>.
+      </p>
+      <p class="delete-doc-impact">
+        También se eliminarán
+        <span id="deleteDocumentVersions"></span> y
+        <span id="deleteDocumentRules"></span>.
+        Esta acción no se puede deshacer.
+      </p>
+      <p class="delete-doc-history-note">
+        Las alertas históricas relacionadas se conservarán, pero se quitará su
+        orientación reglamentaria anterior. Después podrás subir el documento de reemplazo.
+      </p>
+      <form method="POST" id="deleteDocumentForm">
+        {% csrf_token %}
+        <div class="delete-doc-dialog-actions">
+          <button type="button" id="cancelDeleteDocument">Cancelar</button>
+          <button type="submit" class="delete-doc-confirm">Eliminar documento y propuestas</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+  {% endif %}
 
 
   <!-- ==========================================================
@@ -2010,6 +2347,41 @@
        ========================================================== -->
 
   <script>
+
+    const deleteDocumentDialog = document.getElementById('deleteDocumentDialog');
+    const deleteDocumentForm = document.getElementById('deleteDocumentForm');
+
+    if (deleteDocumentDialog && deleteDocumentForm) {
+      const deleteDocumentName = document.getElementById('deleteDocumentName');
+      const deleteDocumentVersions = document.getElementById('deleteDocumentVersions');
+      const deleteDocumentRules = document.getElementById('deleteDocumentRules');
+      const cancelDeleteDocument = document.getElementById('cancelDeleteDocument');
+
+      document.querySelectorAll('.btn-delete-doc[data-delete-url]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const versions = Number(button.dataset.versionCount || 0);
+          const rules = Number(button.dataset.ruleCount || 0);
+          deleteDocumentForm.action = button.dataset.deleteUrl;
+          deleteDocumentName.textContent = button.dataset.documentTitle || 'este documento';
+          deleteDocumentVersions.textContent =
+            `${versions} ${versions === 1 ? 'versión' : 'versiones'}`;
+          deleteDocumentRules.textContent =
+            `${rules} ${rules === 1 ? 'propuesta' : 'propuestas'}`;
+          deleteDocumentDialog.showModal();
+          cancelDeleteDocument.focus();
+        });
+      });
+
+      cancelDeleteDocument.addEventListener('click', () => {
+        deleteDocumentDialog.close();
+      });
+
+      deleteDocumentDialog.addEventListener('click', (event) => {
+        if (event.target === deleteDocumentDialog) {
+          deleteDocumentDialog.close();
+        }
+      });
+    }
 
     function abrirVisorPDF(url, titulo) {
 

@@ -157,6 +157,27 @@
     transform: translateY(-1px);
   }
 
+  .course-filter {
+    display: grid;
+    gap: 5px;
+    color: var(--text-lo);
+    font-size: .68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .course-filter input,
+  .course-filter select {
+    min-height: 37px;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text-dark);
+    font: inherit;
+    text-transform: none;
+  }
+
   .btn-download.pdf {
     background: rgba(192,57,43,.06);
 
@@ -942,8 +963,12 @@
 
     <div class="download-actions">
 
+      <a href="{% url 'registrar_caso' %}" class="btn-download pdf">
+        Reportar caso
+      </a>
+
       <a
-        href="{% url 'descargar_casos_pdf' %}"
+        href="{% url 'descargar_casos_pdf' %}{% if filtros_query %}?{{ filtros_query }}{% endif %}"
         class="btn-download pdf"
       >
 
@@ -968,7 +993,7 @@
 
 
       <a
-        href="{% url 'descargar_casos_xlsx' %}"
+        href="{% url 'descargar_casos_xlsx' %}{% if filtros_query %}?{{ filtros_query }}{% endif %}"
         class="btn-download xlsx"
       >
 
@@ -1088,10 +1113,83 @@
 
   </div>
 
+  {% if solicitudes_caso %}
+  <div class="pane-card" style="margin:16px 0;">
+    <div class="pane-header">
+      <div class="pane-header-left">
+        <div class="pane-header-icon">!</div>
+        <div>
+          <div class="pane-title">Mis reportes enviados</div>
+          <div class="pane-subtitle">Los casos aparecerán en la bitácora solo después de su aprobación.</div>
+        </div>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="case-table">
+        <thead>
+          <tr>
+            <th>Reporte</th>
+            <th>Fecha del hecho</th>
+            <th>Estado</th>
+            <th>Revisión</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for solicitud in solicitudes_caso %}
+          <tr>
+            <td>
+              <strong>{{ solicitud.titulo }}</strong>
+              <div class="pane-subtitle">
+                {% for estudiante in solicitud.estudiantes %}
+                  {{ estudiante.nombre }} {{ estudiante.apellido_paterno }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+              </div>
+            </td>
+            <td>{{ solicitud.fecha_evento|date:"d/m/Y" }}</td>
+            <td>
+              {% if solicitud.estado == 'pendiente' %}
+                <span class="case-id-chip">En espera de revisión</span>
+              {% elif solicitud.estado == 'aprobada' %}
+                <span class="case-id-chip">Aprobado</span>
+              {% else %}
+                <span class="case-id-chip">Rechazado</span>
+              {% endif %}
+            </td>
+            <td>{{ solicitud.comentario_revision|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
 
   <!-- ==========================================================
        TABLA
        ========================================================== -->
+
+  <form method="GET" class="pane-card" style="margin-bottom:16px; display:flex; flex-wrap:wrap; align-items:end; gap:12px;">
+    <label class="course-filter">
+      <span>Desde</span>
+      <input type="date" name="fecha_desde" value="{{ filtros.fecha_desde }}">
+    </label>
+    <label class="course-filter">
+      <span>Hasta</span>
+      <input type="date" name="fecha_hasta" value="{{ filtros.fecha_hasta }}">
+    </label>
+    <label class="course-filter">
+      <span>Gravedad</span>
+      <select name="gravedad">
+        <option value="">Todas</option>
+        <option value="Leve" {% if filtros.gravedad == 'Leve' %}selected{% endif %}>Leve</option>
+        <option value="Grave" {% if filtros.gravedad == 'Grave' %}selected{% endif %}>Grave</option>
+        <option value="Gravísima" {% if filtros.gravedad == 'Gravísima' %}selected{% endif %}>Gravísima</option>
+      </select>
+    </label>
+    <button class="btn-download pdf" type="submit">Aplicar filtros</button>
+    <a class="btn-download xlsx" href="{% url 'mis_casos_curso' %}">Limpiar</a>
+  </form>
 
   <div class="pane-card">
 
