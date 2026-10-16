@@ -7,3 +7,5 @@ DATABASES = {
         'NAME': ':memory:',
     },
 }
+
+TRAZA_NIVEL = 0

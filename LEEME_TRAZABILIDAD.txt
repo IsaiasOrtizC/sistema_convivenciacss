@@ -1,0 +1,64 @@
+TRAZABILIDAD POR CONSOLA - DEMOSTRACIÓN TÉCNICA
+================================================
+
+REQUISITO: haber aplicado antes "reorganizacion_sistema_convivencia.zip" (carpetas controllers/, services/, tests/).
+
+QUÉ HACE
+--------
+El servidor muestra en la consola el recorrido de cada petición por las capas del sistema:
+
+    [HTTP] POST /casos/nuevo/ usuario=11
+    [CONTROLADOR] RegistrarCasoController: inicio
+    [SERVICE] CasoService: validando datos y registrando el caso
+    [DB] Creando registro de caso
+    [DB] Caso guardado correctamente id=25
+    [CONTROLADOR] RegistrarCasoController: mensaje (success): Caso registrado exitosamente por ...
+    [CONTROLADOR] RegistrarCasoController: completado
+    [DB] 18 consultas en 11 ms | INSERT: caso, involucran, ... | SELECT: ...
+    [HTTP] POST /casos/nuevo/ status=302 -> /casos/ tiempo=11ms
+
+CÓMO APLICARLO (PowerShell, desde la carpeta que tiene manage.py)
+-----------------------------------------------------------------
+1. Descomprime este ZIP SOBRE la raíz del proyecto y acepta reemplazar los archivos.
+   (No se incluye config/settings.py para no pisar tu configuración: se edita a mano, ver el paso 2.)
+
+2. Edita config/settings.py. Son 3 cambios:
+
+   a) Después de la línea  DEBUG = ...  agrega:
+
+        TRAZA_NIVEL = int(os.getenv('TRAZA_NIVEL', '1' if DEBUG else '0'))
+
+   b) En MIDDLEWARE, justo DESPUÉS de 'django.contrib.sessions.middleware.SessionMiddleware', agrega:
+
+        'gestion_casos.trazabilidad.TrazabilidadMiddleware',
+
+   c) En MIDDLEWARE, como ÚLTIMO elemento de la lista, agrega:
+
+        'gestion_casos.trazabilidad.TrazabilidadControladorMiddleware',
+
+3. Edita config/test_settings.py y agrega al final:
+
+        TRAZA_NIVEL = 0
+
+4. En tu archivo .env agrega:
+
+        TRAZA_NIVEL=1
+
+   (0 = apagada, 1 = flujo principal, 2 = detallada con cada consulta SQL)
+
+5. Comprueba:
+
+        python manage.py check
+        python manage.py verificar_controladores
+        python manage.py test gestion_casos --settings=config.test_settings      (deben pasar 105 pruebas)
+
+6. Inicia el servidor y haz peticiones desde el navegador:
+
+        python manage.py runserver
+
+   Al arrancar debe aparecer:  [TRAZA] Trazabilidad activada (nivel 1) ...
+   Si falta algún cambio de settings, el servidor lo avisa con "[ERROR] Trazabilidad mal configurada: ...".
+
+LA GUÍA PARA LA DEMOSTRACIÓN (qué hacer, qué se ve y cómo cruzarlo con tus diagramas) está en docs\DEMO_TECNICA.md
+
+IMPORTANTE: deja TRAZA_NIVEL=0 cuando el sistema esté en producción.

@@ -5,3 +5,8 @@ media/
 *.exe
 db.sqlite3
 .env
+*.backup
+desktop.ini
+staticfiles/
+.vscode/
+.idea/

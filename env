@@ -1,0 +1,17 @@
+RESEND_API_KEY=re_5GCGgFd3_PU3KA37bgc3Ukn1fNkn5hoyc
+
+# Django
+SECRET_KEY=django-insecure-x1m5p-j)x(1_ucmpdj1rpw3(5c68#i^hu!)l7*^%se667*ue=1
+DEBUG=True
+
+# Supabase - PostgreSQL
+DB_NAME=postgres
+DB_USER=postgres.qdodfboqxpvtzhdycqzt
+DB_PASSWORD=Moncocolol12@
+DB_HOST=aws-0-us-west-2.pooler.supabase.com
+DB_PORT=5432
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=qofkmfg7
+CLOUDINARY_API_KEY=376159627654592
+CLOUDINARY_API_SECRET=S9ja_ytGM8-VYnvmg7fdE6sLGCI

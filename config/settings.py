@@ -30,6 +30,8 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
+TRAZA_NIVEL = int(os.getenv('TRAZA_NIVEL', '1' if DEBUG else '0'))
+
 ALLOWED_HOSTS = ['*']
 
 
@@ -52,6 +54,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'gestion_casos.trazabilidad.TrazabilidadMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -59,6 +62,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'gestion_casos.middleware.ForzarSesionUnicaMiddleware',
     'gestion_casos.middleware.ExigirCambioContrasenaMiddleware',
+    'gestion_casos.trazabilidad.TrazabilidadControladorMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'

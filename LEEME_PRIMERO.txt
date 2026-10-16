@@ -1,0 +1,42 @@
+REORGANIZACIÓN DEL SISTEMA DE CONVIVENCIA ESCOLAR
+=================================================
+
+Este ZIP contiene SOLO los archivos nuevos o modificados. No incluye el .env, .git, venv ni plantillas.
+No se modificó models.py, ninguna migración, ninguna plantilla ni la API.
+
+CÓMO APLICARLO (PowerShell, desde la carpeta que tiene manage.py)
+-----------------------------------------------------------------
+1. Guarda tu estado actual en git, por si quieres volver atrás:
+       git checkout -b reorganizacion
+       git add . ; git commit -m "estado antes de reorganizar"
+
+2. Descomprime este ZIP SOBRE la raíz del proyecto (donde está manage.py).
+   Acepta reemplazar:  gestion_casos\urls.py, gestion_casos\views.py y .gitignore
+
+3. BORRA el archivo antiguo de pruebas (si no, Django falla por conflicto con la carpeta tests\):
+       del gestion_casos\tests.py
+
+4. Instala las dependencias (esto soluciona el error "No module named 'rest_framework'"):
+       .\venv\Scripts\activate
+       python -m pip install -r requirements.txt
+
+5. Si todavía no tienes .env, créalo desde la plantilla y completa los valores reales:
+       copy .env.example .env
+   (si ya tienes un .env, NO lo sobrescribas)
+
+6. Comprueba:
+       python manage.py check
+       python manage.py test gestion_casos --settings=config.test_settings      (deben pasar 83 pruebas)
+
+7. Inicia el servidor:
+       python manage.py runserver
+
+IMPORTANTE - SEGURIDAD
+----------------------
+* config\settings.py.backup está en git y tiene una SECRET_KEY y una contraseña escritas literalmente.
+      git rm --cached config/settings.py.backup
+  y cambia esos valores si siguen en uso.
+* Si compartiste tu archivo .env (por ejemplo, dentro de un ZIP), cambia sus claves: contraseña de la base
+  de datos, API secret de Cloudinary, API key de Resend y SECRET_KEY.
+
+El detalle de la nueva estructura está en docs\REORGANIZACION.md
