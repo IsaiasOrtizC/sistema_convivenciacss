@@ -49,6 +49,18 @@ def validar_profesor_jefe(request):
     return profesor.curso
 
 
+def caso_visible_para_curso(caso_id, curso):
+    if not curso:
+        return False
+    estudiantes = Estudiante.objects.filter(
+        involucran__caso_id=caso_id,
+    )
+    return (
+        estudiantes.filter(curso_id=curso.pk).exists()
+        and not estudiantes.exclude(curso_id=curso.pk).exists()
+    )
+
+
 @trazar('CONTROLADOR', 'AuthCasosController', 'validando acceso a la exportación del caso', nivel_min=2)
 def validar_acceso_exportacion_caso(request, caso_id):
     if 'usuario_id' not in request.session:
@@ -63,10 +75,7 @@ def validar_acceso_exportacion_caso(request, caso_id):
     )
     if rol == 'Profesor Jefe':
         curso = validar_profesor_jefe(request)
-        if not curso or not Estudiante.objects.filter(
-            involucran__caso_id=caso_id,
-            curso=curso,
-        ).exists():
+        if not caso_visible_para_curso(caso_id, curso):
             messages.error(request, "Acceso denegado: ese caso no corresponde a tu curso.")
             return None
     return caso

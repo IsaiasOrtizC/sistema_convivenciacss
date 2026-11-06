@@ -33,10 +33,55 @@ El sistema contempla distintos roles de usuario, permitiendo controlar el acceso
 
 ### Frontend
 
-* HTML5
+* Django Templates (interfaz actual)
+* Vite + React + TypeScript (nuevo frontend, en migración gradual)
 * CSS3
-* JavaScript
-* Django Templates
+
+### Frontend React
+
+El frontend nuevo vive en `frontend/` y se desarrolla por módulos, sin reemplazar
+de inmediato las pantallas Django existentes.
+
+```powershell
+# Terminal 1: Django API
+.\venv\Scripts\Activate.ps1
+python manage.py runserver 127.0.0.1:8000
+
+# Terminal 2: React
+cd frontend
+npm ci
+Copy-Item .env.example .env.local
+npm run dev
+```
+
+Configura primero las variables de PostgreSQL y `SECRET_KEY` en el archivo `.env`
+de la raíz del proyecto. El backend debe poder conectarse a una base PostgreSQL
+válida para que funcionen el inicio de sesión y las llamadas a la API; el modo
+de desarrollo de React no sustituye al backend ni a la base de datos. En modo
+desarrollo, Vite reenvía `/api` a Django en `http://127.0.0.1:8000`. Si Django
+usa otra dirección, define `VITE_DJANGO_URL` en `frontend/.env.local`. No guardes
+credenciales ni tokens en archivos `.env` del frontend.
+
+El frontend React incluye el inicio de sesión, el panel principal, el historial,
+el registro y revisión de casos, el centro de notificaciones con su panel de
+seguimiento, estadísticas, administración de usuarios y estudiantes, perfil,
+documentos institucionales, búsqueda global e historial del curso para Profesor
+Jefe.
+Consume `POST /api/auth/token/`, `GET /api/v1/me/`,
+`GET /api/v1/dashboard/`, `GET /api/v1/casos/`,
+`GET /api/v1/notificaciones/`, `GET /api/v1/seguimiento/` y
+`GET /api/v1/estadisticas/`. El historial permite
+buscar y filtrar por curso, gravedad y rango de fechas, con paginación. Las
+notificaciones permiten marcar alertas como leídas y, para los roles
+autorizados, cambiar su estado dejando registro del motivo. El registro de casos
+acepta evidencia adjunta y conserva el flujo de aprobación para Profesor Jefe.
+El seguimiento permite actualizar acciones y cerrar casos dejando el historial
+correspondiente. El rol Profesor Jefe puede registrar casos para revisión, pero
+solo puede consultar casos de su curso y sus reportes, además de gestionar su
+perfil, configuración, documentos y notificaciones personales. Los módulos
+React conservan las rutas Django durante la migración.
+El token de acceso se mantiene solo en memoria y se elimina al cerrar sesión o
+recargar la página.
 
 ### API autenticada con JWT
 
@@ -45,6 +90,28 @@ El sitio web conserva su autenticación de sesión. Para clientes de API:
 * `POST /api/auth/token/` recibe JSON `{"correo": "...", "contrasena": "..."}` y devuelve `access` y `refresh`.
 * `POST /api/auth/token/refresh/` recibe JSON `{"refresh": "..."}` y devuelve un nuevo `access`.
 * `GET /api/v1/me/` devuelve la identidad y el rol del usuario autenticado.
+* `GET /api/v1/dashboard/?pagina=1` devuelve el resumen del panel y requiere JWT; está restringido para el rol Profesor Jefe.
+* `GET /api/v1/casos/` devuelve el historial paginado y admite los filtros `q`, `curso`, `gravedad`, `fecha_desde` y `fecha_hasta`; requiere JWT y está restringido para el rol Profesor Jefe.
+* `GET /api/v1/notificaciones/` devuelve las alertas del usuario; requiere JWT y está limitado a Administrador, Inspector y Equipo de Convivencia. `POST /api/v1/notificaciones/<id>/` permite marcarlas como leídas; cambiar estado requiere Administrador o Equipo de Convivencia e incluye el motivo en el historial.
+* `GET /api/v1/casos/formulario/` devuelve lugares, cursos y estudiantes activos para el formulario. `POST /api/v1/casos/nuevo/` registra casos o crea una solicitud pendiente para Profesor Jefe; ambos requieren JWT.
+* `GET /api/v1/casos/pendientes/` devuelve solicitudes en espera de revisión y requiere JWT para Administrador, Inspector o Equipo de Convivencia. `POST /api/v1/casos/pendientes/<id>/` permite aprobar y registrar el caso, o rechazarlo con un comentario opcional; registra la revisión y evita procesar dos veces una solicitud.
+* `GET /api/v1/seguimiento/` devuelve acciones e historial; `POST /api/v1/seguimiento/acciones/<id>/` actualiza acciones y `POST /api/v1/seguimiento/casos/<caso_id>/estudiantes/<estudiante_id>/cerrar/` cierra un seguimiento cuando no quedan acciones pendientes.
+* `GET /api/v1/estadisticas/` devuelve KPIs, series y casos filtrados por gravedad, curso, zona y fechas; requiere JWT y está restringido a Administrador, Inspector y Equipo de Convivencia.
+* `PATCH /api/v1/me/` actualiza los datos públicos del perfil y `PUT /api/v1/me/` cambia la contraseña con verificación de la contraseña actual.
+* `/api/v1/admin/usuarios/`, `/api/v1/admin/estudiantes/` y `/api/v1/admin/historial-usuarios/` exponen administración de cuentas, estudiantes, importación de Excel, ficha de estudiante y auditoría; requieren JWT de Administrador.
+* `/api/v1/documentos/` lista documentos institucionales y versiones; las operaciones de carga, procesamiento, propuestas, revisión, activación y eliminación requieren JWT de Administrador.
+* `GET /api/v1/mi-curso/` devuelve los casos y reportes del curso asignado al Profesor Jefe y admite `gravedad`, `fecha_desde` y `fecha_hasta`.
+* `GET /api/v1/busqueda/?q=...` busca casos, estudiantes y funcionarios; requiere JWT y está bloqueado para Profesor Jefe.
+* `/api/v1/casos/<id>/exportar/<pdf|xlsx>/`, `/api/v1/mi-curso/exportar/<pdf|xlsx>/` y `/api/v1/estadisticas/exportar/<pdf|xlsx>/` generan descargas protegidas por JWT y respetan permisos y filtros.
+
+Las alertas semanales por más de 10 casos se muestran a Administrador,
+Inspector, Convivencia y al Profesor Jefe del curso. Este último puede leer y
+marcar como leídas únicamente sus notificaciones, sin acceso al seguimiento
+general. El registro de casos graves y gravísimos crea alertas para
+Administradores y encola el correo institucional. En Estadísticas, los filtros
+actualizan gráficos automáticamente; la exportación incluye datos y tabla con
+los criterios seleccionados. La administración de alumnos registra las últimas
+importaciones XLSX con fecha, agregados y duplicados detectados.
 
 Las solicitudes protegidas deben incluir `Authorization: Bearer <access>`.
 Los tokens de acceso vencen a los 15 minutos y los refresh a las 24 horas. Las
@@ -169,19 +236,12 @@ pip install django-cloudinary-storage
 
 # Configuración del entorno
 
-La configuración local se carga desde `.env`. Crea el archivo a partir de la plantilla:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-En Linux o macOS:
-
-```bash
-cp .env.example .env
-```
-
-Completa en `.env` la clave de Django y las credenciales PostgreSQL de Supabase. Las variables opcionales para Resend, Cloudinary y Celery también están documentadas en la plantilla. No subas `.env` al repositorio: contiene credenciales y está excluido por `.gitignore`.
+La configuración local se carga desde `.env` en la raíz del proyecto. Crea ese
+archivo y configura `SECRET_KEY` y las variables de conexión PostgreSQL
+(`DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST` y `DB_PORT`). Las variables
+opcionales para Resend, Cloudinary y Celery también se leen desde el entorno.
+No subas `.env` al repositorio: contiene credenciales y está excluido por
+`.gitignore`.
 
 ---
 

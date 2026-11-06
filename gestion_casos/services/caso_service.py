@@ -159,7 +159,7 @@ def crear_caso_persistido(
             motivo='Notificación creada al registrar un caso.',
         )
 
-    if _quitar_tildes(tipo_falta.casefold()) == 'gravisima':
+    if _quitar_tildes(tipo_falta.casefold()) in ('grave', 'gravisima'):
         notificar_caso_gravisimo(
             request,
             nuevo_caso,
@@ -211,12 +211,20 @@ def _obtener_casos_del_curso(curso):
         tipo_falta = ""
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT estudiante_id, tipo_falta FROM involucran WHERE caso_id = %s",
-                [caso.caso_id]
+                """
+                SELECT i.estudiante_id, i.tipo_falta, e.curso_id
+                FROM involucran i
+                INNER JOIN estudiante e ON e.estudiante_id = i.estudiante_id
+                WHERE i.caso_id = %s
+                """,
+                [caso.caso_id],
             )
             filas_involucrados = cursor.fetchall()
 
-        for estudiante_id, tf in filas_involucrados:
+        if any(curso_id != curso.pk for _, _, curso_id in filas_involucrados):
+            continue
+
+        for estudiante_id, tf, _ in filas_involucrados:
             try:
                 est = Estudiante.objects.get(pk=estudiante_id)
                 nombres_alumnos.append(

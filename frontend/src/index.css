@@ -1,0 +1,74 @@
+:root {
+  font-family: 'Inter', Arial, Helvetica, sans-serif;
+  color: #1c0a0a;
+  background: #f7f3ed;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --guinda: #7b1a1a;
+  --guinda-dark: #5a1010;
+  --guinda-mid: #8f2020;
+  --gold: #d4a017;
+  --gold-bright: #f0c030;
+  --text-dark: #1c0a0a;
+  --text-mid: #5c3a2a;
+  --text-lo: #9b7060;
+  --page-bg: #f7f3ed;
+  --panel-bg: #fff;
+  --input-bg: #f8f5f1;
+  --input-focus: #fff;
+  --border: rgb(123 26 26 / 12%);
+  --danger: #c0392b;
+  --danger-bg: rgb(192 57 43 / 9%);
+  --shadow-card: 0 12px 35px rgb(0 0 0 / 8%);
+  --font-serif: 'Merriweather', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Inter', Arial, Helvetica, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  font-family: var(--font-sans);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid #c8a75e;
+  outline-offset: 3px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1,
+h2,
+h3,
+.brand__title {
+  font-family: var(--font-serif);
+}
+
+#root {
+  min-height: 100vh;
+}

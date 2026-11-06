@@ -1,0 +1,47 @@
+.teacher-cases__filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.teacher-cases__filters label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-mid);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.teacher-cases__filters input,
+.teacher-cases__filters select {
+  min-height: 2.45rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text-dark);
+  background: var(--input-bg);
+  font: inherit;
+}
+
+.teacher-cases__filters .button--primary {
+  min-height: 2.45rem;
+  padding: 0.55rem 0.9rem;
+}
+
+.teacher-cases__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .teacher-cases__filters {
+    grid-template-columns: 1fr;
+  }
+
+  .teacher-cases__header-actions {
+    flex-wrap: wrap;
+  }
+}

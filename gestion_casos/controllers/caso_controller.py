@@ -32,6 +32,7 @@ from ..permissions import ROLES_APROBACION_CASOS
 from ..reglamento import evaluar_reglas_para_caso
 from ..services.caso_service import crear_caso_persistido, filtrar_casos_del_curso
 from .auth_casos_controller import (
+    caso_visible_para_curso,
     bloquear_si_profesor_jefe,
     puede_editar_caso,
     validar_profesor_jefe,
@@ -526,12 +527,11 @@ def detalle_caso_view(request, caso_id):
             messages.error(request, "Acceso denegado.")
             return redirect('mis_casos_curso')
 
-        pertenece_a_su_curso = Estudiante.objects.filter(
-            involucran__caso_id=caso_id, curso=profesor.curso
-        ).exists()
-
-        if not pertenece_a_su_curso:
-            messages.error(request, "Acceso denegado: ese caso no corresponde a los alumnos de tu curso.")
+        if not caso_visible_para_curso(caso_id, profesor.curso):
+            messages.error(
+                request,
+                "Acceso denegado: el caso no corresponde exclusivamente a los alumnos de tu curso.",
+            )
             return redirect('mis_casos_curso')
 
     titulo = "Sin título"

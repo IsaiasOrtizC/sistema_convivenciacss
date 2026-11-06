@@ -1,0 +1,119 @@
+.case-registration-form {
+  display: grid;
+  gap: 16px;
+}
+
+.case-registration-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-mid);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.case-registration-form input,
+.case-registration-form select,
+.case-registration-form textarea {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--input-bg);
+  color: var(--text-dark);
+}
+
+.case-registration-form textarea {
+  resize: vertical;
+}
+
+.case-registration-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.case-registration-form__grid--student {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.case-students,
+.case-severity {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.case-students legend,
+.case-severity legend {
+  padding: 0 6px;
+  color: var(--text-dark);
+  font-family: var(--font-serif);
+  font-weight: 800;
+}
+
+.case-student {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-bg);
+}
+
+.case-student__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-dark);
+}
+
+.case-severity {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.case-severity label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-mid);
+}
+
+.case-severity input {
+  width: auto;
+  min-height: auto;
+  accent-color: var(--guinda);
+}
+
+.case-registration-form__submit {
+  justify-self: start;
+  background: var(--guinda);
+  color: #fff;
+}
+
+.case-success {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-left: 4px solid #2e7d32;
+  border-radius: 8px;
+  background: rgb(46 125 50 / 9%);
+  color: var(--text-dark);
+}
+
+@media (max-width: 760px) {
+  .case-registration-form__grid,
+  .case-registration-form__grid--student {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .case-registration-form__grid,
+  .case-registration-form__grid--student,
+  .case-severity {
+    grid-template-columns: 1fr;
+  }
+}

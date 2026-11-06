@@ -257,6 +257,39 @@ class CaseApprovalWorkflowTests(TransactionTestCase):
         )
         send_email.assert_called_once()
 
+    @patch('gestion_casos.tasks.enviar_alerta_caso_gravisimo.delay')
+    def test_grave_case_notifies_admin_and_queues_email(self, send_email):
+        admin_role = Rol.objects.create(rol_nombre='Administrador')
+        admin = Usuario.objects.create(
+            usuario_nombre='Admin',
+            usuario_apaterno='ConviData',
+            usuario_amaterno='',
+            usuario_correo='admin@example.test',
+            usuario_contrasena='not-a-real-password',
+            usuario_primer_ingreso=False,
+            rol=admin_role,
+        )
+        caso = Caso.objects.create(
+            caso_fecha=timezone.localdate(),
+            caso_descripcion='[Caso grave] - Descripción.',
+            usuario=self.teacher,
+            lugar=self.place,
+        )
+        request = RequestFactory().post('/casos/nuevo/')
+        request.session = {'usuario_id': self.teacher.pk}
+
+        notificar_caso_gravisimo(request, caso, 'Grave', self.place)
+
+        self.assertTrue(
+            Notificacion.objects.filter(
+                usuario=admin,
+                caso=caso,
+                notificacion_titulo=f'Caso grave #{caso.pk}',
+            ).exists()
+        )
+        send_email.assert_called_once()
+        self.assertEqual(send_email.call_args.args[4], 'Grave')
+
     def test_approving_submission_creates_case_and_marks_request_approved(self):
         self._submit_report()
         solicitud = SolicitudCaso.objects.get()

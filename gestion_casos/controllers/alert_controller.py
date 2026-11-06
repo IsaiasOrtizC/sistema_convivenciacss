@@ -12,29 +12,28 @@ from .email_controller import programar_tarea_correo
 logger = logging.getLogger(__name__)
 
 
-@trazar('CONTROLADOR', 'AlertController', 'notificando caso gravísimo a los responsables')
+@trazar('CONTROLADOR', 'AlertController', 'notificando caso grave o gravísimo a los responsables')
 def notificar_caso_gravisimo(request, caso, tipo_falta, lugar):
     destinatarios = list(
         Usuario.objects.filter(
             rol__rol_nombre='Administrador',
             usuario_activo=True,
             usuario_bloqueado=False,
-        ).exclude(usuario_correo='').order_by('usuario_id')
+        ).order_by('usuario_id')
     )
     if not destinatarios:
-        logger.warning(
-            "El caso gravísimo #%s no tiene administradores activos con correo.",
-            caso.caso_id,
-        )
+        logger.warning("El caso %s #%s no tiene administradores activos.", tipo_falta, caso.caso_id)
         return
 
+    es_gravisimo = tipo_falta == 'Gravísima'
+    nivel = 'gravísimo' if es_gravisimo else 'grave'
     for destinatario in destinatarios:
-        clave = f'caso_gravisimo:{caso.caso_id}:admin:{destinatario.usuario_id}'
+        clave = f'caso_prioritario:{caso.caso_id}:admin:{destinatario.usuario_id}'
         notificacion, creada = Notificacion.objects.get_or_create(
             evento_clave=clave,
             defaults={
                 'usuario': destinatario,
-                'notificacion_titulo': f'Caso gravísimo #{caso.caso_id}',
+                'notificacion_titulo': f'Caso {nivel} #{caso.caso_id}',
                 'notificacion_mensaje': (
                     f'Se registró el caso #{caso.caso_id} como {tipo_falta} '
                     f'en {lugar.lugar_nombre}. Revisa sus antecedentes.'
@@ -45,12 +44,29 @@ def notificar_caso_gravisimo(request, caso, tipo_falta, lugar):
             },
         )
         if creada:
+            usuario_actual = getattr(request, 'user', None)
             HistorialNotificacion.objects.create(
                 notificacion=notificacion,
                 estado=notificacion.estado,
-                cambiado_por_id=request.session['usuario_id'],
-                motivo='Alerta creada por el registro de un caso gravísimo.',
+                cambiado_por_id=(
+                    usuario_actual.pk
+                    if usuario_actual and usuario_actual.is_authenticated
+                    else request.session.get('usuario_id')
+                ),
+                motivo=f'Alerta creada por el registro de un caso {nivel}.',
             )
+
+    destinatarios_correo = [
+        usuario.usuario_correo for usuario in destinatarios
+        if usuario.usuario_correo
+    ]
+    if not destinatarios_correo:
+        logger.warning(
+            "El caso %s #%s no tiene administradores activos con correo.",
+            tipo_falta,
+            caso.caso_id,
+        )
+        return
 
     from ..tasks import enviar_alerta_caso_gravisimo
 
@@ -58,13 +74,13 @@ def notificar_caso_gravisimo(request, caso, tipo_falta, lugar):
         request,
         enviar_alerta_caso_gravisimo,
         (
-            [usuario.usuario_correo for usuario in destinatarios],
+            destinatarios_correo,
             caso.caso_id,
             caso.caso_fecha.strftime('%d/%m/%Y'),
             lugar.lugar_nombre,
             tipo_falta,
         ),
-        "El caso se registró, pero no se pudo encolar el correo de alerta a los administradores.",
+        f"El caso {nivel} se registró, pero no se pudo encolar el correo de alerta a los administradores.",
     )
 
 

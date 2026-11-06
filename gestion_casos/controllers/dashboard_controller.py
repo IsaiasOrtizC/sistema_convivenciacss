@@ -12,16 +12,7 @@ from ..models import Caso, Involucran
 from .auth_casos_controller import bloquear_si_profesor_jefe
 
 
-def dashboard_view(request):
-    # 1. Seguridad: Validar que el usuario haya iniciado sesión
-    if 'usuario_id' not in request.session:
-        return redirect('login')
-
-    # El Profesor Jefe no ve el panel general: se le redirige directo a su curso
-    redireccion = bloquear_si_profesor_jefe(request)
-    if redireccion:
-        return redireccion
-
+def obtener_datos_dashboard(request):
     # CONTADOR DE CASOS
     total_casos = Caso.objects.count()
     casos_leves = Involucran.objects.filter(tipo_falta='Leve').values('caso_id').distinct().count()
@@ -134,6 +125,26 @@ def dashboard_view(request):
         'variacion_periodo': variacion_periodo,
         'zonas_labels_json': json.dumps(zonas_labels),
         'zonas_data_json': json.dumps(zonas_data),
+        'casos_por_zona': [
+            {
+                'nombre': registro['lugar__lugar_nombre'] or 'No asignado',
+                'total': registro['total'],
+            }
+            for registro in casos_por_zona
+        ],
     }
-    
+
+    return context
+
+
+def dashboard_view(request):
+    if 'usuario_id' not in request.session:
+        return redirect('login')
+
+    # El Profesor Jefe no ve el panel general: se le redirige directo a su curso
+    redireccion = bloquear_si_profesor_jefe(request)
+    if redireccion:
+        return redireccion
+
+    context = obtener_datos_dashboard(request)
     return render(request, 'gestion_casos/dashboard.html', context)

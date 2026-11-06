@@ -1,0 +1,123 @@
+.case-detail__back {
+  margin-bottom: 16px;
+}
+
+.case-detail__link {
+  padding: 0;
+  border: 0;
+  color: var(--guinda);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+}
+
+.case-detail__link:hover {
+  text-decoration: underline;
+}
+
+.case-detail__hero h1 {
+  margin: 8px 0;
+  font-family: 'Merriweather', serif;
+}
+
+.case-detail__success {
+  margin-bottom: 18px;
+  padding: 12px 16px;
+  border: 1px solid #82c99a;
+  border-radius: 10px;
+  color: #155d2f;
+  background: #eaf8ee;
+}
+
+.case-detail__description {
+  margin-bottom: 18px;
+  white-space: pre-wrap;
+}
+
+.case-detail__students {
+  margin-top: 18px;
+}
+
+.case-detail__form {
+  display: grid;
+  gap: 16px;
+}
+
+.case-detail__form > label,
+.case-detail__student label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-mid);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.case-detail__form input,
+.case-detail__form textarea,
+.case-detail__form select {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text-dark);
+  background: var(--input-bg);
+  font: inherit;
+}
+
+.case-detail__student {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.case-detail__student legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+
+.case-detail__student > button {
+  justify-self: start;
+}
+
+.case-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.case-detail__save,
+.case-detail__delete {
+  min-height: 2.35rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid #28643a;
+  border-radius: 9px;
+  color: #fff;
+  background: #28643a;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.case-detail__delete {
+  border-color: #a52929;
+  background: #a52929;
+}
+
+.case-detail__save:disabled,
+.case-detail__delete:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 640px) {
+  .case-detail__student {
+    grid-template-columns: 1fr;
+  }
+}

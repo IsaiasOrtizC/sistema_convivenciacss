@@ -98,6 +98,7 @@ def enviar_credenciales_usuario(destinatario, nombre, apaterno, contrasena):
 @shared_task
 def enviar_alerta_caso_gravisimo(destinatarios, caso_id, fecha, zona, tipo_falta):
     resend.api_key = settings.RESEND_API_KEY
+    nivel = "gravísimo" if tipo_falta == "Gravísima" else "grave"
     params = {
         "from": getattr(
             settings,
@@ -105,7 +106,7 @@ def enviar_alerta_caso_gravisimo(destinatarios, caso_id, fecha, zona, tipo_falta
             "ConviData <onboarding@resend.dev>",
         ),
         "to": destinatarios,
-        "subject": f"Alerta de caso gravísimo #{caso_id} - ConviData",
+        "subject": f"Alerta de caso {nivel} #{caso_id} - ConviData",
         "html": (
             "<div style=\"font-family:Arial,sans-serif;max-width:560px;"
             "margin:0 auto;border:1px solid #eadfda;border-radius:12px;"
@@ -114,7 +115,7 @@ def enviar_alerta_caso_gravisimo(destinatarios, caso_id, fecha, zona, tipo_falta
             "border-bottom:3px solid #D4A017\"><h1 style=\"margin:0\">ConviData</h1>"
             "<p style=\"margin:4px 0 0\">Alerta institucional de convivencia</p></header>"
             "<main style=\"padding:24px\"><h2 style=\"color:#7B1A1A\">"
-            "Se registró un caso de nivel gravísimo</h2>"
+            f"Se registró un caso de nivel {nivel}</h2>"
             f"<p><strong>Caso:</strong> #{caso_id}</p>"
             f"<p><strong>Fecha:</strong> {fecha}</p>"
             f"<p><strong>Zona:</strong> {zona}</p>"

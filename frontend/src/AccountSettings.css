@@ -1,0 +1,59 @@
+.account-settings .dashboard-welcome h1 {
+  margin: 8px 0;
+  font-family: 'Merriweather', serif;
+}
+
+.account-settings__success {
+  margin-bottom: 18px;
+  padding: 12px 16px;
+  border: 1px solid #82c99a;
+  border-radius: 10px;
+  color: #155d2f;
+  background: #eaf8ee;
+}
+
+.account-settings__form {
+  display: grid;
+  max-width: 720px;
+  gap: 16px;
+}
+
+.account-settings__form label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-mid);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.account-settings__form input {
+  min-height: 2.6rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text-dark);
+  background: var(--input-bg);
+  font: inherit;
+}
+
+.account-settings__hint {
+  color: var(--text-lo);
+  font-size: 0.8rem;
+}
+
+.account-settings__submit {
+  justify-self: start;
+  min-height: 2.4rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--guinda);
+  border-radius: 9px;
+  color: white;
+  background: var(--guinda);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.account-settings__submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

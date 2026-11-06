@@ -1,0 +1,139 @@
+.follow-up-panel {
+  margin-top: 20px;
+}
+
+.follow-up-panel .dashboard-panel__header p {
+  margin: 6px 0 0;
+  color: var(--text-lo);
+  font-size: 0.75rem;
+}
+
+.follow-up-filter {
+  display: grid;
+  gap: 5px;
+  color: var(--text-mid);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.follow-up-filter select,
+.follow-up-action select,
+.follow-up-action input,
+.follow-up-close input {
+  min-height: 2.35rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-dark);
+}
+
+.follow-up-card {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.follow-up-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.follow-up-card__header h3 {
+  margin: 0;
+  color: var(--text-dark);
+  font-family: var(--font-serif);
+}
+
+.follow-up-card__header > span {
+  color: var(--guinda);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.follow-up-card__meta,
+.follow-up-actions {
+  display: grid;
+  gap: 8px;
+  color: var(--text-mid);
+  font-size: 0.78rem;
+}
+
+.follow-up-actions h4 {
+  margin: 0;
+  color: var(--text-dark);
+}
+
+.follow-up-action {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel-bg);
+}
+
+.follow-up-action strong {
+  color: var(--text-dark);
+}
+
+.follow-up-action form,
+.follow-up-close {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin: 4px 0 0;
+}
+
+.follow-up-action form input {
+  flex: 1;
+  min-width: 180px;
+}
+
+.follow-up-overdue {
+  color: #b42318;
+  font-weight: 800;
+}
+
+.follow-up-history {
+  color: var(--text-mid);
+  font-size: 0.76rem;
+}
+
+.follow-up-history summary {
+  color: var(--guinda);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.follow-up-history p {
+  margin: 8px 0 0;
+}
+
+.follow-up-close {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.follow-up-close label {
+  display: grid;
+  flex: 1;
+  gap: 5px;
+  color: var(--text-mid);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .follow-up-panel .dashboard-panel__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

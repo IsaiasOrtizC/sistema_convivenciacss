@@ -1,0 +1,131 @@
+.administration .dashboard-welcome h1 {
+  margin: 8px 0;
+  font-family: 'Merriweather', serif;
+}
+
+.administration__success {
+  margin-bottom: 18px;
+  padding: 12px 16px;
+  border: 1px solid #82c99a;
+  border-radius: 10px;
+  color: #155d2f;
+  background: #eaf8ee;
+}
+
+.administration__filters {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.administration__filters label,
+.administration__form-grid label {
+  display: grid;
+  flex: 1 1 190px;
+  gap: 6px;
+  color: var(--text-mid);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.administration__filters input,
+.administration__filters select,
+.administration__form input,
+.administration__form select,
+.administration__import input[type="file"] {
+  min-height: 2.45rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text-dark);
+  background: var(--input-bg);
+  font: inherit;
+}
+
+.administration__form,
+.administration__import {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.administration__form h2,
+.administration__import h2 {
+  font-size: 1.05rem;
+}
+
+.administration__form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.administration__actions,
+.administration__row-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.administration__primary,
+.administration__danger {
+  min-height: 2.35rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid #28643a;
+  border-radius: 9px;
+  color: #fff;
+  background: #28643a;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.administration__danger {
+  border-color: #a52929;
+  background: #a52929;
+}
+
+.administration__primary:disabled,
+.administration__danger:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.administration__row-actions {
+  min-width: 250px;
+}
+
+.administration__import p {
+  color: var(--text-lo);
+  font-size: 0.82rem;
+}
+
+.administration__student-history {
+  margin-bottom: 18px;
+}
+
+.administration__student-history h2,
+.administration__student-history p {
+  margin: 12px 0;
+}
+
+.administration small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-lo);
+}
+
+@media (max-width: 760px) {
+  .administration__form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .administration__form-grid {
+    grid-template-columns: 1fr;
+  }
+}

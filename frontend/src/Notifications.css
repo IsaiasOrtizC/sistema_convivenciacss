@@ -1,0 +1,125 @@
+.notification-card {
+  display: flex;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-soft);
+}
+
+.notification-card--unread {
+  border-left: 4px solid var(--gold);
+}
+
+.notification-card__icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-bg);
+  font-size: 1.2rem;
+}
+
+.notification-card__body {
+  min-width: 0;
+  flex: 1;
+  color: var(--text-mid);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.notification-card__body > p {
+  margin-bottom: 10px;
+  overflow-wrap: anywhere;
+}
+
+.notification-card__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+}
+
+.notification-card__heading h3 {
+  margin: 0;
+  color: var(--text-dark);
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+}
+
+.notification-card__meta {
+  color: var(--text-lo);
+  font-size: 0.72rem;
+}
+
+.notification-card__evidence,
+.notification-card__history {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--gold);
+  background: var(--panel-bg);
+  color: var(--text-mid);
+}
+
+.notification-card__evidence summary,
+.notification-card__history summary {
+  color: var(--guinda);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.notification-card__evidence blockquote {
+  margin: 10px 0;
+}
+
+.notification-card__manage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.notification-card__manage label {
+  display: grid;
+  gap: 5px;
+  color: var(--text-mid);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.notification-card__manage select,
+.notification-card__manage input {
+  min-height: 2.35rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-dark);
+}
+
+.notification-card__manage input {
+  width: min(320px, 65vw);
+}
+
+@media (max-width: 600px) {
+  .notification-card {
+    gap: 10px;
+    padding: 13px;
+  }
+
+  .notification-card__manage {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .notification-card__manage input {
+    width: 100%;
+  }
+}
