@@ -1,0 +1,72 @@
+﻿C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\manage.py:3: import os
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\manage.py:4: import sys
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\manage.py:11: from django.core.management import execute_from_command_line
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\asgi.py:10: import os
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\asgi.py:12: from django.core.asgi import get_asgi_application
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\celery.py:1: import os
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\celery.py:3: from celery import Celery
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\settings.py:13: from pathlib import Path
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\settings.py:14: from dotenv import load_dotenv
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\settings.py:15: import os
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\settings.py:133: import os
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\settings.py:141: import cloudinary
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\urls.py:1: from django.contrib import admin
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\urls.py:2: from django.urls import path, include
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\urls.py:3: from django.conf import settings
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\urls.py:4: from django.conf.urls.static import static
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\wsgi.py:10: import os
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\wsgi.py:12: from django.core.wsgi import get_wsgi_application
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\config\__init__.py:1: from .celery import app as celery_app
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\admin.py:1: from django.contrib import admin
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\admin.py:2: from .models import Rol, Usuario, Curso, Estudiante, Lugar, Caso, Involucran
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\apps.py:1: from django.apps import AppConfig
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\middleware.py:1: from django.shortcuts import redirect
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\middleware.py:2: from django.contrib import messages
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\middleware.py:21: from gestion_casos.models import SesionActiva
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\models.py:1: import re
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\models.py:2: import unicodedata
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\models.py:3: from django.db import models
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\models.py:4: from django.utils import timezone
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\tasks.py:1: import resend
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\tasks.py:3: from celery import shared_task
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\tasks.py:4: from django.conf import settings
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\tests.py:1: from django.test import TestCase
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\urls.py:1: from django.urls import path
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\urls.py:2: from . import views
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:1: import os
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:2: import io
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:3: import secrets
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:4: import string
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:5: import resend
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:6: from django.contrib.auth.hashers import make_password, check_password
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:7: from django.shortcuts import render, redirect, get_object_or_404
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:8: from django.contrib import messages
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:9: from django.db import connection, transaction
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:10: from django.conf import settings
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:11: from django.core.files.storage import FileSystemStorage
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:12: from django.http import HttpResponse, JsonResponse
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:13: from django.core.paginator import Paginator
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:14: from .models import Caso, Lugar, Estudiante, Involucran, Curso, Usuario, Rol, Notificacion, HistorialUsuario, DocumentoInstitucional, ProfesorJefe, Administrador, Inspector, PConvivencia, SesionActiva, _quitar_tildes
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:15: from django.contrib.messages import get_messages
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:16: from django.utils import timezone
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:17: from django.db.models import Count
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:18: from django.db.models.functions import ExtractMonth
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:19: import json
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:20: from datetime import timedelta
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:21: from django.db.models import Count, Value, Q
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:22: from django.db.models.functions import Concat
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:23: from django.db import transaction, connection
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:26: from reportlab.lib.pagesizes import letter, landscape
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:27: from reportlab.lib import colors
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:28: from reportlab.lib.styles import getSampleStyleSheet
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:29: from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:30: from reportlab.graphics.shapes import Drawing
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:31: from reportlab.graphics.charts.barcharts import VerticalBarChart
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:32: from reportlab.graphics.charts.piecharts import Pie
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:33: from openpyxl import Workbook, load_workbook
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:34: from openpyxl.styles import PatternFill, Font
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:35: from openpyxl.utils import get_column_letter
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:36: from openpyxl.chart import BarChart, PieChart, LineChart, Reference
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:730: FROM involucran i
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:1670: from django.utils.dateparse import parse_date
+C:\Users\Matias\Documents\Pagina Web ConviData\sistema_convivenciacss\gestion_casos\views.py:1808: from urllib.parse import urlencode
