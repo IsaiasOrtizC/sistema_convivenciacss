@@ -84,17 +84,27 @@ class RutasLleganAlControladorEsperadoTests(TestCase):
 
 
 class RutasSinSesionTests(TestCase):
-    """Sin iniciar sesión, ninguna pantalla debe fallar: se redirige al acceso o se responde 401."""
+    """Las pantallas React son públicas; sus datos permanecen protegidos por la API."""
 
     def test_ninguna_ruta_devuelve_error_sin_sesion(self):
         cliente = Client()
         for nombre, kwargs, _, _ in RUTAS:
             with self.subTest(ruta=nombre):
                 respuesta = cliente.get(reverse(nombre, kwargs=kwargs))
-                if nombre == 'login':
+                vista = resolve(reverse(nombre, kwargs=kwargs)).func
+                if getattr(vista, 'react_screen', False) or nombre == 'login':
                     self.assertEqual(respuesta.status_code, 200)
                 elif nombre in RUTAS_JSON:
                     self.assertEqual(respuesta.status_code, 401)
                 else:
                     self.assertEqual(respuesta.status_code, 302)
                     self.assertIn(respuesta['Location'], ('/', '/dashboard/'))
+
+    def test_pantallas_principales_entregan_el_shell_react(self):
+        cliente = Client()
+        for ruta in ('/', '/dashboard/', '/casos/', '/estadisticas/', '/documentos/'):
+            with self.subTest(ruta=ruta):
+                respuesta = cliente.get(ruta)
+                self.assertEqual(respuesta.status_code, 200)
+                self.assertContains(respuesta, '<div id="root"></div>')
+                self.assertContains(respuesta, '/static/react/assets/app.js')

@@ -1,5 +1,7 @@
 """Cálculo de las estadísticas del panel (gráficos, tabla de datos y filtros)."""
 
+from datetime import date
+
 from django.db import connection
 from django.db.models import Count, Value
 from django.db.models.functions import Concat, ExtractMonth
@@ -7,6 +9,13 @@ from django.utils import timezone
 
 from ..models import Caso, Estudiante
 from ..trazabilidad import trazar
+
+
+def _fecha_anio_anterior(fecha):
+    try:
+        return fecha.replace(year=fecha.year - 1)
+    except ValueError:
+        return fecha.replace(year=fecha.year - 1, day=28)
 
 
 def _calcular_ids_casos(fecha_desde, fecha_hasta, curso_id, lugar_id, gravedad):
@@ -91,9 +100,19 @@ def obtener_datos_estadisticas(request):
     mensual_data = [dict_meses[i] for i in range(1, 13)]
 
     # ---- Variación % vs el mismo periodo del año anterior (con los mismos filtros de curso/zona/gravedad) ----
-    anio_comparado = int(filtro_fecha_desde[:4])
-    anio_anterior = anio_comparado - 1
-    ids_anterior = _calcular_ids_casos(f"{anio_anterior}-01-01", f"{anio_anterior}-12-31", filtro_curso_id, filtro_lugar_id, filtro_gravedad)
+    fecha_desde_anterior = _fecha_anio_anterior(
+        date.fromisoformat(filtro_fecha_desde),
+    )
+    fecha_hasta_anterior = _fecha_anio_anterior(
+        date.fromisoformat(filtro_fecha_hasta),
+    )
+    ids_anterior = _calcular_ids_casos(
+        fecha_desde_anterior.isoformat(),
+        fecha_hasta_anterior.isoformat(),
+        filtro_curso_id,
+        filtro_lugar_id,
+        filtro_gravedad,
+    )
     total_anterior = len(ids_anterior)
     if total_anterior > 0:
         variacion_pct = round(((total_casos - total_anterior) / total_anterior) * 100, 1)

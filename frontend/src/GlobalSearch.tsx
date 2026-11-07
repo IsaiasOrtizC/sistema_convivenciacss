@@ -10,6 +10,8 @@ type SearchResults = {
 type GlobalSearchProps = {
   accessToken: string
   onOpenCase: (caseId: number) => void
+  onOpenStudent: (studentId: number) => void
+  onOpenUser: (userId: number) => void
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
@@ -34,7 +36,12 @@ function isSearchResults(value: unknown): value is SearchResults {
   )
 }
 
-export default function GlobalSearch({ accessToken, onOpenCase }: GlobalSearchProps) {
+export default function GlobalSearch({
+  accessToken,
+  onOpenCase,
+  onOpenStudent,
+  onOpenUser,
+}: GlobalSearchProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResults | null>(null)
   const [error, setError] = useState('')
@@ -101,13 +108,25 @@ export default function GlobalSearch({ accessToken, onOpenCase }: GlobalSearchPr
           <section className="dashboard-panel">
             <div className="dashboard-panel__header"><h2>Estudiantes</h2><span>{results.estudiantes.length}</span></div>
             {results.estudiantes.length ? <ul className="global-search__results">{results.estudiantes.map((estudiante) => (
-              <li key={estudiante.id}><strong>{estudiante.nombre_completo}</strong><span>{estudiante.curso}</span></li>
+              <li key={estudiante.id}>
+                <strong>{estudiante.nombre_completo}</strong>
+                <span>{estudiante.curso}</span>
+                <button className="case-detail__link" onClick={() => onOpenStudent(estudiante.id)} type="button">
+                  Ver historial de casos
+                </button>
+              </li>
             ))}</ul> : <p className="dashboard-empty">No se encontraron estudiantes.</p>}
           </section>
           <section className="dashboard-panel">
             <div className="dashboard-panel__header"><h2>Funcionarios</h2><span>{results.usuarios.length}</span></div>
             {results.usuarios.length ? <ul className="global-search__results">{results.usuarios.map((usuario) => (
-              <li key={usuario.id}><strong>{usuario.nombre_completo}</strong><span>{usuario.correo} · {usuario.rol}</span></li>
+              <li key={usuario.id}>
+                <strong>{usuario.nombre_completo}</strong>
+                <span>{usuario.correo} · {usuario.rol}</span>
+                <button className="case-detail__link" onClick={() => onOpenUser(usuario.id)} type="button">
+                  Ver casos registrados
+                </button>
+              </li>
             ))}</ul> : <p className="dashboard-empty">No se encontraron funcionarios.</p>}
           </section>
         </>

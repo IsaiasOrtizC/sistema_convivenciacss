@@ -1,18 +1,23 @@
 """API REST con autenticación JWT."""
 
 from datetime import date
+from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth.hashers import make_password
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
 from django.core.paginator import Paginator
 from django.test import TransactionTestCase
+from resend.exceptions import ResendError
 from gestion_casos.models import (
     Administrador,
     Caso,
     Curso,
     Estudiante,
+    HistorialUsuario,
+    HistorialImportacionEstudiantes,
     Inspector,
     Involucran,
     Lugar,
@@ -22,8 +27,10 @@ from gestion_casos.models import (
     Rol,
     SolicitudCaso,
     Usuario,
+    _quitar_tildes,
 )
 from rest_framework.test import APIClient
+from openpyxl import Workbook
 
 
 class JwtApiTests(TransactionTestCase):
@@ -57,6 +64,12 @@ class JwtApiTests(TransactionTestCase):
         super().tearDownClass()
 
     def setUp(self):
+        connection.ensure_connection()
+        connection.connection.create_function(
+            'UNACCENT',
+            1,
+            lambda value: _quitar_tildes(value) if value is not None else None,
+        )
         with connection.cursor() as cursor:
             cursor.execute('DELETE FROM solicitud_caso')
             cursor.execute('DELETE FROM profesorjefe')
@@ -78,6 +91,70 @@ class JwtApiTests(TransactionTestCase):
             rol=self.role,
         )
         self.client = APIClient()
+
+    @patch('gestion_casos.api.solicitar_recuperacion_contrasena')
+    def test_password_recovery_returns_generic_confirmation(self, solicitar_recuperacion):
+        response = self.client.post(
+            '/api/auth/password-recovery/',
+            {'correo': 'missing@example.test'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Si el correo está registrado', response.data['mensaje'])
+        solicitar_recuperacion.assert_called_once_with('missing@example.test')
+
+    def test_password_recovery_rejects_invalid_email(self):
+        response = self.client.post(
+            '/api/auth/password-recovery/',
+            {'correo': 'no-es-un-correo'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['detail'], 'Ingresa una dirección de correo válida.')
+
+    @patch('gestion_casos.controllers.auth_controller.enviar_correo_html')
+    def test_password_recovery_sends_temporary_password_and_unlocks_user(self, enviar_correo):
+        self.user.usuario_bloqueado = True
+        self.user.usuario_intentos_fallidos = 5
+        self.user.save(update_fields=['usuario_bloqueado', 'usuario_intentos_fallidos'])
+        password_original = self.user.usuario_contrasena
+
+        response = self.client.post(
+            '/api/auth/password-recovery/',
+            {'correo': self.user.usuario_correo},
+            format='json',
+        )
+
+        self.user.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(self.user.usuario_primer_ingreso)
+        self.assertFalse(self.user.usuario_bloqueado)
+        self.assertEqual(self.user.usuario_intentos_fallidos, 0)
+        self.assertNotEqual(self.user.usuario_contrasena, password_original)
+        enviar_correo.assert_called_once()
+
+    @patch('gestion_casos.controllers.auth_controller.enviar_correo_html')
+    def test_password_recovery_does_not_change_password_if_email_fails(self, enviar_correo):
+        enviar_correo.side_effect = ResendError(
+            400,
+            'validation_error',
+            'No se pudo enviar',
+            'Verifica la configuración de correo.',
+        )
+        password_original = self.user.usuario_contrasena
+
+        response = self.client.post(
+            '/api/auth/password-recovery/',
+            {'correo': self.user.usuario_correo},
+            format='json',
+        )
+
+        self.user.refresh_from_db()
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(self.user.usuario_contrasena, password_original)
+        self.assertFalse(self.user.usuario_primer_ingreso)
 
     def test_profile_endpoint_requires_a_valid_bearer_token(self):
         response = self.client.get('/api/v1/me/')
@@ -715,6 +792,8 @@ class JwtApiTests(TransactionTestCase):
             'lugar': 'Patio',
             'fecha': '2026-10-26',
             'usuario_id': self.user.pk,
+            'puede_editar': True,
+            'puede_eliminar': False,
         }])
         self.assertEqual(response.data['cursos'], [{
             'id': curso.pk,
@@ -722,6 +801,18 @@ class JwtApiTests(TransactionTestCase):
         }])
         self.assertEqual(response.data['total'], 1)
         self.assertFalse(response.data['tiene_siguiente'])
+
+        self.role.rol_nombre = 'Inspector'
+        self.role.save(update_fields=['rol_nombre'])
+        inspector_response = self.client.get('/api/v1/casos/')
+        self.assertTrue(inspector_response.data['resultados'][0]['puede_editar'])
+        self.assertTrue(inspector_response.data['resultados'][0]['puede_eliminar'])
+
+        self.role.rol_nombre = 'Administrador'
+        self.role.save(update_fields=['rol_nombre'])
+        admin_response = self.client.get('/api/v1/casos/')
+        self.assertTrue(admin_response.data['resultados'][0]['puede_editar'])
+        self.assertTrue(admin_response.data['resultados'][0]['puede_eliminar'])
 
     def test_case_detail_endpoint_returns_details_and_edit_permissions(self):
         curso = Curso.objects.create(curso_grado='3° Medio', curso_letra='A')
@@ -917,6 +1008,89 @@ class JwtApiTests(TransactionTestCase):
             )
             self.assertEqual(cursor.fetchone()[0], 'Grave')
 
+    def test_editing_and_deleting_another_users_case_notifies_its_creator(self):
+        inspector_role = Rol.objects.create(rol_nombre='Inspector')
+        inspector = Usuario.objects.create(
+            usuario_nombre='Inspector',
+            usuario_apaterno='Colegio',
+            usuario_amaterno='',
+            usuario_correo='inspector@example.test',
+            usuario_contrasena=make_password('ConviData-inspector-2026'),
+            usuario_primer_ingreso=False,
+            rol=inspector_role,
+        )
+        curso = Curso.objects.create(curso_grado='3° Medio', curso_letra='A')
+        estudiante = Estudiante.objects.create(
+            estudiante_nombre='Ana',
+            estudiante_apaterno='Pérez',
+            estudiante_amaterno='López',
+            curso=curso,
+        )
+        lugar = Lugar.objects.create(lugar_nombre='Patio')
+        caso_editado = Caso.objects.create(
+            caso_fecha=date(2026, 10, 26),
+            caso_descripcion='[Original] - Descripción.',
+            usuario=self.user,
+            lugar=lugar,
+        )
+        caso_eliminado = Caso.objects.create(
+            caso_fecha=date(2026, 10, 26),
+            caso_descripcion='[Eliminar] - Descripción.',
+            usuario=self.user,
+            lugar=lugar,
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(
+                'INSERT INTO involucran (estudiante_id, caso_id, tipo_falta) '
+                'VALUES (%s, %s, %s)',
+                [estudiante.pk, caso_editado.pk, 'Leve'],
+            )
+        token_response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': inspector.usuario_correo,
+                'contrasena': 'ConviData-inspector-2026',
+            },
+            format='json',
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+
+        with patch('gestion_casos.api.evaluar_reglas_para_caso'):
+            response_edit = self.client.put(
+                f'/api/v1/casos/{caso_editado.pk}/',
+                {
+                    'titulo': 'Actualizado',
+                    'descripcion': 'Descripción actualizada.',
+                    'lugar_id': lugar.pk,
+                    'tipo_falta': 'Grave',
+                    'estudiantes': [{
+                        'id': estudiante.pk,
+                        'nombre': 'Ana',
+                        'apellido_paterno': 'Pérez',
+                        'apellido_materno': 'López',
+                        'curso_id': curso.pk,
+                    }],
+                },
+                format='json',
+            )
+        response_delete = self.client.delete(
+            f'/api/v1/casos/{caso_eliminado.pk}/',
+        )
+
+        self.assertEqual(response_edit.status_code, 200)
+        self.assertEqual(response_delete.status_code, 200)
+        self.assertTrue(Notificacion.objects.filter(
+            usuario=self.user,
+            caso=caso_editado,
+            evento_tipo=Notificacion.TipoEvento.CASO_ACTUALIZADO,
+        ).exists())
+        self.assertTrue(Notificacion.objects.filter(
+            usuario=self.user,
+            evento_clave=f'caso_eliminado:{caso_eliminado.pk}:creador:{self.user.pk}',
+        ).exists())
+
     def test_user_admin_api_forbids_non_admin_and_lists_admin_users(self):
         response = self.client.get('/api/v1/admin/usuarios/')
         self.assertEqual(response.status_code, 401)
@@ -954,6 +1128,62 @@ class JwtApiTests(TransactionTestCase):
         self.assertEqual(response.data['total'], 1)
         self.assertEqual(response.data['resultados'][0]['rol'], 'Administrador')
 
+    def test_user_admin_search_matches_names_without_accents(self):
+        self.role.rol_nombre = 'Administrador'
+        self.role.save(update_fields=['rol_nombre'])
+        self.user.usuario_nombre = 'José'
+        self.user.save(update_fields=['usuario_nombre'])
+        token_response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena': 'ConviData-segura-2026',
+            },
+            format='json',
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+
+        response = self.client.get('/api/v1/admin/usuarios/?nombre=Jose')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['total'], 1)
+        self.assertEqual(response.data['resultados'][0]['nombre'], 'José')
+
+    def test_user_admin_api_filters_locked_accounts(self):
+        self.role.rol_nombre = 'Administrador'
+        self.role.save(update_fields=['rol_nombre'])
+        locked_user = Usuario.objects.create(
+            usuario_nombre='Bloqueado',
+            usuario_apaterno='Funcionario',
+            usuario_amaterno='',
+            usuario_correo='bloqueado@example.test',
+            usuario_contrasena=make_password('Clave-segura-2026'),
+            usuario_primer_ingreso=False,
+            usuario_bloqueado=True,
+            rol=self.role,
+        )
+        token_response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena': 'ConviData-segura-2026',
+            },
+            format='json',
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+
+        response = self.client.get('/api/v1/admin/usuarios/?estado=bloqueado')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [item['id'] for item in response.data['resultados']],
+            [locked_user.pk],
+        )
+
     def test_student_admin_api_creates_filters_and_updates_students(self):
         self.role.rol_nombre = 'Administrador'
         self.role.save(update_fields=['rol_nombre'])
@@ -988,6 +1218,11 @@ class JwtApiTests(TransactionTestCase):
         response = self.client.get('/api/v1/admin/estudiantes/?busqueda=Ana')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['total'], 1)
+        accented_search = self.client.get(
+            '/api/v1/admin/estudiantes/?busqueda=Perez'
+        )
+        self.assertEqual(accented_search.status_code, 200)
+        self.assertEqual(accented_search.data['total'], 1)
 
         response = self.client.patch(
             f'/api/v1/admin/estudiantes/{estudiante_id}/',
@@ -996,6 +1231,122 @@ class JwtApiTests(TransactionTestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data['estudiante']['activo'])
+
+        response = self.client.put(
+            f'/api/v1/admin/estudiantes/{estudiante_id}/',
+            {
+                'nombre': 'Ana María',
+                'apellido_paterno': 'Pérez',
+                'apellido_materno': 'López',
+                'correo': 'ana@example.test',
+                'curso_id': curso.pk,
+                'numero_lista': 4,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data['estudiante']['activo'])
+        self.assertEqual(response.data['estudiante']['nombre'], 'Ana María')
+
+    def test_student_admin_rejects_duplicate_zero_list_number(self):
+        self.role.rol_nombre = 'Administrador'
+        self.role.save(update_fields=['rol_nombre'])
+        curso = Curso.objects.create(curso_grado='3° Medio', curso_letra='A')
+        token_response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena': 'ConviData-segura-2026',
+            },
+            format='json',
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+        payload = {
+            'nombre': 'Ana',
+            'apellido_paterno': 'Pérez',
+            'apellido_materno': 'López',
+            'curso_id': curso.pk,
+            'numero_lista': 0,
+        }
+
+        first_response = self.client.post(
+            '/api/v1/admin/estudiantes/',
+            payload,
+            format='json',
+        )
+        second_response = self.client.post(
+            '/api/v1/admin/estudiantes/',
+            {
+                **payload,
+                'nombre': 'Bruno',
+                'apellido_paterno': 'González',
+            },
+            format='json',
+        )
+
+        self.assertEqual(first_response.status_code, 201)
+        self.assertEqual(second_response.status_code, 400)
+        self.assertIn('número de lista', second_response.data['detail'])
+
+    def test_student_import_detects_duplicate_zero_list_number_and_logs_it(self):
+        self.role.rol_nombre = 'Administrador'
+        self.role.save(update_fields=['rol_nombre'])
+        curso = Curso.objects.create(curso_grado='3° Medio', curso_letra='A')
+        Estudiante.objects.create(
+            estudiante_nombre='Ana',
+            estudiante_apaterno='Pérez',
+            estudiante_amaterno='López',
+            estudiante_numero_lista=0,
+            curso=curso,
+        )
+        token_response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena': 'ConviData-segura-2026',
+            },
+            format='json',
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.append([
+            'Nombres', 'Apellido paterno', 'Apellido materno',
+            'Grado', 'Paralelo', 'Número de lista',
+        ])
+        worksheet.append(['Bruno', 'González', 'Soto', '3° Medio', 'A', 0])
+        content = BytesIO()
+        workbook.save(content)
+
+        response = self.client.post(
+            '/api/v1/admin/estudiantes/',
+            {
+                'archivo_excel': SimpleUploadedFile(
+                    'alumnos.xlsx',
+                    content.getvalue(),
+                    content_type=(
+                        'application/vnd.openxmlformats-officedocument.'
+                        'spreadsheetml.sheet'
+                    ),
+                ),
+            },
+            format='multipart',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(any('número de lista duplicado' in error for error in response.data['errores']))
+        imported = Estudiante.objects.get(estudiante_nombre='Bruno')
+        self.assertIsNone(imported.estudiante_numero_lista)
+        import_record = HistorialImportacionEstudiantes.objects.get()
+        self.assertEqual(import_record.archivo, 'alumnos.xlsx')
+        self.assertEqual(import_record.alumnos_agregados, [
+            'Bruno González Soto (3° Medio A)',
+        ])
 
     def test_cases_endpoint_forbids_teacher_role(self):
         self.role.rol_nombre = 'Profesor Jefe'
@@ -1061,6 +1412,52 @@ class JwtApiTests(TransactionTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual([resultado['id'] for resultado in response.data['resultados']], [caso.pk])
+
+    def test_cases_endpoint_can_filter_cases_by_creator(self):
+        otro_usuario = Usuario.objects.create(
+            usuario_nombre='Otro',
+            usuario_apaterno='Inspector',
+            usuario_amaterno='',
+            usuario_correo='otro-inspector@example.test',
+            usuario_contrasena=make_password('Otra-clave-segura-2026'),
+            usuario_primer_ingreso=False,
+            rol=self.role,
+        )
+        lugar = Lugar.objects.create(lugar_nombre='Patio')
+        caso_del_usuario = Caso.objects.create(
+            caso_fecha=date(2026, 10, 26),
+            caso_descripcion='[Caso del funcionario] - Descripción.',
+            lugar=lugar,
+            usuario=otro_usuario,
+        )
+        Caso.objects.create(
+            caso_fecha=date(2026, 10, 27),
+            caso_descripcion='[Caso diferente] - Descripción.',
+            lugar=lugar,
+            usuario=self.user,
+        )
+        token_response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena': 'ConviData-segura-2026',
+            },
+            format='json',
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+
+        response = self.client.get(
+            '/api/v1/casos/',
+            {'usuario': str(otro_usuario.pk)},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [item['id'] for item in response.data['resultados']],
+            [caso_del_usuario.pk],
+        )
 
     def test_dashboard_endpoint_returns_dashboard_metrics_and_pagination(self):
         token_response = self.client.post(
@@ -1159,6 +1556,166 @@ class JwtApiTests(TransactionTestCase):
         )
 
         self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.data['code'], 'password_change_required')
+
+    def test_temporary_password_must_be_changed_before_login(self):
+        self.user.usuario_primer_ingreso = True
+        self.user.save(update_fields=['usuario_primer_ingreso'])
+
+        response = self.client.post(
+            '/api/auth/required-password-change/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena_actual': 'ConviData-segura-2026',
+                'contrasena_nueva': 'Nueva-clave-segura-2026',
+            },
+            format='json',
+        )
+
+        self.user.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(self.user.usuario_primer_ingreso)
+        login_response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena': 'Nueva-clave-segura-2026',
+            },
+            format='json',
+        )
+        self.assertEqual(login_response.status_code, 200)
+
+    def test_required_password_change_rejects_wrong_temporary_password(self):
+        self.user.usuario_primer_ingreso = True
+        self.user.save(update_fields=['usuario_primer_ingreso'])
+
+        response = self.client.post(
+            '/api/auth/required-password-change/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena_actual': 'incorrecta',
+                'contrasena_nueva': 'Nueva-clave-segura-2026',
+            },
+            format='json',
+        )
+
+        self.user.refresh_from_db()
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(self.user.usuario_primer_ingreso)
+
+    def test_login_distinguishes_unknown_user_and_wrong_password(self):
+        unknown_user = self.client.post(
+            '/api/auth/token/',
+            {'correo': 'inexistente@example.test', 'contrasena': 'clave'},
+            format='json',
+        )
+        wrong_password = self.client.post(
+            '/api/auth/token/',
+            {'correo': self.user.usuario_correo, 'contrasena': 'incorrecta'},
+            format='json',
+        )
+
+        self.assertEqual(unknown_user.status_code, 401)
+        self.assertEqual(unknown_user.data['detail'], 'Usuario no existente.')
+        self.assertEqual(wrong_password.status_code, 401)
+        self.assertEqual(wrong_password.data['detail'], 'Contraseña incorrecta.')
+
+    def test_user_history_is_scoped_to_authenticated_user(self):
+        other_user = Usuario.objects.create(
+            usuario_nombre='Otro',
+            usuario_apaterno='Funcionario',
+            usuario_amaterno='',
+            usuario_correo='otro@example.test',
+            usuario_contrasena=make_password('Otra-clave-segura-2026'),
+            usuario_primer_ingreso=False,
+            rol=self.role,
+        )
+        HistorialUsuario.objects.create(
+            usuario=self.user,
+            historial_accion='Edición',
+            historial_detalle='Actualizó su perfil.',
+        )
+        HistorialUsuario.objects.create(
+            usuario=other_user,
+            historial_accion='Creación',
+            historial_detalle='Dato de otro funcionario.',
+        )
+        token_response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena': 'ConviData-segura-2026',
+            },
+            format='json',
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+
+        response = self.client.get('/api/v1/admin/historial-usuarios/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['total'], 1)
+        self.assertEqual(response.data['resultados'][0]['detalle'], 'Actualizó su perfil.')
+        self.assertEqual(response.data['usuarios'], [])
+
+    def test_case_history_can_filter_one_student_and_order_by_severity(self):
+        curso = Curso.objects.create(curso_grado='3° Medio', curso_letra='A')
+        estudiante = Estudiante.objects.create(
+            estudiante_nombre='Ana',
+            estudiante_apaterno='Ejemplo',
+            estudiante_amaterno='',
+            estudiante_correo='ana@example.test',
+            estudiante_activo=True,
+            curso=curso,
+            estudiante_numero_lista=1,
+            estudiante_identificador='AE013MA',
+        )
+        lugar = Lugar.objects.create(lugar_nombre='Patio')
+        caso_grave = Caso.objects.create(
+            caso_fecha=date(2026, 5, 2),
+            caso_descripcion='[Caso grave] - Descripción grave.',
+            lugar=lugar,
+            usuario=self.user,
+        )
+        caso_leve = Caso.objects.create(
+            caso_fecha=date(2026, 5, 1),
+            caso_descripcion='[Caso leve] - Descripción leve.',
+            lugar=lugar,
+            usuario=self.user,
+        )
+        Involucran.objects.create(
+            estudiante=estudiante,
+            caso=caso_grave,
+            tipo_falta='Grave',
+        )
+        Involucran.objects.create(
+            estudiante=estudiante,
+            caso=caso_leve,
+            tipo_falta='Leve',
+        )
+        token_response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena': 'ConviData-segura-2026',
+            },
+            format='json',
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+
+        response = self.client.get(
+            '/api/v1/casos/',
+            {'estudiante': str(estudiante.pk)},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [item['id'] for item in response.data['resultados']],
+            [caso_leve.pk, caso_grave.pk],
+        )
 
     def test_token_authenticates_user_and_returns_identity_and_role(self):
         token_response = self.client.post(
@@ -1211,7 +1768,7 @@ class JwtApiTests(TransactionTestCase):
         self.assertEqual(self.client.get('/api/v1/me/').status_code, 200)
 
     def test_invalid_passwords_reach_the_existing_account_lock_threshold(self):
-        for _ in range(5):
+        for attempt in range(5):
             response = self.client.post(
                 '/api/auth/token/',
                 {
@@ -1220,7 +1777,8 @@ class JwtApiTests(TransactionTestCase):
                 },
                 format='json',
             )
-            self.assertEqual(response.status_code, 401)
+            self.assertEqual(response.status_code, 403 if attempt == 4 else 401)
+        self.assertEqual(response.data['detail'], 'Cuenta bloqueada.')
 
         self.user.refresh_from_db()
         self.assertTrue(self.user.usuario_bloqueado)
@@ -1233,6 +1791,7 @@ class JwtApiTests(TransactionTestCase):
             format='json',
         )
         self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.data['detail'], 'Cuenta bloqueada.')
 
     def test_refresh_and_access_are_rejected_after_account_is_deactivated(self):
         token_response = self.client.post(

@@ -3,8 +3,8 @@
     python manage.py verificar_controladores              # solo resuelve las rutas (no toca la base de datos)
     python manage.py verificar_controladores --peticiones # además envía un GET sin sesión a cada ruta
 
-Con --peticiones se espera: 200 en el login, 302 hacia el acceso en las pantallas protegidas, 401 en los
-endpoints JSON y 401/405 en la API. No modifica datos (son peticiones GET sin sesión iniciada).
+Con --peticiones se espera: 200 en las pantallas React, 302 en las vistas protegidas que siguen siendo
+tradicionales, 401 en los endpoints JSON y 401/405 en la API. No modifica datos (son peticiones GET sin sesión).
 """
 import re
 
@@ -63,6 +63,8 @@ class Command(BaseCommand):
                     else:
                         if capa == 'API':
                             ok = estado in (401, 403, 405)
+                        elif getattr(patron.callback, 'react_screen', False):
+                            ok = estado == 200
                         elif patron.name == 'login':
                             ok = estado == 200
                         elif patron.name in RUTAS_JSON:

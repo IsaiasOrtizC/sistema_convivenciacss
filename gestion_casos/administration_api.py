@@ -116,9 +116,9 @@ class UsuariosAdminAPIView(APIView):
             normalizado = _quitar_tildes(nombre)
             for termino in normalizado.split():
                 usuarios = usuarios.filter(
-                    Q(usuario_nombre__icontains=termino)
-                    | Q(usuario_apaterno__icontains=termino)
-                    | Q(usuario_amaterno__icontains=termino)
+                    Q(usuario_nombre__unaccent__icontains=termino)
+                    | Q(usuario_apaterno__unaccent__icontains=termino)
+                    | Q(usuario_amaterno__unaccent__icontains=termino)
                     | Q(usuario_correo__icontains=termino)
                 )
         if rol_id:
@@ -129,9 +129,14 @@ class UsuariosAdminAPIView(APIView):
                 )
             usuarios = usuarios.filter(rol_id=int(rol_id))
         if estado == 'activo':
-            usuarios = usuarios.filter(usuario_activo=True)
+            usuarios = usuarios.filter(
+                usuario_activo=True,
+                usuario_bloqueado=False,
+            )
         elif estado == 'inactivo':
             usuarios = usuarios.filter(usuario_activo=False)
+        elif estado == 'bloqueado':
+            usuarios = usuarios.filter(usuario_bloqueado=True)
         elif estado:
             return Response(
                 {'detail': 'El filtro de estado no es válido.'},
@@ -508,10 +513,10 @@ class EstudiantesAdminAPIView(APIView):
         if busqueda:
             for termino in _quitar_tildes(busqueda).split():
                 estudiantes = estudiantes.filter(
-                    Q(estudiante_nombre__icontains=termino)
-                    | Q(estudiante_apaterno__icontains=termino)
-                    | Q(estudiante_amaterno__icontains=termino)
-                    | Q(estudiante_identificador__icontains=termino)
+                    Q(estudiante_nombre__unaccent__icontains=termino)
+                    | Q(estudiante_apaterno__unaccent__icontains=termino)
+                    | Q(estudiante_amaterno__unaccent__icontains=termino)
+                    | Q(estudiante_identificador__unaccent__icontains=termino)
                 )
         if curso_id:
             if not curso_id.isdigit():
@@ -592,7 +597,7 @@ class EstudiantesAdminAPIView(APIView):
             numero_lista = int(numero_lista_raw) if numero_lista_raw not in (None, '') else None
             if numero_lista is not None and numero_lista < 0:
                 raise ValidationError('El número de lista no puede ser negativo.')
-            if numero_lista and Estudiante.objects.filter(
+            if numero_lista is not None and Estudiante.objects.filter(
                 curso=curso,
                 estudiante_numero_lista=numero_lista,
             ).exclude(pk=estudiante.pk if estudiante else None).exists():
@@ -605,7 +610,10 @@ class EstudiantesAdminAPIView(APIView):
             estudiante.estudiante_correo = correo or None
             estudiante.curso = curso
             estudiante.estudiante_numero_lista = numero_lista
-            estudiante.estudiante_activo = datos.get('activo', estudiante.estudiante_activo or True)
+            estudiante.estudiante_activo = datos.get(
+                'activo',
+                estudiante.estudiante_activo if estudiante.pk else True,
+            )
             if not isinstance(estudiante.estudiante_activo, bool):
                 raise ValidationError('El estado debe ser verdadero o falso.')
             estudiante.save()
@@ -675,7 +683,7 @@ class EstudiantesAdminAPIView(APIView):
                     raise ValueError(f'el curso {grado} {letra_valor} no existe')
                 raw_lista = fila[5]
                 lista = int(raw_lista) if raw_lista not in (None, '') and str(raw_lista).strip().isdigit() else None
-                if lista and Estudiante.objects.filter(
+                if lista is not None and Estudiante.objects.filter(
                     curso=curso,
                     estudiante_numero_lista=lista,
                 ).exists():
@@ -752,20 +760,18 @@ class HistorialUsuariosAPIView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def get(self, request):
-        if not _es_administrador(request):
-            return Response(
-                {'detail': 'Solo un Administrador puede consultar el historial.'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        es_administrador = _es_administrador(request)
         queryset = HistorialUsuario.objects.select_related('usuario').order_by(
             '-historial_fecha',
         )
+        if not es_administrador:
+            queryset = queryset.filter(usuario_id=request.user.pk)
         usuario_id = request.query_params.get('usuario', '').strip()
         accion = request.query_params.get('accion', '').strip()
         busqueda = request.query_params.get('busqueda', '').strip()
         desde = parse_date(request.query_params.get('fecha_desde', ''))
         hasta = parse_date(request.query_params.get('fecha_hasta', ''))
-        if usuario_id:
+        if usuario_id and es_administrador:
             if not usuario_id.isdigit():
                 return Response({'detail': 'Selecciona un usuario válido.'}, status=400)
             queryset = queryset.filter(usuario_id=int(usuario_id))
@@ -802,13 +808,13 @@ class HistorialUsuariosAPIView(APIView):
             'total_paginas': pagina.paginator.num_pages,
             'total': pagina.paginator.count,
             'acciones': list(
-                HistorialUsuario.objects.order_by('historial_accion')
+                queryset.order_by('historial_accion')
                 .values_list('historial_accion', flat=True).distinct()
             ),
             'usuarios': [
                 {'id': item.pk, 'nombre': f'{item.usuario_nombre} {item.usuario_apaterno}'}
-                for item in Usuario.objects.filter(
+                for item in (Usuario.objects.filter(
                     historial_acciones__isnull=False,
-                ).distinct().order_by('usuario_apaterno', 'usuario_nombre')
+                ).distinct().order_by('usuario_apaterno', 'usuario_nombre') if es_administrador else [])
             ],
         })

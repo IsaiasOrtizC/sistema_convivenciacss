@@ -17,6 +17,7 @@ from gestion_casos.controllers.report_controller import (
     descargar_caso_pdf_view,
     descargar_caso_xlsx_view,
 )
+from gestion_casos.services.estadistica_service import obtener_datos_estadisticas
 from gestion_casos.services.caso_service import filtrar_casos_del_curso
 from openpyxl import load_workbook
 
@@ -69,6 +70,40 @@ class DashboardRequirementsTests(SimpleTestCase):
 
 
 class RemainingFunctionalRequirementTests(SimpleTestCase):
+    @patch('gestion_casos.services.estadistica_service._calcular_ids_casos', return_value=[])
+    def test_statistics_compare_with_the_same_date_range_in_previous_year(
+        self, calcular_ids
+    ):
+        request = RequestFactory().get(
+            '/estadisticas/?fecha_desde=2026-03-01&fecha_hasta=2026-03-31'
+        )
+
+        obtener_datos_estadisticas(request)
+
+        self.assertEqual(calcular_ids.call_args_list[0].args[:2], (
+            '2026-03-01',
+            '2026-03-31',
+        ))
+        self.assertEqual(calcular_ids.call_args_list[1].args[:2], (
+            '2025-03-01',
+            '2025-03-31',
+        ))
+
+    @patch('gestion_casos.services.estadistica_service._calcular_ids_casos', return_value=[])
+    def test_statistics_compare_leap_day_with_february_28_previous_year(
+        self, calcular_ids
+    ):
+        request = RequestFactory().get(
+            '/estadisticas/?fecha_desde=2024-02-29&fecha_hasta=2024-03-31'
+        )
+
+        obtener_datos_estadisticas(request)
+
+        self.assertEqual(calcular_ids.call_args_list[1].args[:2], (
+            '2023-02-28',
+            '2023-03-31',
+        ))
+
     def test_case_edit_permission_obeys_role_and_48_hour_boundary(self):
         creado = timezone.now()
         caso = SimpleNamespace(caso_creado_en=creado)

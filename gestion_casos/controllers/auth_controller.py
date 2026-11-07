@@ -6,6 +6,7 @@ import string
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.messages import get_messages
+from django.utils.html import escape
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
@@ -13,59 +14,60 @@ from ..models import SesionActiva, Usuario
 from .email_controller import enviar_correo_html
 
 
+def solicitar_recuperacion_contrasena(correo_destino):
+    usuario = Usuario.objects.filter(usuario_correo__iexact=correo_destino.strip()).first()
+    if usuario is None or not usuario.usuario_activo:
+        return False
+
+    alfabeto = string.ascii_letters + string.digits
+    contrasena_temporal = ''.join(secrets.choice(alfabeto) for _ in range(10))
+    html_recuperacion_contrasena = f"""
+    <div style="font-family: 'Segoe UI', sans-serif; max-width: 550px; margin: 0 auto; border: 1px solid rgba(123,26,26,0.15); border-radius: 12px; overflow: hidden;">
+        <div style="background: linear-gradient(90deg, #5A1010 0%, #7B1A1A 100%); padding: 24px; text-align: center; border-bottom: 3px solid #D4A017;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 1.4rem;">ConviData</h1>
+            <p style="color: #F0C030; margin: 4px 0 0 0; font-size: 0.8rem; text-transform: uppercase;">Colegio San Sebastián de Melipilla</p>
+        </div>
+        <div style="padding: 32px; background-color: #ffffff; color: #1C0A0A;">
+            <h2 style="font-size: 1.2rem; margin-top: 0; color: #7B1A1A;">Restablecimiento de credenciales</h2>
+            <p style="font-size: 0.9rem;">Estimado(a) <strong>{escape(usuario.usuario_nombre)} {escape(usuario.usuario_apaterno)}</strong>,</p>
+            <p style="font-size: 0.9rem;">Hemos recibido una solicitud para recuperar tus credenciales de acceso. Se generó una <strong>contraseña temporal</strong> para que puedas volver a entrar.</p>
+            <div style="background-color: #F7F3ED; border-left: 4px solid #D4A017; padding: 14px; margin: 20px 0; border-radius: 4px;">
+                <p style="margin: 0; font-size: 0.85rem;">
+                    Tu contraseña temporal es: <strong style="font-size: 0.95rem; color: #7B1A1A; font-family: monospace;">{contrasena_temporal}</strong>
+                </p>
+            </div>
+            <p style="font-size: 0.82rem; color: #5C3A2A;">Por seguridad, el sistema te pedirá crear una contraseña nueva y personal apenas inicies sesión.</p>
+        </div>
+    </div>
+    """
+
+    enviar_correo_html(
+        destinatario=usuario.usuario_correo,
+        asunto="Recuperación de Contraseña - ConviData",
+        html=html_recuperacion_contrasena,
+    )
+
+    usuario.usuario_contrasena = make_password(contrasena_temporal)
+    usuario.usuario_primer_ingreso = True
+    usuario.usuario_bloqueado = False
+    usuario.usuario_intentos_fallidos = 0
+    usuario.save(update_fields=[
+        'usuario_contrasena',
+        'usuario_primer_ingreso',
+        'usuario_bloqueado',
+        'usuario_intentos_fallidos',
+    ])
+    return True
+
+
 def login_view(request):
     if request.method == 'POST':
         
-        #RECUPERACION CONTRASEÑA CON RESSEND
         if 'correo_recuperacion' in request.POST:
-            correo_destino = request.POST.get('correo_recuperacion').strip()
-            #login
+            correo_destino = request.POST.get('correo_recuperacion', '').strip()
             try:
-                usuario = Usuario.objects.get(usuario_correo=correo_destino)
-
-                # Se genera una contraseña TEMPORAL nueva y aleatoria (nunca se vuelve a
-                # mostrar/enviar la contraseña real, ya que ahora se guarda encriptada
-                # y ni el propio sistema puede leerla). Se obliga a cambiarla al entrar.
-                alfabeto = string.ascii_letters + string.digits
-                contrasena_temporal = ''.join(secrets.choice(alfabeto) for _ in range(10))
-
-                usuario.usuario_contrasena = make_password(contrasena_temporal)
-                usuario.usuario_primer_ingreso = True
-                usuario.usuario_bloqueado = False
-                usuario.usuario_intentos_fallidos = 0
-                usuario.save()
-
-                html_recuperacion_contraseña = f"""
-                <div style="font-family: 'Segoe UI', sans-serif; max-width: 550px; margin: 0 auto; border: 1px solid rgba(123,26,26,0.15); border-radius: 12px; overflow: hidden;">
-                    <div style="background: linear-gradient(90deg, #5A1010 0%, #7B1A1A 100%); padding: 24px; text-align: center; border-bottom: 3px solid #D4A017;">
-                        <h1 style="color: #ffffff; margin: 0; font-size: 1.4rem;">ConviData</h1>
-                        <p style="color: #F0C030; margin: 4px 0 0 0; font-size: 0.8rem; text-transform: uppercase;">Colegio San Sebastián de Melipilla</p>
-                    </div>
-                    <div style="padding: 32px; background-color: #ffffff; color: #1C0A0A;">
-                        <h2 style="font-size: 1.2rem; margin-top: 0; color: #7B1A1A;">Restablecimiento de Credenciales</h2>
-                        <p style="font-size: 0.9rem;">Estimado(a) <strong>{usuario.usuario_nombre} {usuario.usuario_apaterno}</strong>,</p>
-                        <p style="font-size: 0.9rem;">Hemos recibido una solicitud para recuperar tus credenciales de acceso. Se generó una <strong>contraseña temporal</strong> para que puedas volver a entrar.</p>
-                        <div style="background-color: #F7F3ED; border-left: 4px solid #D4A017; padding: 14px; margin: 20px 0; border-radius: 4px;">
-                            <p style="margin: 0; font-size: 0.85rem;">
-                                Tu contraseña temporal es: <strong style="font-size: 0.95rem; color: #7B1A1A; font-family: monospace;">{contrasena_temporal}</strong>
-                            </p>
-                        </div>
-                        <p style="font-size: 0.82rem; color: #5C3A2A;">Por seguridad, el sistema te pedirá crear una contraseña nueva y personal apenas inicies sesión.</p>
-                    </div>
-                </div>
-                """
-                
-                enviar_correo_html(
-                    destinatario=correo_destino,
-                    asunto="Recuperación de Contraseña - ConviData",
-                    html=html_recuperacion_contraseña,
-                )
-                
-                messages.success(request, f"Se ha enviado un correo con una contraseña temporal a {correo_destino}.")
-                return redirect('login')
-                
-            except Usuario.DoesNotExist:
-                messages.error(request, "Usuario no existente: el correo ingresado no está registrado.")
+                solicitar_recuperacion_contrasena(correo_destino)
+                messages.success(request, "Si el correo está registrado y activo, recibirás una contraseña temporal.")
                 return redirect('login')
             except Exception as e:
                 messages.error(request, f"Error en el servidor de correos: {str(e)}")

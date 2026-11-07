@@ -1,19 +1,18 @@
 import json
 import logging
 import os
-from datetime import timedelta
-
-from django.contrib.auth.hashers import check_password
+from django.contrib.auth.hashers import check_password, make_password
 from django.core.paginator import Paginator
 from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
 from django.db import connection, transaction
-from django.db.models import Q
+from django.db.models import Case as ConditionalCase, IntegerField, OuterRef, Q, Subquery, When
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.core.validators import validate_email
 from django.utils import timezone
 from django.utils.dateparse import parse_date
+from resend.exceptions import ResendError
 from rest_framework import status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -34,7 +33,9 @@ from .services.estadistica_service import obtener_datos_estadisticas
 from .controllers.auth_casos_controller import (
     caso_visible_para_curso,
     puede_editar_caso,
+    puede_eliminar_caso,
 )
+from .controllers.auth_controller import solicitar_recuperacion_contrasena
 from .reglamento import evaluar_reglas_para_caso
 from .models import (
     AccionSeguimiento,
@@ -87,10 +88,13 @@ class TokenObtainView(APIView):
             .first()
         )
         if usuario is None:
-            return self._invalid_credentials()
+            return Response(
+                {'detail': 'Usuario no existente.', 'code': 'user_not_found'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         if usuario.usuario_bloqueado:
             return Response(
-                {'detail': 'La cuenta está bloqueada.'},
+                {'detail': 'Cuenta bloqueada.', 'code': 'account_locked'},
                 status=status.HTTP_403_FORBIDDEN,
             )
         if not check_password(contrasena, usuario.usuario_contrasena):
@@ -100,7 +104,15 @@ class TokenObtainView(APIView):
                 usuario.usuario_bloqueado = True
                 update_fields.append('usuario_bloqueado')
             usuario.save(update_fields=update_fields)
-            return self._invalid_credentials()
+            if usuario.usuario_bloqueado:
+                return Response(
+                    {'detail': 'Cuenta bloqueada.', 'code': 'account_locked'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            return Response(
+                {'detail': 'Contraseña incorrecta.', 'code': 'invalid_password'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         if not usuario.usuario_activo:
             return Response(
                 {'detail': 'La cuenta está inactiva.'},
@@ -109,10 +121,8 @@ class TokenObtainView(APIView):
         if usuario.usuario_primer_ingreso:
             return Response(
                 {
-                    'detail': (
-                        'Cambia tu contraseña temporal desde el sitio web '
-                        'antes de solicitar un token.'
-                    )
+                    'detail': 'Debes cambiar tu contraseña antes de continuar.',
+                    'code': 'password_change_required',
                 },
                 status=status.HTTP_403_FORBIDDEN,
             )
@@ -131,12 +141,97 @@ class TokenObtainView(APIView):
             'token_type': 'Bearer',
         })
 
-    @staticmethod
-    def _invalid_credentials():
-        return Response(
-            {'detail': 'Correo o contraseña incorrectos.'},
-            status=status.HTTP_401_UNAUTHORIZED,
-        )
+class PasswordRecoveryAPIView(APIView):
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        if not isinstance(request.data, dict):
+            return Response(
+                {'detail': 'Envía un correo válido en formato JSON.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        correo = request.data.get('correo', '')
+        if not isinstance(correo, str) or not correo.strip():
+            return Response(
+                {'detail': 'El correo es obligatorio.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        correo = correo.strip()
+        try:
+            validate_email(correo)
+        except ValidationError:
+            return Response(
+                {'detail': 'Ingresa una dirección de correo válida.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            solicitar_recuperacion_contrasena(correo)
+        except ResendError:
+            logger.exception('Falló el envío del correo de recuperación.')
+            return Response(
+                {'detail': 'No se pudo enviar el correo. Inténtalo más tarde o contacta al administrador.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response({
+            'mensaje': 'Si el correo está registrado y activo, recibirás una contraseña temporal.'
+        })
+
+
+class RequiredPasswordChangeAPIView(APIView):
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        if not isinstance(request.data, dict):
+            return Response(
+                {'detail': 'Envía los datos en formato JSON.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        correo = request.data.get('correo', '')
+        contrasena_actual = request.data.get('contrasena_actual', '')
+        contrasena_nueva = request.data.get('contrasena_nueva', '')
+        if not all(isinstance(value, str) for value in (correo, contrasena_actual, contrasena_nueva)):
+            return Response(
+                {'detail': 'Los datos enviados no son válidos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if len(contrasena_nueva) < 12:
+            return Response(
+                {'detail': 'La nueva contraseña debe tener al menos 12 caracteres.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        usuario = Usuario.objects.filter(
+            usuario_correo=correo.strip(),
+            usuario_activo=True,
+            usuario_bloqueado=False,
+            usuario_primer_ingreso=True,
+        ).first()
+        if (
+            usuario is None
+            or not check_password(contrasena_actual, usuario.usuario_contrasena)
+            or contrasena_actual == contrasena_nueva
+        ):
+            return Response(
+                {'detail': 'No se pudo validar la contraseña temporal.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        usuario.usuario_contrasena = make_password(contrasena_nueva)
+        usuario.usuario_primer_ingreso = False
+        usuario.usuario_intentos_fallidos = 0
+        usuario.save(update_fields=[
+            'usuario_contrasena',
+            'usuario_primer_ingreso',
+            'usuario_intentos_fallidos',
+        ])
+        return Response({'mensaje': 'Contraseña actualizada. Inicia sesión con tu nueva contraseña.'})
 
 
 class TokenRefreshView(APIView):
@@ -340,6 +435,8 @@ class HistorialCasosAPIView(APIView):
         busqueda = request.query_params.get('q', '').strip()
         curso_id = request.query_params.get('curso', '').strip()
         gravedad = request.query_params.get('gravedad', '').strip()
+        estudiante_id = request.query_params.get('estudiante', '').strip()
+        usuario_id = request.query_params.get('usuario', '').strip()
         fecha_desde_texto = request.query_params.get('fecha_desde', '').strip()
         fecha_hasta_texto = request.query_params.get('fecha_hasta', '').strip()
         fecha_desde = parse_date(fecha_desde_texto) if fecha_desde_texto else None
@@ -378,6 +475,32 @@ class HistorialCasosAPIView(APIView):
                 {'detail': 'La clasificación de gravedad no es válida.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        estudiante_id_numero = None
+        if estudiante_id:
+            if not estudiante_id.isdecimal() or len(estudiante_id) > 10:
+                return Response(
+                    {'detail': 'El estudiante seleccionado no es válido.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            estudiante_id_numero = int(estudiante_id)
+            if not 1 <= estudiante_id_numero <= 2147483647:
+                return Response(
+                    {'detail': 'El estudiante seleccionado no es válido.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        usuario_id_numero = None
+        if usuario_id:
+            if not usuario_id.isdecimal() or len(usuario_id) > 10:
+                return Response(
+                    {'detail': 'El funcionario seleccionado no es válido.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            usuario_id_numero = int(usuario_id)
+            if not 1 <= usuario_id_numero <= 2147483647:
+                return Response(
+                    {'detail': 'El funcionario seleccionado no es válido.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         casos = Caso.objects.select_related('lugar').order_by(
             '-caso_fecha',
@@ -387,6 +510,25 @@ class HistorialCasosAPIView(APIView):
             casos = casos.filter(caso_descripcion__icontains=busqueda)
         if curso_id_numero:
             casos = casos.filter(estudiantes__curso_id=curso_id_numero).distinct()
+        if estudiante_id_numero:
+            casos = casos.filter(estudiantes__pk=estudiante_id_numero).distinct()
+            tipo_falta = Involucran.objects.filter(
+                caso_id=OuterRef('caso_id'),
+                estudiante_id=estudiante_id_numero,
+            ).values('tipo_falta')[:1]
+            casos = casos.annotate(
+                estudiante_tipo_falta=Subquery(tipo_falta),
+            ).annotate(
+                orden_tipo_falta=ConditionalCase(
+                    When(estudiante_tipo_falta='Leve', then=0),
+                    When(estudiante_tipo_falta='Grave', then=1),
+                    When(estudiante_tipo_falta='Gravísima', then=2),
+                    default=3,
+                    output_field=IntegerField(),
+                ),
+            ).order_by('orden_tipo_falta', '-caso_fecha', '-caso_id')
+        if usuario_id_numero:
+            casos = casos.filter(usuario_id=usuario_id_numero)
         if fecha_desde:
             casos = casos.filter(caso_fecha__gte=fecha_desde)
         if fecha_hasta:
@@ -399,6 +541,8 @@ class HistorialCasosAPIView(APIView):
 
         pagina = Paginator(casos, 10).get_page(request.query_params.get('pagina'))
         resultados = []
+        rol_usuario = request.user.rol.rol_nombre
+        ahora = timezone.now()
         for caso in pagina:
             descripcion = caso.caso_descripcion or ''
             titulo = 'Sin título'
@@ -417,9 +561,10 @@ class HistorialCasosAPIView(APIView):
                 'lugar': caso.lugar.lugar_nombre if caso.lugar else 'No especificado',
                 'fecha': caso.caso_fecha.isoformat() if caso.caso_fecha else None,
                 'usuario_id': caso.usuario_id,
+                'puede_editar': puede_editar_caso(rol_usuario, caso, ahora),
+                'puede_eliminar': puede_eliminar_caso(rol_usuario, caso, ahora),
             })
 
-        rol_usuario = request.user.rol.rol_nombre
         return Response({
             'resultados': resultados,
             'pagina': pagina.number,
@@ -514,15 +659,7 @@ class CasoDetalleAPIView(APIView):
                 evidencia_url = f'/media/{caso.evidencia.lstrip("/")}'
 
         rol = request.user.rol.rol_nombre
-        diferencia = (
-            timezone.now() - caso.caso_creado_en
-            if caso.caso_creado_en else None
-        )
-        puede_eliminar = rol == 'Administrador' or (
-            rol == 'Inspector'
-            and diferencia is not None
-            and timedelta(0) <= diferencia <= timedelta(hours=12)
-        )
+        puede_eliminar = puede_eliminar_caso(rol, caso)
         return Response({
             'id': caso.pk,
             'titulo': titulo,
@@ -718,15 +855,7 @@ class CasoDetalleAPIView(APIView):
     def delete(self, request, caso_id):
         caso = self._caso(caso_id)
         rol = request.user.rol.rol_nombre
-        diferencia = (
-            timezone.now() - caso.caso_creado_en
-            if caso.caso_creado_en else None
-        )
-        permitido = rol == 'Administrador' or (
-            rol == 'Inspector'
-            and diferencia is not None
-            and timedelta(0) <= diferencia <= timedelta(hours=12)
-        )
+        permitido = puede_eliminar_caso(rol, caso)
         if not permitido:
             return Response(
                 {'detail': 'No tienes permiso para eliminar este caso o venció el plazo de 12 horas.'},

@@ -33,34 +33,42 @@ El sistema contempla distintos roles de usuario, permitiendo controlar el acceso
 
 ### Frontend
 
-* Django Templates (interfaz actual)
-* Vite + React + TypeScript (nuevo frontend, en migración gradual)
+* React + TypeScript + Vite (interfaz de usuario)
+* Django Templates (compatibilidad; las pantallas del sitio sirven la aplicación React)
 * CSS3
 
 ### Frontend React
 
-El frontend nuevo vive en `frontend/` y se desarrolla por módulos, sin reemplazar
-de inmediato las pantallas Django existentes.
+La interfaz del sistema está implementada en `frontend/`. Django conserva la API,
+la autenticación de la API, las reglas de negocio y las descargas; las URLs de las
+pantallas principales sirven la aplicación React. Las plantillas antiguas se
+mantienen para compatibilidad con vistas y acciones existentes.
 
 ```powershell
-# Terminal 1: Django API
+# Desde la raíz del proyecto: instalar y compilar React para Django
+Set-Location frontend
+npm ci
+npm run build
+Set-Location ..
+
+# Terminal: iniciar Django (con PostgreSQL configurado en .env)
 .\venv\Scripts\Activate.ps1
 python manage.py runserver 127.0.0.1:8000
-
-# Terminal 2: React
-cd frontend
-npm ci
-Copy-Item .env.example .env.local
-npm run dev
 ```
 
 Configura primero las variables de PostgreSQL y `SECRET_KEY` en el archivo `.env`
 de la raíz del proyecto. El backend debe poder conectarse a una base PostgreSQL
 válida para que funcionen el inicio de sesión y las llamadas a la API; el modo
-de desarrollo de React no sustituye al backend ni a la base de datos. En modo
-desarrollo, Vite reenvía `/api` a Django en `http://127.0.0.1:8000`. Si Django
+de desarrollo de React no sustituye al backend ni a la base de datos. Para
+desarrollo con recarga rápida, también puedes ejecutar `npm run dev` dentro de
+`frontend/`; Vite reenvía `/api` a Django en `http://127.0.0.1:8000`. Si Django
 usa otra dirección, define `VITE_DJANGO_URL` en `frontend/.env.local`. No guardes
-credenciales ni tokens en archivos `.env` del frontend.
+credenciales ni tokens en archivos `.env` del frontend. En despliegues, compila
+React antes de `collectstatic` para que Django incluya los archivos de
+`static/react/`.
+La recuperación de contraseña envía una clave temporal mediante Resend. Configura
+`RESEND_API_KEY` y `RESEND_FROM_EMAIL` en el `.env`; el remitente debe estar
+verificado en tu cuenta de Resend (el valor por defecto es solo para pruebas).
 
 El frontend React incluye el inicio de sesión, el panel principal, el historial,
 el registro y revisión de casos, el centro de notificaciones con su panel de
@@ -79,13 +87,16 @@ El seguimiento permite actualizar acciones y cerrar casos dejando el historial
 correspondiente. El rol Profesor Jefe puede registrar casos para revisión, pero
 solo puede consultar casos de su curso y sus reportes, además de gestionar su
 perfil, configuración, documentos y notificaciones personales. Los módulos
-React conservan las rutas Django durante la migración.
+React usan las mismas rutas del sitio y estas cargan la aplicación React también
+al abrir un enlace directamente o recargarlo.
 El token de acceso se mantiene solo en memoria y se elimina al cerrar sesión o
 recargar la página.
 
 ### API autenticada con JWT
 
-El sitio web conserva su autenticación de sesión. Para clientes de API:
+La interfaz React se autentica con JWT; las acciones Django heredadas que aún
+aceptan formularios tradicionales conservan su autenticación de sesión. Para
+clientes de API:
 
 * `POST /api/auth/token/` recibe JSON `{"correo": "...", "contrasena": "..."}` y devuelve `access` y `refresh`.
 * `POST /api/auth/token/refresh/` recibe JSON `{"refresh": "..."}` y devuelve un nuevo `access`.

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import Administration from './Administration.tsx'
 import AccountSettings from './AccountSettings.tsx'
 import CaseDetail from './CaseDetail.tsx'
@@ -22,6 +22,73 @@ type UserProfile = {
   apellido_materno: string
   correo: string
   rol: string
+}
+
+type AppSection =
+  | 'dashboard'
+  | 'cases'
+  | 'case-detail'
+  | 'notifications'
+  | 'register'
+  | 'statistics'
+  | 'pending-cases'
+  | 'admin-users'
+  | 'admin-students'
+  | 'admin-history'
+  | 'profile'
+  | 'settings'
+  | 'documents'
+  | 'teacher-cases'
+  | 'search'
+
+function sectionForPath(path: string): { section: AppSection; caseId: number | null } {
+  const caseDetail = path.match(/^\/casos\/(?:editar\/)?(\d+)\/?$/)
+  if (caseDetail) {
+    return { section: 'case-detail', caseId: Number(caseDetail[1]) }
+  }
+  if (/^\/casos\/?$/.test(path)) return { section: 'cases', caseId: null }
+  if (/^\/casos\/nuevo\/?$/.test(path)) return { section: 'register', caseId: null }
+  if (/^\/casos\/pendientes\/?$/.test(path)) return { section: 'pending-cases', caseId: null }
+  if (/^\/notificaciones\/?$/.test(path) || /^\/seguimiento\/?$/.test(path)) {
+    return { section: 'notifications', caseId: null }
+  }
+  if (/^\/estadisticas\/?$/.test(path)) return { section: 'statistics', caseId: null }
+  if (/^\/administracion\/usuarios(?:\/|$)/.test(path)) {
+    return { section: 'admin-users', caseId: null }
+  }
+  if (/^\/administracion\/alumnos(?:\/|$)/.test(path) || /^\/alumnos\/\d+\/ficha\/?$/.test(path)) {
+    return { section: 'admin-students', caseId: null }
+  }
+  if (/^\/modulo-admin\/historial-usuarios\/?$/.test(path)) {
+    return { section: 'admin-history', caseId: null }
+  }
+  if (/^\/mis-datos\/perfil\/?$/.test(path)) return { section: 'profile', caseId: null }
+  if (/^\/mis-datos\/configuracion\/?$/.test(path)) return { section: 'settings', caseId: null }
+  if (/^\/documentos(?:\/|$)/.test(path)) return { section: 'documents', caseId: null }
+  if (/^\/mis-casos-curso\/?$/.test(path)) return { section: 'teacher-cases', caseId: null }
+  if (/^\/busqueda\/?$/.test(path)) return { section: 'search', caseId: null }
+  return { section: 'dashboard', caseId: null }
+}
+
+function pathForSection(section: AppSection, caseId: number | null) {
+  if (section === 'case-detail') return caseId ? `/casos/${caseId}/` : '/casos/'
+  const paths: Record<Exclude<AppSection, 'case-detail'>, string> = {
+    dashboard: '/dashboard/',
+    cases: '/casos/',
+    notifications: '/notificaciones/',
+    register: '/casos/nuevo/',
+    statistics: '/estadisticas/',
+    'pending-cases': '/casos/pendientes/',
+    'admin-users': '/administracion/usuarios/',
+    'admin-students': '/administracion/alumnos/',
+    'admin-history': '/modulo-admin/historial-usuarios/',
+    profile: '/mis-datos/perfil/',
+    settings: '/mis-datos/configuracion/',
+    documents: '/documentos/',
+    'teacher-cases': '/mis-casos-curso/',
+    search: '/busqueda/',
+  }
+  return paths[section]
 }
 
 type DashboardCase = {
@@ -62,6 +129,8 @@ type CaseHistoryFilters = {
   gravedad: string
   fecha_desde: string
   fecha_hasta: string
+  estudiante: string
+  usuario: string
 }
 
 type CaseHistoryData = {
@@ -72,6 +141,8 @@ type CaseHistoryData = {
     lugar: string
     fecha: string | null
     usuario_id: number | null
+    puede_editar: boolean
+    puede_eliminar: boolean
   }[]
   pagina: number
   total_paginas: number
@@ -88,9 +159,12 @@ const EMPTY_CASE_FILTERS: CaseHistoryFilters = {
   gravedad: '',
   fecha_desde: '',
   fecha_hasta: '',
+  estudiante: '',
+  usuario: '',
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+const BRAND_IMAGE = `${import.meta.env.BASE_URL}Insignia.png`
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -182,7 +256,9 @@ function isCaseHistoryData(value: unknown): value is CaseHistoryData {
         typeof caso.descripcion === 'string' &&
         typeof caso.lugar === 'string' &&
         (typeof caso.fecha === 'string' || caso.fecha === null) &&
-        (typeof caso.usuario_id === 'number' || caso.usuario_id === null),
+        (typeof caso.usuario_id === 'number' || caso.usuario_id === null) &&
+        typeof caso.puede_editar === 'boolean' &&
+        typeof caso.puede_eliminar === 'boolean',
     ) &&
     typeof value.pagina === 'number' &&
     typeof value.total_paginas === 'number' &&
@@ -256,7 +332,131 @@ function isUserProfile(value: unknown): value is UserProfile {
   )
 }
 
+type PrimaryNavigationProps = {
+  role: string
+  activeSection: AppSection
+  onNavigate: (section: AppSection | 'logout') => void
+}
+
+function PrimaryNavigation({ role, activeSection, onNavigate }: PrimaryNavigationProps) {
+  const isTeacher = role === 'Profesor Jefe'
+  const canReviewCases = ['Administrador', 'Inspector', 'PConvivencia'].includes(role)
+  const canViewStatistics = ['Administrador', 'Inspector', 'PConvivencia'].includes(role)
+  const canViewNotifications = ['Administrador', 'Inspector', 'PConvivencia', 'Profesor Jefe'].includes(role)
+  const isCaseSection = ['cases', 'case-detail', 'register', 'pending-cases', 'search'].includes(activeSection)
+  const isProfileSection = ['profile', 'settings', 'notifications', 'admin-history'].includes(activeSection)
+  const isAdminSection = ['admin-users', 'admin-students'].includes(activeSection)
+
+  function closeOpenMenus(nav: HTMLElement | null) {
+    nav?.querySelectorAll<HTMLDetailsElement>('details[open]').forEach((menu) => {
+      menu.removeAttribute('open')
+    })
+  }
+
+  function prepareMenu(currentMenu: HTMLElement | null) {
+    const summary = currentMenu?.querySelector('summary')
+    if (summary) {
+      const bounds = summary.getBoundingClientRect()
+      currentMenu?.style.setProperty(
+        '--submenu-left',
+        `${Math.max(8, Math.min(bounds.left, window.innerWidth - 272))}px`,
+      )
+      currentMenu?.style.setProperty('--submenu-top', `${bounds.bottom + 6}px`)
+    }
+    currentMenu?.closest('nav')?.querySelectorAll<HTMLDetailsElement>('details[open]').forEach((menu) => {
+      if (menu !== currentMenu) menu.removeAttribute('open')
+    })
+  }
+
+  function navigateButton(section: AppSection, label: string) {
+    return (
+      <button
+        aria-current={activeSection === section ? 'page' : undefined}
+        className="button--quiet"
+        key={section}
+        onClick={(event) => {
+          closeOpenMenus(event.currentTarget.closest('nav'))
+          onNavigate(section)
+        }}
+        type="button"
+      >
+        {label}
+      </button>
+    )
+  }
+
+  return (
+    <nav className="dashboard-navigation" aria-label="Navegación principal">
+      {navigateButton(isTeacher ? 'teacher-cases' : 'dashboard', isTeacher ? 'Mi curso' : 'Panel de Inicio')}
+      <details className="dashboard-navigation__menu">
+        <summary
+          className="button--quiet"
+          aria-current={isCaseSection ? 'page' : undefined}
+          onClick={(event) => {
+            prepareMenu(event.currentTarget.parentElement)
+          }}
+        >
+          Casos
+        </summary>
+        <div className="dashboard-navigation__submenu">
+          {!isTeacher && navigateButton('cases', 'Historial de casos')}
+          {navigateButton('register', 'Crear caso')}
+          {canReviewCases && navigateButton('pending-cases', 'Revisar casos pendientes')}
+          {!isTeacher && navigateButton('search', 'Búsqueda global')}
+        </div>
+      </details>
+      {canViewStatistics && navigateButton('statistics', 'Estadísticas')}
+      <details className="dashboard-navigation__menu">
+        <summary
+          className="button--quiet"
+          aria-current={isProfileSection ? 'page' : undefined}
+          onClick={(event) => {
+            prepareMenu(event.currentTarget.parentElement)
+          }}
+        >
+          Perfil
+        </summary>
+        <div className="dashboard-navigation__submenu">
+          {navigateButton('profile', 'Perfil')}
+          {navigateButton('settings', 'Configuración')}
+          {canViewNotifications && navigateButton('notifications', 'Notificaciones')}
+          {navigateButton('admin-history', 'Historial de usuario')}
+          <button
+            className="button--quiet"
+            onClick={(event) => {
+              closeOpenMenus(event.currentTarget.closest('nav'))
+              onNavigate('logout')
+            }}
+            type="button"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </details>
+      {role === 'Administrador' && (
+        <details className="dashboard-navigation__menu">
+          <summary
+            className="button--quiet"
+            aria-current={isAdminSection ? 'page' : undefined}
+            onClick={(event) => {
+              prepareMenu(event.currentTarget.parentElement)
+            }}
+          >
+            Administración
+          </summary>
+          <div className="dashboard-navigation__submenu">
+            {navigateButton('admin-users', 'Gestionar usuarios')}
+            {navigateButton('admin-students', 'Gestión de alumnos')}
+          </div>
+        </details>
+      )}
+      {navigateButton('documents', 'Documentos institucionales')}
+    </nav>
+  )
+}
+
 function App() {
+  const initialRoute = sectionForPath(window.location.pathname)
   const [correo, setCorreo] = useState('')
   const [contrasena, setContrasena] = useState('')
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -264,34 +464,61 @@ function App() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null)
   const [dashboardError, setDashboardError] = useState('')
   const [isDashboardLoading, setIsDashboardLoading] = useState(false)
-  const [activeSection, setActiveSection] = useState<
-    | 'dashboard'
-    | 'cases'
-    | 'case-detail'
-    | 'notifications'
-    | 'register'
-    | 'statistics'
-    | 'pending-cases'
-    | 'admin-users'
-    | 'admin-students'
-    | 'admin-history'
-    | 'profile'
-    | 'settings'
-    | 'documents'
-    | 'teacher-cases'
-    | 'search'
-  >('dashboard')
-  const [selectedCaseId, setSelectedCaseId] = useState<number | null>(null)
+  const [activeSection, setActiveSectionState] = useState<AppSection>(initialRoute.section)
+  const [selectedCaseId, setSelectedCaseId] = useState<number | null>(initialRoute.caseId)
+  const [startCaseEditing, setStartCaseEditing] = useState(false)
   const [caseHistory, setCaseHistory] = useState<CaseHistoryData | null>(null)
   const [caseFilters, setCaseFilters] = useState(EMPTY_CASE_FILTERS)
   const [caseHistoryError, setCaseHistoryError] = useState('')
+  const [caseHistoryMessage, setCaseHistoryMessage] = useState('')
+  const [deletingCaseId, setDeletingCaseId] = useState<number | null>(null)
   const [isCaseHistoryLoading, setIsCaseHistoryLoading] = useState(false)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRecovering, setIsRecovering] = useState(false)
+  const [isRecoverySubmitting, setIsRecoverySubmitting] = useState(false)
+  const [recoveryError, setRecoveryError] = useState('')
+  const [recoveryMessage, setRecoveryMessage] = useState('')
+  const [passwordChangeRequired, setPasswordChangeRequired] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [passwordChangeError, setPasswordChangeError] = useState('')
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [loginNotice, setLoginNotice] = useState('')
+
+  function setActiveSection(section: AppSection) {
+    setActiveSectionState(section)
+    const path = pathForSection(section, selectedCaseId)
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path)
+    }
+  }
+
+  function openCase(caseId: number, edit = false) {
+    setSelectedCaseId(caseId)
+    setStartCaseEditing(edit)
+    setActiveSectionState('case-detail')
+    const path = pathForSection('case-detail', caseId)
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path)
+    }
+  }
+
+  useEffect(() => {
+    function syncRoute() {
+      const route = sectionForPath(window.location.pathname)
+      setActiveSectionState(route.section)
+      setSelectedCaseId(route.caseId)
+      setStartCaseEditing(false)
+    }
+    window.addEventListener('popstate', syncRoute)
+    return () => window.removeEventListener('popstate', syncRoute)
+  }, [])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
+    setLoginNotice('')
     setIsSubmitting(true)
 
     try {
@@ -302,8 +529,16 @@ function App() {
       })
 
       if (!tokenResponse.ok) {
+        const body: unknown = await tokenResponse.json().catch(() => null)
+        if (isRecord(body) && body.code === 'password_change_required') {
+          setPasswordChangeRequired(true)
+          setPasswordChangeError('')
+          return
+        }
         throw new Error(
-          await getErrorMessage(tokenResponse, 'No se pudo iniciar sesión. Revisa tus credenciales.'),
+          isRecord(body) && typeof body.detail === 'string'
+            ? body.detail
+            : 'No se pudo iniciar sesión. Revisa tus credenciales.',
         )
       }
 
@@ -330,10 +565,28 @@ function App() {
       const dashboardBody = profileBody.rol === 'Profesor Jefe'
         ? null
         : await fetchDashboard(tokenBody.access)
+      const teacherSections: AppSection[] = [
+        'teacher-cases',
+        'case-detail',
+        'register',
+        'documents',
+        'profile',
+        'settings',
+        'notifications',
+      ]
+      const landingSection = profileBody.rol === 'Profesor Jefe'
+        ? teacherSections.includes(activeSection)
+          ? activeSection
+          : 'teacher-cases'
+        : activeSection
+      if (landingSection === 'cases') {
+        const history = await fetchCaseHistory(tokenBody.access, 1, EMPTY_CASE_FILTERS)
+        setCaseHistory(history)
+      }
       setAccessToken(tokenBody.access)
       setProfile(profileBody)
       setDashboard(dashboardBody)
-      setActiveSection(profileBody.rol === 'Profesor Jefe' ? 'teacher-cases' : 'dashboard')
+      setActiveSection(landingSection)
       setContrasena('')
     } catch (requestError) {
       setError(
@@ -348,6 +601,96 @@ function App() {
     }
   }
 
+  async function handleRequiredPasswordChange(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setPasswordChangeError('')
+    if (newPassword !== confirmNewPassword) {
+      setPasswordChangeError('Las contraseñas nuevas no coinciden.')
+      return
+    }
+
+    setIsChangingPassword(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/required-password-change/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          correo,
+          contrasena_actual: contrasena,
+          contrasena_nueva: newPassword,
+        }),
+      })
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response, 'No se pudo actualizar la contraseña.'))
+      }
+
+      const body: unknown = await response.json()
+      setLoginNotice(
+        isRecord(body) && typeof body.mensaje === 'string'
+          ? body.mensaje
+          : 'Contraseña actualizada. Inicia sesión con tu nueva contraseña.',
+      )
+      setContrasena('')
+      setNewPassword('')
+      setConfirmNewPassword('')
+      setPasswordChangeRequired(false)
+    } catch (requestError) {
+      setPasswordChangeError(
+        requestError instanceof TypeError
+          ? 'No fue posible conectar con el servidor.'
+          : requestError instanceof Error
+            ? requestError.message
+            : 'No se pudo actualizar la contraseña.',
+      )
+    } finally {
+      setIsChangingPassword(false)
+    }
+  }
+
+  async function handleRecoverySubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setRecoveryError('')
+    setRecoveryMessage('')
+    setIsRecoverySubmitting(true)
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/password-recovery/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ correo }),
+      })
+
+      if (!response.ok) {
+        throw new Error(
+          await getErrorMessage(response, 'No se pudo procesar la solicitud. Inténtalo más tarde.'),
+        )
+      }
+
+      const body: unknown = await response.json()
+      setRecoveryMessage(
+        isRecord(body) && typeof body.mensaje === 'string'
+          ? body.mensaje
+          : 'Si el correo está registrado y activo, recibirás una contraseña temporal.',
+      )
+    } catch (requestError) {
+      setRecoveryError(
+        requestError instanceof TypeError
+          ? 'No fue posible conectar con el servidor. Inténtalo más tarde.'
+          : requestError instanceof Error
+            ? requestError.message
+            : 'Ocurrió un error al solicitar la recuperación.',
+      )
+    } finally {
+      setIsRecoverySubmitting(false)
+    }
+  }
+
+  function showLogin() {
+    setIsRecovering(false)
+    setRecoveryError('')
+    setRecoveryMessage('')
+  }
+
   function handleLogout() {
     setAccessToken(null)
     setProfile(null)
@@ -356,10 +699,13 @@ function App() {
     setCaseHistory(null)
     setCaseHistoryError('')
     setCaseFilters(EMPTY_CASE_FILTERS)
-    setActiveSection('dashboard')
+    setActiveSectionState('dashboard')
+    window.history.pushState({}, '', '/')
     setCorreo('')
     setContrasena('')
     setError('')
+    setLoginNotice('')
+    setPasswordChangeRequired(false)
   }
 
   async function handleDashboardPage(page: number) {
@@ -405,74 +751,60 @@ function App() {
     }
   }
 
-  function canViewStatistics() {
-    return ['Administrador', 'Inspector', 'PConvivencia'].includes(profile?.rol ?? '')
+  async function deleteCaseFromHistory(caseId: number) {
+    if (!accessToken || !window.confirm(`¿Eliminar definitivamente el caso #${caseId}?`)) return
+
+    setDeletingCaseId(caseId)
+    setCaseHistoryError('')
+    setCaseHistoryMessage('')
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/casos/${caseId}/`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response, 'No se pudo eliminar el caso.'))
+      }
+
+      setCaseHistoryMessage(`El caso #${caseId} fue eliminado.`)
+      await handleCaseHistoryPage(caseHistory?.pagina ?? 1)
+    } catch (requestError) {
+      setCaseHistoryError(
+        requestError instanceof TypeError
+          ? 'No fue posible conectar con el servidor.'
+          : requestError instanceof Error
+            ? requestError.message
+            : 'No se pudo eliminar el caso.',
+      )
+    } finally {
+      setDeletingCaseId(null)
+    }
   }
 
-  function canViewNotifications() {
-    return ['Administrador', 'Inspector', 'PConvivencia', 'Profesor Jefe'].includes(profile?.rol ?? '')
+  function navigateFromMenu(section: AppSection | 'logout') {
+    if (section === 'logout') {
+      handleLogout()
+      return
+    }
+    setActiveSection(section)
+    if (section === 'cases') {
+      void handleCaseHistoryPage(1)
+    }
   }
 
-  function canReviewCases() {
-    return ['Administrador', 'Inspector', 'PConvivencia'].includes(profile?.rol ?? '')
+  function openStudentHistory(studentId: number) {
+    const filters = { ...EMPTY_CASE_FILTERS, estudiante: String(studentId) }
+    setCaseFilters(filters)
+    setActiveSection('cases')
+    void handleCaseHistoryPage(1, filters)
   }
 
-  const pendingCasesNavigation = canReviewCases() && (
-    <button
-      className="button--quiet"
-      aria-current={activeSection === 'pending-cases' ? 'page' : undefined}
-      onClick={() => setActiveSection('pending-cases')}
-      type="button"
-    >
-      Revisar casos
-    </button>
-  )
-
-  const administrationNavigation = profile?.rol === 'Administrador' && (
-    <>
-      <button className="button--quiet" onClick={() => setActiveSection('admin-users')} type="button">
-        Usuarios
-      </button>
-      <button className="button--quiet" onClick={() => setActiveSection('admin-students')} type="button">
-        Estudiantes
-      </button>
-      <button className="button--quiet" onClick={() => setActiveSection('admin-history')} type="button">
-        Auditoría
-      </button>
-    </>
-  )
-
-  const documentsNavigation = (
-    <button className="button--quiet" onClick={() => setActiveSection('documents')} type="button">
-      Documentos
-    </button>
-  )
-
-  const notificationsNavigation = canViewNotifications() && (
-    <button className="button--quiet" onClick={() => setActiveSection('notifications')} type="button">
-      Notificaciones
-    </button>
-  )
-
-  const searchNavigation = profile?.rol !== 'Profesor Jefe' && (
-    <button className="button--quiet" onClick={() => setActiveSection('search')} type="button">
-      Buscar
-    </button>
-  )
-
-  const accountNavigation = (
-    <>
-      <button className="button--quiet" onClick={() => setActiveSection('profile')} type="button">
-        Mi perfil
-      </button>
-      <button className="button--quiet" onClick={() => setActiveSection('settings')} type="button">
-        Configuración
-      </button>
-      {notificationsNavigation}
-      {searchNavigation}
-      {documentsNavigation}
-    </>
-  )
+  function openUserCases(userId: number) {
+    const filters = { ...EMPTY_CASE_FILTERS, usuario: String(userId) }
+    setCaseFilters(filters)
+    setActiveSection('cases')
+    void handleCaseHistoryPage(1, filters)
+  }
 
   if (profile && accessToken && profile.rol === 'Profesor Jefe') {
     const accountSection = activeSection === 'profile' || activeSection === 'settings'
@@ -480,55 +812,17 @@ function App() {
       <main className="dashboard-page">
         <header className="dashboard-topbar">
           <div className="dashboard-brand">
-            <img src="/Insignia.png" alt="" width="42" height="42" />
+            <img src={BRAND_IMAGE} alt="" width="42" height="42" />
             <div>
-              <span className="dashboard-brand__name">ConviData</span>
+              <span className="dashboard-brand__name">Convi<span>Data</span></span>
               <span className="dashboard-brand__caption">Registro de convivencia escolar</span>
             </div>
           </div>
-          <nav className="dashboard-navigation" aria-label="Navegación principal">
-            <button
-              className="button--quiet"
-              aria-current={activeSection === 'teacher-cases' ? 'page' : undefined}
-              onClick={() => setActiveSection('teacher-cases')}
-              type="button"
-            >
-              Mi curso
-            </button>
-            <button
-              className="button--quiet"
-              aria-current={activeSection === 'register' ? 'page' : undefined}
-              onClick={() => setActiveSection('register')}
-              type="button"
-            >
-              Registrar caso
-            </button>
-            <button
-              className="button--quiet"
-              aria-current={activeSection === 'documents' ? 'page' : undefined}
-              onClick={() => setActiveSection('documents')}
-              type="button"
-            >
-              Documentos
-            </button>
-            <button
-              className="button--quiet"
-              aria-current={activeSection === 'profile' ? 'page' : undefined}
-              onClick={() => setActiveSection('profile')}
-              type="button"
-            >
-              Mi perfil
-            </button>
-            <button
-              className="button--quiet"
-              aria-current={activeSection === 'settings' ? 'page' : undefined}
-              onClick={() => setActiveSection('settings')}
-              type="button"
-            >
-              Configuración
-            </button>
-            {notificationsNavigation}
-          </nav>
+          <PrimaryNavigation
+            activeSection={activeSection}
+            onNavigate={navigateFromMenu}
+            role={profile.rol}
+          />
           <div className="dashboard-account">
             <span>{profile.nombre} {profile.apellido_paterno}</span>
             <span className="dashboard-account__role">{profile.rol}</span>
@@ -541,8 +835,7 @@ function App() {
           <TeacherCases
             accessToken={accessToken}
             onOpenCase={(caseId) => {
-              setSelectedCaseId(caseId)
-              setActiveSection('case-detail')
+              openCase(caseId)
             }}
           />
         ) : activeSection === 'case-detail' && selectedCaseId !== null ? (
@@ -553,6 +846,8 @@ function App() {
           />
         ) : activeSection === 'documents' ? (
           <Documents accessToken={accessToken} />
+        ) : activeSection === 'admin-history' ? (
+          <Administration accessToken={accessToken} section="history" onOpenCase={openCase} />
         ) : activeSection === 'notifications' ? (
           <Notifications accessToken={accessToken} showFollowUp={false} />
         ) : accountSection ? (
@@ -573,25 +868,17 @@ function App() {
         <main className="dashboard-page">
           <header className="dashboard-topbar">
             <div className="dashboard-brand">
-              <img src="/Insignia.png" alt="" width="42" height="42" />
+              <img src={BRAND_IMAGE} alt="" width="42" height="42" />
               <div>
-                <span className="dashboard-brand__name">ConviData</span>
+                <span className="dashboard-brand__name">Convi<span>Data</span></span>
                 <span className="dashboard-brand__caption">Panel de convivencia escolar</span>
               </div>
             </div>
-            <nav className="dashboard-navigation" aria-label="Navegación principal">
-              <button className="button--quiet" onClick={() => setActiveSection('dashboard')} type="button">Panel</button>
-              <button className="button--quiet" onClick={() => setActiveSection('cases')} type="button">Casos</button>
-              {pendingCasesNavigation}
-              {administrationNavigation}
-              {accountNavigation}
-              {canViewNotifications() && (
-                <button className="button--quiet" onClick={() => setActiveSection('notifications')} type="button">Notificaciones</button>
-              )}
-              {canViewStatistics() && (
-                <button className="button--quiet" onClick={() => setActiveSection('statistics')} type="button">Estadísticas</button>
-              )}
-            </nav>
+            <PrimaryNavigation
+              activeSection={activeSection}
+              onNavigate={navigateFromMenu}
+              role={profile.rol}
+            />
             <div className="dashboard-account">
               <span>{profile.nombre} {profile.apellido_paterno}</span>
               <span className="dashboard-account__role">{profile.rol}</span>
@@ -601,9 +888,10 @@ function App() {
           <GlobalSearch
             accessToken={accessToken}
             onOpenCase={(caseId) => {
-              setSelectedCaseId(caseId)
-              setActiveSection('case-detail')
+              openCase(caseId)
             }}
+            onOpenStudent={openStudentHistory}
+            onOpenUser={openUserCases}
           />
         </main>
       )
@@ -614,25 +902,17 @@ function App() {
         <main className="dashboard-page">
           <header className="dashboard-topbar">
             <div className="dashboard-brand">
-              <img src="/Insignia.png" alt="" width="42" height="42" />
+              <img src={BRAND_IMAGE} alt="" width="42" height="42" />
               <div>
-                <span className="dashboard-brand__name">ConviData</span>
+                <span className="dashboard-brand__name">Convi<span>Data</span></span>
                 <span className="dashboard-brand__caption">Panel de convivencia escolar</span>
               </div>
             </div>
-            <nav className="dashboard-navigation" aria-label="Navegación principal">
-              <button className="button--quiet" onClick={() => setActiveSection('dashboard')} type="button">Panel</button>
-              <button className="button--quiet" onClick={() => setActiveSection('cases')} type="button">Casos</button>
-              {pendingCasesNavigation}
-              {administrationNavigation}
-              {accountNavigation}
-              {canViewNotifications() && (
-                <button className="button--quiet" onClick={() => setActiveSection('notifications')} type="button">Notificaciones</button>
-              )}
-              {canViewStatistics() && (
-                <button className="button--quiet" onClick={() => setActiveSection('statistics')} type="button">Estadísticas</button>
-              )}
-            </nav>
+            <PrimaryNavigation
+              activeSection={activeSection}
+              onNavigate={navigateFromMenu}
+              role={profile.rol}
+            />
             <div className="dashboard-account">
               <span>{profile.nombre} {profile.apellido_paterno}</span>
               <span className="dashboard-account__role">{profile.rol}</span>
@@ -649,20 +929,17 @@ function App() {
         <main className="dashboard-page">
           <header className="dashboard-topbar">
             <div className="dashboard-brand">
-              <img src="/Insignia.png" alt="" width="42" height="42" />
+              <img src={BRAND_IMAGE} alt="" width="42" height="42" />
               <div>
-                <span className="dashboard-brand__name">ConviData</span>
+                <span className="dashboard-brand__name">Convi<span>Data</span></span>
                 <span className="dashboard-brand__caption">Panel de convivencia escolar</span>
               </div>
             </div>
-            <nav className="dashboard-navigation" aria-label="Navegación principal">
-              <button className="button--quiet" onClick={() => setActiveSection('dashboard')} type="button">Panel</button>
-              {administrationNavigation}
-              <button className="button--quiet" onClick={() => setActiveSection('profile')} type="button">Mi perfil</button>
-              <button className="button--quiet" onClick={() => setActiveSection('settings')} type="button">Configuración</button>
-              {searchNavigation}
-              {documentsNavigation}
-            </nav>
+            <PrimaryNavigation
+              activeSection={activeSection}
+              onNavigate={navigateFromMenu}
+              role={profile.rol}
+            />
             <div className="dashboard-account">
               <span>{profile.nombre} {profile.apellido_paterno}</span>
               <span className="dashboard-account__role">{profile.rol}</span>
@@ -694,29 +971,17 @@ function App() {
         <main className="dashboard-page">
           <header className="dashboard-topbar">
             <div className="dashboard-brand">
-              <img src="/Insignia.png" alt="" width="42" height="42" />
+              <img src={BRAND_IMAGE} alt="" width="42" height="42" />
               <div>
-                <span className="dashboard-brand__name">ConviData</span>
+                <span className="dashboard-brand__name">Convi<span>Data</span></span>
                 <span className="dashboard-brand__caption">Panel de convivencia escolar</span>
               </div>
             </div>
-            <nav className="dashboard-navigation" aria-label="Navegación principal">
-              <button className="button--quiet" onClick={() => setActiveSection('dashboard')} type="button">Panel</button>
-              <button className="button--quiet" onClick={() => {
-                setActiveSection('cases')
-                void handleCaseHistoryPage(1)
-              }} type="button">Casos</button>
-              {pendingCasesNavigation}
-              {administrationNavigation}
-              {accountNavigation}
-              {canViewNotifications() && (
-                <button className="button--quiet" onClick={() => setActiveSection('notifications')} type="button">Notificaciones</button>
-              )}
-              <button className="button--quiet" onClick={() => setActiveSection('register')} type="button">Registrar</button>
-              {canViewStatistics() && (
-                <button className="button--quiet" onClick={() => setActiveSection('statistics')} type="button">Estadísticas</button>
-              )}
-            </nav>
+            <PrimaryNavigation
+              activeSection={activeSection}
+              onNavigate={navigateFromMenu}
+              role={profile.rol}
+            />
             <div className="dashboard-account">
               <span>{profile.nombre} {profile.apellido_paterno}</span>
               <span className="dashboard-account__role">{profile.rol}</span>
@@ -728,8 +993,7 @@ function App() {
             accessToken={accessToken}
             section={adminSection}
             onOpenCase={(caseId) => {
-              setSelectedCaseId(caseId)
-              setActiveSection('case-detail')
+              openCase(caseId)
             }}
           />
         </main>
@@ -741,39 +1005,17 @@ function App() {
         <main className="dashboard-page">
           <header className="dashboard-topbar">
             <div className="dashboard-brand">
-              <img src="/Insignia.png" alt="" width="42" height="42" />
+              <img src={BRAND_IMAGE} alt="" width="42" height="42" />
               <div>
-                <span className="dashboard-brand__name">ConviData</span>
+                <span className="dashboard-brand__name">Convi<span>Data</span></span>
                 <span className="dashboard-brand__caption">Panel de convivencia escolar</span>
               </div>
             </div>
-            <nav className="dashboard-navigation" aria-label="Navegación principal">
-              <button className="button--quiet" onClick={() => setActiveSection('dashboard')} type="button">
-                Panel
-              </button>
-              <button className="button--quiet" onClick={() => {
-                setActiveSection('cases')
-                void handleCaseHistoryPage(1)
-              }} type="button">
-                Casos
-              </button>
-              {pendingCasesNavigation}
-              {administrationNavigation}
-              {accountNavigation}
-              {canViewNotifications() && (
-                <button className="button--quiet" onClick={() => setActiveSection('notifications')} type="button">
-                  Notificaciones
-                </button>
-              )}
-              <button className="button--quiet" onClick={() => setActiveSection('register')} type="button">
-                Registrar
-              </button>
-              {canViewStatistics() && (
-                <button className="button--quiet" onClick={() => setActiveSection('statistics')} type="button">
-                  Estadísticas
-                </button>
-              )}
-            </nav>
+            <PrimaryNavigation
+              activeSection={activeSection}
+              onNavigate={navigateFromMenu}
+              role={profile.rol}
+            />
             <div className="dashboard-account">
               <span>{profile.nombre} {profile.apellido_paterno}</span>
               <span className="dashboard-account__role">{profile.rol}</span>
@@ -792,29 +1034,17 @@ function App() {
         <main className="dashboard-page">
           <header className="dashboard-topbar">
             <div className="dashboard-brand">
-              <img src="/Insignia.png" alt="" width="42" height="42" />
+              <img src={BRAND_IMAGE} alt="" width="42" height="42" />
               <div>
-                <span className="dashboard-brand__name">ConviData</span>
+                <span className="dashboard-brand__name">Convi<span>Data</span></span>
                 <span className="dashboard-brand__caption">Panel de convivencia escolar</span>
               </div>
             </div>
-            <nav className="dashboard-navigation" aria-label="Navegación principal">
-              <button className="button--quiet" onClick={() => setActiveSection('dashboard')} type="button">Panel</button>
-              <button className="button--quiet" onClick={() => {
-                setActiveSection('cases')
-                void handleCaseHistoryPage(1)
-              }} type="button">Casos</button>
-              {pendingCasesNavigation}
-              {administrationNavigation}
-              {accountNavigation}
-              {canViewNotifications() && (
-                <button className="button--quiet" onClick={() => setActiveSection('notifications')} type="button">Notificaciones</button>
-              )}
-              <button className="button--quiet" onClick={() => setActiveSection('register')} type="button">Registrar</button>
-              {canViewStatistics() && (
-                <button className="button--quiet" onClick={() => setActiveSection('statistics')} type="button">Estadísticas</button>
-              )}
-            </nav>
+            <PrimaryNavigation
+              activeSection={activeSection}
+              onNavigate={navigateFromMenu}
+              role={profile.rol}
+            />
             <div className="dashboard-account">
               <span>{profile.nombre} {profile.apellido_paterno}</span>
               <span className="dashboard-account__role">{profile.rol}</span>
@@ -825,6 +1055,7 @@ function App() {
             key={selectedCaseId}
             accessToken={accessToken}
             caseId={selectedCaseId}
+            initialEditing={startCaseEditing}
             onBack={() => {
               setActiveSection('cases')
               void handleCaseHistoryPage(1)
@@ -839,53 +1070,17 @@ function App() {
         <main className="dashboard-page">
           <header className="dashboard-topbar">
             <div className="dashboard-brand">
-              <img src="/Insignia.png" alt="" width="42" height="42" />
+              <img src={BRAND_IMAGE} alt="" width="42" height="42" />
               <div>
-                <span className="dashboard-brand__name">ConviData</span>
+                <span className="dashboard-brand__name">Convi<span>Data</span></span>
                 <span className="dashboard-brand__caption">Panel de convivencia escolar</span>
               </div>
             </div>
-            <nav className="dashboard-navigation" aria-label="Navegación principal">
-              <button
-                className="button--quiet"
-                onClick={() => setActiveSection('dashboard')}
-                type="button"
-              >
-                Panel
-              </button>
-              <button
-                className="button--quiet"
-                onClick={() => {
-                  setActiveSection('cases')
-                  void handleCaseHistoryPage(1)
-                }}
-                type="button"
-              >
-                Casos
-              </button>
-              {pendingCasesNavigation}
-              {administrationNavigation}
-              {accountNavigation}
-              {canViewNotifications() && (
-                <button
-                  className="button--quiet"
-                  onClick={() => setActiveSection('notifications')}
-                  type="button"
-                >
-                  Notificaciones
-                </button>
-              )}
-              <button
-                className="button--quiet"
-                onClick={() => setActiveSection('register')}
-                type="button"
-              >
-                Registrar
-              </button>
-              <button className="button--quiet" aria-current="page" type="button">
-                Estadísticas
-              </button>
-            </nav>
+            <PrimaryNavigation
+              activeSection={activeSection}
+              onNavigate={navigateFromMenu}
+              role={profile.rol}
+            />
             <div className="dashboard-account">
               <span>{profile.nombre} {profile.apellido_paterno}</span>
               <span className="dashboard-account__role">{profile.rol}</span>
@@ -904,46 +1099,17 @@ function App() {
         <main className="dashboard-page">
           <header className="dashboard-topbar">
             <div className="dashboard-brand">
-              <img src="/Insignia.png" alt="" width="42" height="42" />
+              <img src={BRAND_IMAGE} alt="" width="42" height="42" />
               <div>
-                <span className="dashboard-brand__name">ConviData</span>
+                <span className="dashboard-brand__name">Convi<span>Data</span></span>
                 <span className="dashboard-brand__caption">Panel de convivencia escolar</span>
               </div>
             </div>
-            <nav className="dashboard-navigation" aria-label="Navegación principal">
-              <button
-                className="button--quiet"
-                onClick={() => setActiveSection('dashboard')}
-                type="button"
-              >
-                Panel
-              </button>
-              <button
-                className="button--quiet"
-                onClick={() => {
-                  setActiveSection('cases')
-                  void handleCaseHistoryPage(1)
-                }}
-                type="button"
-              >
-                Casos
-              </button>
-              {pendingCasesNavigation}
-              {administrationNavigation}
-              {accountNavigation}
-              {canViewNotifications() && (
-                <button
-                  className="button--quiet"
-                  onClick={() => setActiveSection('notifications')}
-                  type="button"
-                >
-                  Notificaciones
-                </button>
-              )}
-              <button className="button--quiet" aria-current="page" type="button">
-                Registrar
-              </button>
-            </nav>
+            <PrimaryNavigation
+              activeSection={activeSection}
+              onNavigate={navigateFromMenu}
+              role={profile.rol}
+            />
             <div className="dashboard-account">
               <span>{profile.nombre} {profile.apellido_paterno}</span>
               <span className="dashboard-account__role">{profile.rol}</span>
@@ -962,50 +1128,17 @@ function App() {
         <main className="dashboard-page">
           <header className="dashboard-topbar">
             <div className="dashboard-brand">
-              <img src="/Insignia.png" alt="" width="42" height="42" />
+              <img src={BRAND_IMAGE} alt="" width="42" height="42" />
               <div>
-                <span className="dashboard-brand__name">ConviData</span>
+                <span className="dashboard-brand__name">Convi<span>Data</span></span>
                 <span className="dashboard-brand__caption">Panel de convivencia escolar</span>
               </div>
             </div>
-            <nav className="dashboard-navigation" aria-label="Navegación principal">
-              <button
-                className="button--quiet"
-                onClick={() => setActiveSection('dashboard')}
-                type="button"
-              >
-                Panel
-              </button>
-              <button
-                className="button--quiet"
-                onClick={() => setActiveSection('cases')}
-                type="button"
-              >
-                Casos
-              </button>
-              {pendingCasesNavigation}
-              {administrationNavigation}
-              {accountNavigation}
-              <button
-                className="button--quiet"
-                onClick={() => setActiveSection('register')}
-                type="button"
-              >
-                Registrar
-              </button>
-              <button className="button--quiet" aria-current="page" type="button">
-                Notificaciones
-              </button>
-              {canViewStatistics() && (
-                <button
-                  className="button--quiet"
-                  onClick={() => setActiveSection('statistics')}
-                  type="button"
-                >
-                  Estadísticas
-                </button>
-              )}
-            </nav>
+            <PrimaryNavigation
+              activeSection={activeSection}
+              onNavigate={navigateFromMenu}
+              role={profile.rol}
+            />
             <div className="dashboard-account">
               <span>{profile.nombre} {profile.apellido_paterno}</span>
               <span className="dashboard-account__role">{profile.rol}</span>
@@ -1024,52 +1157,17 @@ function App() {
         <main className="dashboard-page">
           <header className="dashboard-topbar">
             <div className="dashboard-brand">
-              <img src="/Insignia.png" alt="" width="42" height="42" />
+              <img src={BRAND_IMAGE} alt="" width="42" height="42" />
               <div>
-                <span className="dashboard-brand__name">ConviData</span>
+                <span className="dashboard-brand__name">Convi<span>Data</span></span>
                 <span className="dashboard-brand__caption">Panel de convivencia escolar</span>
               </div>
             </div>
-            <nav className="dashboard-navigation" aria-label="Navegación principal">
-              <button
-                className="button--quiet"
-                onClick={() => setActiveSection('dashboard')}
-                type="button"
-              >
-                Panel
-              </button>
-              <button className="button--quiet" aria-current="page" type="button">
-                Casos
-              </button>
-              {pendingCasesNavigation}
-              {administrationNavigation}
-              {accountNavigation}
-              {canViewNotifications() && (
-                <button
-                  className="button--quiet"
-                  onClick={() => setActiveSection('notifications')}
-                  type="button"
-                >
-                  Notificaciones
-                </button>
-              )}
-              <button
-                className="button--quiet"
-                onClick={() => setActiveSection('register')}
-                type="button"
-              >
-                Registrar
-              </button>
-              {canViewStatistics() && (
-                <button
-                  className="button--quiet"
-                  onClick={() => setActiveSection('statistics')}
-                  type="button"
-                >
-                  Estadísticas
-                </button>
-              )}
-            </nav>
+            <PrimaryNavigation
+              activeSection={activeSection}
+              onNavigate={navigateFromMenu}
+              role={profile.rol}
+            />
             <div className="dashboard-account">
               <span>{profile.nombre} {profile.apellido_paterno}</span>
               <span className="dashboard-account__role">{profile.rol}</span>
@@ -1173,12 +1271,19 @@ function App() {
 
             <section className="dashboard-panel" aria-labelledby="case-history-title">
               <div className="dashboard-panel__header">
-                <h2 id="case-history-title">Casos registrados</h2>
+                <h2 id="case-history-title">
+                  {caseFilters.estudiante
+                    ? 'Casos del estudiante seleccionado'
+                    : caseFilters.usuario
+                      ? 'Casos registrados por el funcionario seleccionado'
+                      : 'Casos registrados'}
+                </h2>
                 {caseHistory?.mostrar_contador && (
                   <span>{caseHistory.total.toLocaleString('es-CL')} registros</span>
                 )}
               </div>
               {caseHistoryError && <p className="form-error" role="alert">{caseHistoryError}</p>}
+              {caseHistoryMessage && <p className="case-detail__success" role="status">{caseHistoryMessage}</p>}
               {!caseHistory && isCaseHistoryLoading && (
                 <p className="dashboard-empty" role="status">Cargando casos…</p>
               )}
@@ -1186,7 +1291,7 @@ function App() {
                 <div className="dashboard-table-wrap">
                   <table className="dashboard-table">
                     <thead>
-                      <tr><th>ID</th><th>Título</th><th>Descripción</th><th>Fecha</th><th>Lugar</th></tr>
+                      <tr><th>ID</th><th>Título</th><th>Descripción</th><th>Fecha</th><th>Lugar</th><th>Acciones</th></tr>
                     </thead>
                     <tbody>
                       {caseHistory.resultados.map((caso) => (
@@ -1195,8 +1300,7 @@ function App() {
                             <button
                               className="case-detail__link"
                               onClick={() => {
-                                setSelectedCaseId(caso.id)
-                                setActiveSection('case-detail')
+                                openCase(caso.id)
                               }}
                               type="button"
                             >
@@ -1207,8 +1311,7 @@ function App() {
                             <button
                               className="case-detail__link"
                               onClick={() => {
-                                setSelectedCaseId(caso.id)
-                                setActiveSection('case-detail')
+                                openCase(caso.id)
                               }}
                               type="button"
                             >
@@ -1225,6 +1328,36 @@ function App() {
                               : 'Sin fecha'}
                           </td>
                           <td>{caso.lugar}</td>
+                          <td>
+                            <div className="case-history__actions">
+                              <button
+                                className="button--quiet"
+                                onClick={() => openCase(caso.id)}
+                                type="button"
+                              >
+                                Detalle
+                              </button>
+                              {caso.puede_editar && (
+                                <button
+                                  className="case-detail__save"
+                                  onClick={() => openCase(caso.id, true)}
+                                  type="button"
+                                >
+                                  Editar
+                                </button>
+                              )}
+                              {caso.puede_eliminar && (
+                                <button
+                                  className="case-detail__delete"
+                                  disabled={isCaseHistoryLoading || deletingCaseId !== null}
+                                  onClick={() => void deleteCaseFromHistory(caso.id)}
+                                  type="button"
+                                >
+                                  {deletingCaseId === caso.id ? 'Eliminando…' : 'Eliminar'}
+                                </button>
+                              )}
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1278,53 +1411,17 @@ function App() {
       <main className="dashboard-page">
         <header className="dashboard-topbar">
           <div className="dashboard-brand">
-            <img src="/Insignia.png" alt="" width="42" height="42" />
+            <img src={BRAND_IMAGE} alt="" width="42" height="42" />
             <div>
-              <span className="dashboard-brand__name">ConviData</span>
+              <span className="dashboard-brand__name">Convi<span>Data</span></span>
               <span className="dashboard-brand__caption">Panel de convivencia escolar</span>
             </div>
           </div>
-          <nav className="dashboard-navigation" aria-label="Navegación principal">
-            <button className="button--quiet" aria-current="page" type="button">
-              Panel
-            </button>
-            <button
-              className="button--quiet"
-              onClick={() => {
-                setActiveSection('cases')
-                void handleCaseHistoryPage(1)
-              }}
-              type="button"
-            >
-              Casos
-            </button>
-            {pendingCasesNavigation}
-            {administrationNavigation}
-            {accountNavigation}
-            <button
-              className="button--quiet"
-              onClick={() => setActiveSection('register')}
-              type="button"
-            >
-              Registrar
-            </button>
-            {canViewStatistics() && (
-              <button
-                className="button--quiet"
-                onClick={() => setActiveSection('statistics')}
-                type="button"
-              >
-                Estadísticas
-              </button>
-            )}
-            <button
-              className="button--quiet"
-              onClick={() => setActiveSection('notifications')}
-              type="button"
-            >
-              Notificaciones
-            </button>
-          </nav>
+          <PrimaryNavigation
+            activeSection={activeSection}
+            onNavigate={navigateFromMenu}
+            role={profile.rol}
+          />
           <div className="dashboard-account">
             <span>{profile.nombre} {profile.apellido_paterno}</span>
             <span className="dashboard-account__role">{profile.rol}</span>
@@ -1334,15 +1431,31 @@ function App() {
           </div>
         </header>
 
-        <div className="dashboard-content">
-          <section className="dashboard-welcome">
-            <div>
+        <div className="dashboard-content dashboard-home">
+          <section className="dashboard-welcome dashboard-home__welcome">
+            <div className="dashboard-home__intro">
               <p className="dashboard-eyebrow">ConviData</p>
               <h1>Panel de Convivencia Escolar</h1>
               <p>
                 Bienvenido(a), <strong>{profile.nombre} {profile.apellido_paterno}</strong>
                 {' '}· Bitácora oficial digitalizada
               </p>
+            </div>
+            <div className="dashboard-home__actions" aria-label="Accesos rápidos">
+              <button
+                className="button--quiet dashboard-home__action"
+                onClick={() => navigateFromMenu('cases')}
+                type="button"
+              >
+                Ver historial
+              </button>
+              <button
+                className="button--quiet dashboard-home__action dashboard-home__action--primary"
+                onClick={() => navigateFromMenu('register')}
+                type="button"
+              >
+                Registrar caso
+              </button>
             </div>
           </section>
 
@@ -1417,7 +1530,15 @@ function App() {
                     {dashboard.casos.resultados.map((incident) => (
                       <tr key={incident.id}>
                         <td><span className="case-id">#{incident.id}</span></td>
-                        <td>{incident.titulo}</td>
+                        <td>
+                          <button
+                            className="dashboard-home__case-link"
+                            onClick={() => openCase(incident.id)}
+                            type="button"
+                          >
+                            {incident.titulo}
+                          </button>
+                        </td>
                         <td>
                           {incident.fecha
                             ? new Intl.DateTimeFormat('es-CL', {
@@ -1471,7 +1592,7 @@ function App() {
         <div className="brand-content">
           <div className="logo-wrap">
             <img
-              src="/Insignia.png"
+              src={BRAND_IMAGE}
               alt="Insignia Colegio San Sebastián"
               width="164"
               height="164"
@@ -1494,14 +1615,18 @@ function App() {
       <section className="panel-form" aria-labelledby="login-title">
         <div className="form-container">
           <div className="form-header">
-            <p className="form-eyebrow">Acceso al sistema</p>
-            <h2 className="form-title" id="login-title">Bienvenido/a</h2>
+            <p className="form-eyebrow">{isRecovering ? 'Seguridad de cuenta' : 'Acceso al sistema'}</p>
+            <h2 className="form-title" id="login-title">
+              {isRecovering ? 'Restablecer clave' : 'Bienvenido/a'}
+            </h2>
             <p className="form-sub">
-              Ingresa con tu correo institucional para continuar.
+              {isRecovering
+                ? 'Ingresa tu correo institucional registrado para solicitar una contraseña temporal.'
+                : 'Ingresa con tu correo institucional para continuar.'}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={isRecovering ? handleRecoverySubmit : handleSubmit}>
             <div className="field">
               <label htmlFor="correo">Correo institucional</label>
               <div className="input-wrap">
@@ -1521,35 +1646,63 @@ function App() {
               </div>
             </div>
 
-            <div className="field">
-              <label htmlFor="contrasena">Contraseña</label>
-              <div className="input-wrap">
-                <svg className="input-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="4" y="10" width="16" height="11" rx="2" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 10V7a4 4 0 018 0v3" />
-                </svg>
-                <input
-                  autoComplete="current-password"
-                  id="contrasena"
-                  name="contrasena"
-                  onChange={(event) => setContrasena(event.target.value)}
-                  placeholder="••••••••"
-                  required
-                  type="password"
-                  value={contrasena}
-                />
+            {!isRecovering && (
+              <div className="field">
+                <label htmlFor="contrasena">Contraseña</label>
+                <div className="input-wrap">
+                  <svg className="input-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="4" y="10" width="16" height="11" rx="2" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 10V7a4 4 0 018 0v3" />
+                  </svg>
+                  <input
+                    autoComplete="current-password"
+                    id="contrasena"
+                    name="contrasena"
+                    onChange={(event) => setContrasena(event.target.value)}
+                    placeholder="••••••••"
+                    required
+                    type="password"
+                    value={contrasena}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
-            {error && <p className="form-error" role="alert">{error}</p>}
+            {!isRecovering && loginNotice && <p className="recovery-success" role="status">{loginNotice}</p>}
+            {!isRecovering && error && <p className="form-error" role="alert">{error}</p>}
+            {isRecovering && recoveryError && <p className="form-error" role="alert">{recoveryError}</p>}
+            {isRecovering && recoveryMessage && <p className="recovery-success" role="status">{recoveryMessage}</p>}
 
-            <button className="btn-primary" disabled={isSubmitting} type="submit">
-              {isSubmitting ? 'Verificando…' : 'Ingresar'}
+            <button
+              className="btn-primary"
+              disabled={isRecovering ? isRecoverySubmitting : isSubmitting}
+              type="submit"
+            >
+              {isRecovering
+                ? isRecoverySubmitting ? 'Enviando…' : 'Enviar solicitud'
+                : isSubmitting ? 'Verificando…' : 'Ingresar'}
             </button>
           </form>
 
           <div className="link-area">
-            <span className="link-switch">¿Olvidó su contraseña?</span>
+            {isRecovering ? (
+              <button className="link-switch" onClick={showLogin} type="button">
+                Volver al inicio de sesión
+              </button>
+            ) : (
+              <button
+                className="link-switch"
+                onClick={() => {
+                  setIsRecovering(true)
+                  setRecoveryError('')
+                  setRecoveryMessage('')
+                  setError('')
+                }}
+                type="button"
+              >
+                ¿Olvidó su contraseña?
+              </button>
+            )}
           </div>
 
           <div className="security-note">
@@ -1557,12 +1710,56 @@ function App() {
               <rect x="4" y="10" width="16" height="11" rx="2" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 10V7a4 4 0 018 0v3" />
             </svg>
-            Acceso protegido para personal autorizado
+            {isRecovering
+              ? 'Recibirás instrucciones en tu correo institucional'
+              : 'Acceso protegido para personal autorizado'}
           </div>
         </div>
 
         <p className="form-footer">© 2026 ConviData · Colegio San Sebastián</p>
       </section>
+      {passwordChangeRequired && (
+        <div className="password-change-overlay">
+          <section
+            aria-labelledby="required-password-title"
+            aria-modal="true"
+            className="password-change-dialog"
+            role="dialog"
+          >
+            <p className="form-eyebrow">Seguridad de cuenta</p>
+            <h2 id="required-password-title">Cambio obligatorio de contraseña</h2>
+            <p>Para continuar, crea una contraseña nueva de al menos 12 caracteres.</p>
+            <form onSubmit={(event) => void handleRequiredPasswordChange(event)}>
+              <label>
+                Nueva contraseña
+                <input
+                  autoComplete="new-password"
+                  minLength={12}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  required
+                  type="password"
+                  value={newPassword}
+                />
+              </label>
+              <label>
+                Confirmar nueva contraseña
+                <input
+                  autoComplete="new-password"
+                  minLength={12}
+                  onChange={(event) => setConfirmNewPassword(event.target.value)}
+                  required
+                  type="password"
+                  value={confirmNewPassword}
+                />
+              </label>
+              {passwordChangeError && <p className="form-error" role="alert">{passwordChangeError}</p>}
+              <button className="btn-primary" disabled={isChangingPassword} type="submit">
+                {isChangingPassword ? 'Actualizando…' : 'Cambiar contraseña'}
+              </button>
+            </form>
+          </section>
+        </div>
+      )}
     </main>
   )
 }

@@ -125,25 +125,23 @@ class PeticionesHttpTests(TestCase):
         self.assertEqual(lineas, [])
 
     @override_settings(TRAZA_NIVEL=1)
-    def test_una_pagina_muestra_http_controlador_vista_y_respuesta(self):
+    def test_inicio_entrega_la_interfaz_react_y_muestra_el_recorrido_http(self):
         respuesta, lineas = capturar(self.client.get, '/')
         self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, '<div id="root"></div>')
         en_orden(self, lineas, [
             '[HTTP] GET / usuario=anonimo',
-            '[CONTROLADOR] LoginController: inicio',
-            '[VISTA] V_Login (login.html): renderizando',
-            '[CONTROLADOR] LoginController: completado',
             '[HTTP] GET / status=200',
         ])
 
     @override_settings(TRAZA_NIVEL=1)
-    def test_una_redireccion_muestra_su_destino(self):
+    def test_dashboard_entrega_el_shell_react_sin_sesion(self):
         respuesta, lineas = capturar(self.client.get, '/dashboard/')
-        self.assertEqual(respuesta.status_code, 302)
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, '<div id="root"></div>')
         en_orden(self, lineas, [
             '[HTTP] GET /dashboard/ usuario=anonimo',
-            '[CONTROLADOR] DashboardController: inicio',
-            '[HTTP] GET /dashboard/ status=302 -> /',
+            '[HTTP] GET /dashboard/ status=200',
         ])
 
     @override_settings(TRAZA_NIVEL=1)

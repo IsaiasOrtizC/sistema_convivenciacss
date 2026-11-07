@@ -33,6 +33,15 @@ def puede_editar_caso(rol, caso, momento=None):
     return timedelta(0) <= diferencia <= timedelta(hours=48)
 
 
+def puede_eliminar_caso(rol, caso, momento=None):
+    if rol == 'Administrador':
+        return True
+    if rol != 'Inspector' or not caso.caso_creado_en:
+        return False
+    diferencia = (momento or timezone.now()) - caso.caso_creado_en
+    return timedelta(0) <= diferencia <= timedelta(hours=12)
+
+
 @trazar('CONTROLADOR', 'AuthCasosController', 'validando el curso del Profesor Jefe', nivel_min=2)
 def validar_profesor_jefe(request):
     """Valida sesión + rol + curso asignado. Devuelve el objeto Curso o None si algo falla."""

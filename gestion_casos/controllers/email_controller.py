@@ -15,7 +15,11 @@ logger = logging.getLogger(__name__)
 # Configuración global del cliente de Resend (servicio externo de correo)
 resend.api_key = getattr(settings, 'RESEND_API_KEY', '')
 
-REMITENTE_POR_DEFECTO = "ConviData <onboarding@resend.dev>"
+REMITENTE_POR_DEFECTO = getattr(
+    settings,
+    'RESEND_FROM_EMAIL',
+    "ConviData <onboarding@resend.dev>",
+)
 
 
 @trazar('CONTROLADOR', 'EmailController', 'enviando correo mediante Resend')

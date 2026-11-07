@@ -8,6 +8,7 @@ db.sqlite3
 *.backup
 desktop.ini
 staticfiles/
+static/react/
 .vscode/
 .idea/
 frontend/node_modules/

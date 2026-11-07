@@ -162,6 +162,9 @@ export default function Administration({
   const [selected, setSelected] = useState<number[]>([])
   const [query, setQuery] = useState('')
   const [stateFilter, setStateFilter] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
+  const [accessDateFrom, setAccessDateFrom] = useState('')
+  const [accessDateTo, setAccessDateTo] = useState('')
   const [studentCourseFilter, setStudentCourseFilter] = useState('')
   const [studentNumberFilter, setStudentNumberFilter] = useState('')
   const [page, setPage] = useState(1)
@@ -203,8 +206,11 @@ export default function Administration({
     nextPage: number,
     nextQuery: string,
     nextStateFilter: string,
-    nextCourseFilter = studentCourseFilter,
-    nextNumberFilter = studentNumberFilter,
+    nextCourseFilter: string,
+    nextNumberFilter: string,
+    nextRoleFilter: string,
+    nextAccessDateFrom: string,
+    nextAccessDateTo: string,
   ) => {
     const params = new URLSearchParams({ pagina: String(nextPage) })
     if (nextQuery.trim()) {
@@ -215,6 +221,11 @@ export default function Administration({
     }
     if (nextStateFilter) {
       params.set(section === 'history' ? 'accion' : 'estado', nextStateFilter)
+    }
+    if (section === 'users') {
+      if (nextRoleFilter) params.set('rol', nextRoleFilter)
+      if (nextAccessDateFrom) params.set('fecha_desde', nextAccessDateFrom)
+      if (nextAccessDateTo) params.set('fecha_hasta', nextAccessDateTo)
     }
     if (section === 'students') {
       if (nextCourseFilter) params.set('curso', nextCourseFilter)
@@ -274,11 +285,36 @@ export default function Administration({
     } finally {
       setLoading(false)
     }
-  }, [accessToken, section, studentCourseFilter, studentNumberFilter])
+  }, [
+    accessToken,
+    section,
+  ])
+
+  function loadCurrentData(
+    nextPage = page,
+    nextQuery = query,
+    nextStateFilter = stateFilter,
+    nextCourseFilter = studentCourseFilter,
+    nextNumberFilter = studentNumberFilter,
+    nextRoleFilter = roleFilter,
+    nextAccessDateFrom = accessDateFrom,
+    nextAccessDateTo = accessDateTo,
+  ) {
+    return loadData(
+      nextPage,
+      nextQuery,
+      nextStateFilter,
+      nextCourseFilter,
+      nextNumberFilter,
+      nextRoleFilter,
+      nextAccessDateFrom,
+      nextAccessDateTo,
+    )
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      void loadData(1, '', '')
+      void loadData(1, '', '', '', '', '', '', '')
     }, 0)
     return () => window.clearTimeout(timer)
   }, [loadData])
@@ -341,7 +377,7 @@ export default function Administration({
       setMessage(isRecord(result) && typeof result.mensaje === 'string'
         ? result.mensaje
         : 'Los datos del usuario se guardaron.')
-      await loadData(1, query, stateFilter)
+      await loadCurrentData(1, query, stateFilter)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo guardar el usuario.')
     } finally {
@@ -364,7 +400,7 @@ export default function Administration({
         })
       }
       setMessage('La cuenta se actualizó correctamente.')
-      await loadData(page, query, stateFilter)
+      await loadCurrentData(page, query, stateFilter)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo actualizar la cuenta.')
     } finally {
@@ -384,7 +420,7 @@ export default function Administration({
       })
       setSelected([])
       setMessage(isRecord(result) && typeof result.mensaje === 'string' ? result.mensaje : 'Acción masiva completada.')
-      await loadData(page, query, stateFilter)
+      await loadCurrentData(page, query, stateFilter)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo completar la acción masiva.')
     } finally {
@@ -430,7 +466,7 @@ export default function Administration({
       )
       startCreateStudent()
       setMessage(editingStudent ? 'Estudiante actualizado.' : 'Estudiante registrado.')
-      await loadData(1, query, stateFilter)
+      await loadCurrentData(1, query, stateFilter)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo guardar al estudiante.')
     } finally {
@@ -446,7 +482,7 @@ export default function Administration({
         activo: !student.activo,
       })
       setMessage(`Estudiante ${student.activo ? 'desactivado' : 'activado'}.`)
-      await loadData(page, query, stateFilter)
+      await loadCurrentData(page, query, stateFilter)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo cambiar el estado.')
     } finally {
@@ -461,7 +497,7 @@ export default function Administration({
     try {
       await sendRequest(`/api/v1/admin/estudiantes/${student.id}/`, 'DELETE')
       setMessage('Estudiante quitado y desactivado; sus antecedentes se conservaron.')
-      await loadData(page, query, stateFilter)
+      await loadCurrentData(page, query, stateFilter)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo quitar al estudiante.')
     } finally {
@@ -523,7 +559,7 @@ export default function Administration({
       const result = await sendRequest('/api/v1/admin/estudiantes/importar/', 'POST', formData)
       setUpload(null)
       setMessage(isRecord(result) && typeof result.mensaje === 'string' ? result.mensaje : 'Importación procesada.')
-      await loadData(1, query, stateFilter)
+      await loadCurrentData(1, query, stateFilter)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo importar el archivo.')
     } finally {
@@ -551,13 +587,18 @@ export default function Administration({
         <>
           <section className="dashboard-panel administration__filters">
             <label>Buscar usuario<input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => {
-              if (event.key === 'Enter') void loadData(1, event.currentTarget.value, stateFilter)
+              if (event.key === 'Enter') void loadCurrentData(1, event.currentTarget.value, stateFilter)
             }} /></label>
             <label>Estado<select value={stateFilter} onChange={(event) => {
               setStateFilter(event.target.value)
-              void loadData(1, query, event.target.value)
-            }}><option value="">Todos</option><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select></label>
-            <button className="button--quiet" onClick={() => void loadData(1, query, stateFilter)} type="button">Buscar</button>
+              void loadCurrentData(1, query, event.target.value)
+            }}><option value="">Todos</option><option value="activo">Activo</option><option value="inactivo">Inactivo</option><option value="bloqueado">Bloqueada</option></select></label>
+            <label>Rol<select value={roleFilter} onChange={(event) => {
+              setRoleFilter(event.target.value)
+            }}><option value="">Todos</option>{roles.map((role) => <option key={role.id} value={role.id}>{role.nombre}</option>)}</select></label>
+            <label>Último acceso desde<input type="date" value={accessDateFrom} onChange={(event) => setAccessDateFrom(event.target.value)} /></label>
+            <label>Último acceso hasta<input type="date" value={accessDateTo} onChange={(event) => setAccessDateTo(event.target.value)} /></label>
+            <button className="button--quiet" onClick={() => void loadCurrentData(1, query, stateFilter)} type="button">Buscar</button>
             <button className="administration__primary" onClick={startCreateUser} type="button">Nuevo usuario</button>
           </section>
           <form className="dashboard-panel administration__form" onSubmit={(event) => void saveUser(event)}>
@@ -602,7 +643,7 @@ export default function Administration({
                 </tr>)}</tbody>
               </table></div>
             )}
-            <Pagination page={page} totalPages={totalPages} busy={loading} onPage={(value) => void loadData(value, query, stateFilter)} />
+            <Pagination page={page} totalPages={totalPages} busy={loading} onPage={(value) => void loadCurrentData(value, query, stateFilter)} />
           </section>
         </>
       )}
@@ -622,20 +663,20 @@ export default function Administration({
           )}
           <section className="dashboard-panel administration__filters">
             <label>Buscar estudiante<input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => {
-              if (event.key === 'Enter') void loadData(1, event.currentTarget.value, stateFilter)
+              if (event.key === 'Enter') void loadCurrentData(1, event.currentTarget.value, stateFilter)
             }} /></label>
             <label>Curso<select value={studentCourseFilter} onChange={(event) => {
               setStudentCourseFilter(event.target.value)
-              void loadData(1, query, stateFilter, event.target.value, studentNumberFilter)
+              void loadCurrentData(1, query, stateFilter, event.target.value, studentNumberFilter)
             }}><option value="">Todos</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.nombre}</option>)}</select></label>
             <label>N.º de lista<input min="0" type="number" value={studentNumberFilter} onChange={(event) => setStudentNumberFilter(event.target.value)} onKeyDown={(event) => {
-              if (event.key === 'Enter') void loadData(1, query, stateFilter, studentCourseFilter, event.currentTarget.value)
+              if (event.key === 'Enter') void loadCurrentData(1, query, stateFilter, studentCourseFilter, event.currentTarget.value)
             }} /></label>
             <label>Estado<select value={stateFilter} onChange={(event) => {
               setStateFilter(event.target.value)
-              void loadData(1, query, event.target.value, studentCourseFilter, studentNumberFilter)
+              void loadCurrentData(1, query, event.target.value, studentCourseFilter, studentNumberFilter)
             }}><option value="">Todos</option><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select></label>
-            <button className="button--quiet" onClick={() => void loadData(1, query, stateFilter, studentCourseFilter, studentNumberFilter)} type="button">Buscar</button>
+            <button className="button--quiet" onClick={() => void loadCurrentData(1, query, stateFilter)} type="button">Buscar</button>
           </section>
           <form className="dashboard-panel administration__form" onSubmit={(event) => void saveStudent(event)}>
             <h2>{editingStudent ? 'Editar estudiante' : 'Registrar estudiante'}</h2>
@@ -704,7 +745,7 @@ export default function Administration({
                 </tr>)}</tbody>
               </table></div>
             )}
-            <Pagination page={page} totalPages={totalPages} busy={loading} onPage={(value) => void loadData(value, query, stateFilter)} />
+            <Pagination page={page} totalPages={totalPages} busy={loading} onPage={(value) => void loadCurrentData(value, query, stateFilter)} />
           </section>
         </>
       )}
@@ -713,13 +754,13 @@ export default function Administration({
         <>
           <section className="dashboard-panel administration__filters">
             <label>Buscar en historial<input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => {
-              if (event.key === 'Enter') void loadData(1, event.currentTarget.value, stateFilter)
+              if (event.key === 'Enter') void loadCurrentData(1, event.currentTarget.value, stateFilter)
             }} /></label>
             <label>Acción<select value={stateFilter} onChange={(event) => {
               setStateFilter(event.target.value)
-              void loadData(1, query, event.target.value)
+              void loadCurrentData(1, query, event.target.value)
             }}><option value="">Todas</option>{actions.map((action) => <option key={action} value={action}>{action}</option>)}</select></label>
-            <button className="button--quiet" onClick={() => void loadData(1, query, stateFilter)} type="button">Buscar</button>
+            <button className="button--quiet" onClick={() => void loadCurrentData(1, query, stateFilter)} type="button">Buscar</button>
           </section>
           <section className="dashboard-panel">
             <div className="dashboard-panel__header"><h2>Auditoría de acciones</h2><span>{total} registros</span></div>
@@ -729,7 +770,7 @@ export default function Administration({
                 <tbody>{history.map((item) => <tr key={item.id}><td>{formatDateTime(item.fecha)}</td><td>{item.usuario}</td><td>{item.accion}</td><td>{item.detalle}</td></tr>)}</tbody>
               </table></div>
             )}
-            <Pagination page={page} totalPages={totalPages} busy={loading} onPage={(value) => void loadData(value, query, stateFilter)} />
+            <Pagination page={page} totalPages={totalPages} busy={loading} onPage={(value) => void loadCurrentData(value, query, stateFilter)} />
           </section>
         </>
       )}

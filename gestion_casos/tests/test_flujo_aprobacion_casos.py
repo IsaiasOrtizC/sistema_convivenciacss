@@ -6,7 +6,10 @@ from unittest.mock import patch
 from django.db import connection
 from django.test import RequestFactory, TransactionTestCase
 from django.utils import timezone
-from gestion_casos.controllers.alert_controller import notificar_caso_gravisimo
+from gestion_casos.controllers.alert_controller import (
+    notificar_caso_gravisimo,
+    verificar_alerta_curso_mas_de_10_casos,
+)
 from gestion_casos.models import (
     Caso,
     Curso,
@@ -129,6 +132,48 @@ class CaseApprovalWorkflowTests(TransactionTestCase):
             ],
         })
 
+    def test_weekly_course_alert_reaches_staff_and_teacher_once(self):
+        admin_role = Rol.objects.create(rol_nombre='Administrador')
+        convivencia_role = Rol.objects.create(rol_nombre='PConvivencia')
+        admin = Usuario.objects.create(
+            usuario_nombre='Administradora',
+            usuario_apaterno='Colegio',
+            usuario_amaterno='',
+            usuario_correo='admin@example.test',
+            usuario_contrasena='not-a-real-password',
+            usuario_primer_ingreso=False,
+            rol=admin_role,
+        )
+        convivencia = Usuario.objects.create(
+            usuario_nombre='Equipo',
+            usuario_apaterno='Convivencia',
+            usuario_amaterno='',
+            usuario_correo='convivencia@example.test',
+            usuario_contrasena='not-a-real-password',
+            usuario_primer_ingreso=False,
+            rol=convivencia_role,
+        )
+        for _ in range(11):
+            caso = Caso.objects.create(
+                caso_fecha=timezone.localdate(),
+                caso_descripcion='Caso de prueba',
+                usuario=self.teacher,
+                lugar=self.place,
+            )
+            Involucran.objects.create(
+                estudiante=self.student,
+                caso=caso,
+                tipo_falta='Leve',
+            )
+
+        verificar_alerta_curso_mas_de_10_casos(self.course)
+        verificar_alerta_curso_mas_de_10_casos(self.course)
+
+        self.assertSetEqual(
+            set(Notificacion.objects.values_list('usuario_id', flat=True)),
+            {admin.pk, self.reviewer.pk, convivencia.pk, self.teacher.pk},
+        )
+
     def test_teacher_submission_stays_out_of_case_and_student_tables_until_approved(self):
         response = self._submit_report()
 
@@ -142,7 +187,7 @@ class CaseApprovalWorkflowTests(TransactionTestCase):
         self.assertEqual(Estudiante.objects.count(), 1)
         self.assertContains(
             self.client.get('/mis-casos-curso/'),
-            'En espera de revisión',
+            '<div id="root"></div>',
         )
 
     def test_teacher_form_is_available_but_limited_to_assigned_course(self):
@@ -151,13 +196,7 @@ class CaseApprovalWorkflowTests(TransactionTestCase):
         response = self.client.get('/casos/nuevo/')
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'El reporte será enviado a revisión')
-        self.assertContains(response, '3° Básica A')
-        self.assertNotContains(response, '3° Básica B')
-        self.assertContains(
-            response,
-            'accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.png,.jpg,.jpeg"',
-        )
+        self.assertContains(response, '<div id="root"></div>')
 
     def test_non_admin_can_read_user_history(self):
         HistorialUsuario.objects.create(
@@ -170,8 +209,8 @@ class CaseApprovalWorkflowTests(TransactionTestCase):
         response = self.client.get('/modulo-admin/historial-usuarios/')
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Registró el caso #42')
-        self.assertContains(response, 'Historial de usuarios')
+        self.assertContains(response, '<div id="root"></div>')
+        self.assertNotContains(response, 'Registró el caso #42')
 
     def test_inspector_cannot_remove_a_student_after_case_edit_deadline(self):
         caso = Caso.objects.create(
@@ -297,8 +336,7 @@ class CaseApprovalWorkflowTests(TransactionTestCase):
 
         queue_response = self.client.get('/casos/pendientes/')
         self.assertEqual(queue_response.status_code, 200)
-        self.assertContains(queue_response, 'Conflicto en recreo')
-        self.assertContains(queue_response, 'Ana Ejemplo')
+        self.assertContains(queue_response, '<div id="root"></div>')
 
         response = self.client.post('/casos/pendientes/', {
             'solicitud_id': solicitud.pk,
@@ -364,4 +402,5 @@ class CaseApprovalWorkflowTests(TransactionTestCase):
 
         response = self.client.get('/casos/pendientes/')
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<div id="root"></div>')

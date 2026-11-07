@@ -33,6 +33,7 @@ type CaseDetailData = {
 type CaseDetailProps = {
   accessToken: string
   caseId: number
+  initialEditing?: boolean
   onBack: () => void
 }
 
@@ -96,7 +97,12 @@ function formatDate(value: string | null) {
   }).format(new Date(value))
 }
 
-export default function CaseDetail({ accessToken, caseId, onBack }: CaseDetailProps) {
+export default function CaseDetail({
+  accessToken,
+  caseId,
+  initialEditing = false,
+  onBack,
+}: CaseDetailProps) {
   const [data, setData] = useState<CaseDetailData | null>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -131,7 +137,8 @@ export default function CaseDetail({ accessToken, caseId, onBack }: CaseDetailPr
         setPlaceId(String(body.lugar_id))
         setStudents(body.estudiantes)
         setSeverity(body.estudiantes[0]?.tipo_falta ?? 'Leve')
-        setError('')
+        setEditing(initialEditing && body.puede_editar)
+        setError(initialEditing && !body.puede_editar ? 'No tienes permiso para editar este caso.' : '')
       })
       .catch((requestError: unknown) => {
         if (!active) return
@@ -149,7 +156,7 @@ export default function CaseDetail({ accessToken, caseId, onBack }: CaseDetailPr
     return () => {
       active = false
     }
-  }, [accessToken, caseId])
+  }, [accessToken, caseId, initialEditing])
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
