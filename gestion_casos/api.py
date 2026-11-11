@@ -920,9 +920,7 @@ class NotificacionesAPIView(APIView):
 
         notificaciones = list(
             Notificacion.objects.filter(
-                Q(usuario_id=request.user.pk)
-                if es_profesor
-                else Q(usuario_id=request.user.pk) | Q(regla__isnull=False)
+                usuario_id=request.user.pk,
             )
             .select_related(
                 'caso',
@@ -1023,9 +1021,7 @@ class NotificacionesAPIView(APIView):
 
         notificacion = get_object_or_404(
             Notificacion.objects.filter(
-                Q(usuario_id=request.user.pk)
-                if es_profesor
-                else Q(usuario_id=request.user.pk) | Q(regla__isnull=False)
+                usuario_id=request.user.pk,
             ),
             pk=notificacion_id,
         )

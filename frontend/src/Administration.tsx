@@ -572,6 +572,9 @@ export default function Administration({
     : section === 'students'
       ? 'Administración de estudiantes'
       : 'Historial de usuarios'
+  const hasStudentFilters = Boolean(
+    query.trim() || studentCourseFilter || studentNumberFilter || stateFilter,
+  )
 
   return (
     <div className="dashboard-content administration">
@@ -732,17 +735,25 @@ export default function Administration({
             {loading ? <p role="status">Cargando estudiantes…</p> : (
               <div className="dashboard-table-wrap"><table className="dashboard-table">
                 <thead><tr><th>Estudiante</th><th>Identificador / lista</th><th>Curso</th><th>Estado</th><th>Acciones</th></tr></thead>
-                <tbody>{students.map((student) => <tr key={student.id}>
-                  <td>{student.nombre} {student.apellido_paterno} {student.apellido_materno}<small>{student.correo}</small></td>
-                  <td>{student.identificador || 'Sin identificador'}<small>Lista: {student.numero_lista ?? '—'}</small></td>
-                  <td>{student.curso}</td><td>{student.activo ? 'Activo' : 'Inactivo'}</td>
-                  <td className="administration__row-actions">
-                    <button className="button--quiet" disabled={busy} onClick={() => void viewStudent(student)} type="button">Ficha</button>
-                    <button className="button--quiet" disabled={busy} onClick={() => startEditStudent(student)} type="button">Editar</button>
-                    <button className="button--quiet" disabled={busy} onClick={() => void toggleStudent(student)} type="button">{student.activo ? 'Desactivar' : 'Activar'}</button>
-                    <button className="administration__danger" disabled={busy} onClick={() => void removeStudent(student)} type="button">Quitar</button>
-                  </td>
-                </tr>)}</tbody>
+                <tbody>
+                  {students.length ? students.map((student) => <tr key={student.id}>
+                    <td>{student.nombre} {student.apellido_paterno} {student.apellido_materno}<small>{student.correo}</small></td>
+                    <td>{student.identificador || 'Sin identificador'}<small>Lista: {student.numero_lista ?? '—'}</small></td>
+                    <td>{student.curso}</td><td>{student.activo ? 'Activo' : 'Inactivo'}</td>
+                    <td className="administration__row-actions">
+                      <button className="button--quiet" disabled={busy} onClick={() => void viewStudent(student)} type="button">Ficha</button>
+                      <button className="button--quiet" disabled={busy} onClick={() => startEditStudent(student)} type="button">Editar</button>
+                      <button className="button--quiet" disabled={busy} onClick={() => void toggleStudent(student)} type="button">{student.activo ? 'Desactivar' : 'Activar'}</button>
+                      <button className="administration__danger" disabled={busy} onClick={() => void removeStudent(student)} type="button">Quitar</button>
+                    </td>
+                  </tr>) : (
+                    <tr><td className="dashboard-empty" colSpan={5} role="status">
+                      {hasStudentFilters
+                        ? 'No se encontraron alumnos con los filtros seleccionados.'
+                        : 'No hay alumnos registrados.'}
+                    </td></tr>
+                  )}
+                </tbody>
               </table></div>
             )}
             <Pagination page={page} totalPages={totalPages} busy={loading} onPage={(value) => void loadCurrentData(value, query, stateFilter)} />

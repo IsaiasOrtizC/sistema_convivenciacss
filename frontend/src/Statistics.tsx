@@ -41,7 +41,7 @@ type StatisticsProps = {
   accessToken: string
 }
 
-type ChartType = 'bar' | 'line' | 'pie'
+type ChartType = 'bar' | 'line'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 const CURRENT_YEAR = new Date().getFullYear()
@@ -155,18 +155,6 @@ function StatChart({
   type: ChartType
 }) {
   const max = Math.max(1, ...values)
-  const total = values.reduce((sum, value) => sum + value, 0)
-  const colors = ['#7b1a1a', '#d4a017', '#4d9de0', '#57b786', '#df8050', '#7950a1', '#5b7c85', '#c94d4d']
-  let accumulated = 0
-  const pieStops = values.map((value, index) => {
-    const start = total ? (accumulated / total) * 100 : 0
-    accumulated += value
-    const end = total ? (accumulated / total) * 100 : 0
-    return `${colors[index % colors.length]} ${start}% ${end}%`
-  }).join(', ')
-  const pieBackground = total
-    ? `conic-gradient(${pieStops})`
-    : 'conic-gradient(var(--border) 0% 100%)'
   const points = values.map((value, index) => {
     const x = values.length < 2 ? 50 : (index / (values.length - 1)) * 100
     const y = 90 - (value / max) * 80
@@ -176,30 +164,6 @@ function StatChart({
     <article className={`stat-chart stat-chart--${type}`}>
       <h2>{title}</h2>
       {labels.length === 0 && <p className="dashboard-empty">Sin datos para mostrar.</p>}
-      {type === 'pie' && labels.length > 0 && (
-        <div className="stat-pie-layout">
-          <div
-            aria-label={`${title}: ${labels.map((label, index) => `${label}, ${values[index] ?? 0}`).join('; ')}`}
-            className="stat-pie"
-            role="img"
-            style={{ background: pieBackground }}
-          />
-          <div className="stat-pie-legend">
-            {labels.map((label, index) => (
-              <div key={`${label}-${index}`}>
-                <span
-                  aria-hidden="true"
-                  className="stat-pie-legend__swatch"
-                  style={{ backgroundColor: colors[index % colors.length] }}
-                />
-                <span>{label}</span>
-                <strong>{values[index] ?? 0}</strong>
-                <small>{total ? `${Math.round(((values[index] ?? 0) / total) * 100)}%` : '0%'}</small>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
       {type === 'line' && labels.length > 0 && (
         <>
           <svg
@@ -253,7 +217,6 @@ function formatDate(value: string | null) {
 export default function Statistics({ accessToken }: StatisticsProps) {
   const [filters, setFilters] = useState<StatisticsFilters>({ ...DEFAULT_FILTERS })
   const [data, setData] = useState<StatisticsData | null>(null)
-  const [chartType, setChartType] = useState<ChartType>('bar')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
@@ -393,22 +356,7 @@ export default function Statistics({ accessToken }: StatisticsProps) {
             </article>
           </section>
 
-          <div className="statistics-chart-types" aria-label="Tipo de visualización">
-            {([
-              ['bar', 'Barras'],
-              ['line', 'Tendencia'],
-              ['pie', 'Distribución'],
-            ] as const).map(([type, label]) => (
-              <button
-                aria-pressed={chartType === type}
-                className="button--quiet"
-                key={type}
-                onClick={() => setChartType(type)}
-                type="button"
-              >
-                {label}
-              </button>
-            ))}
+          <div className="statistics-actions" aria-label="Exportar estadísticas">
             <button className="button--quiet" disabled={downloading} onClick={() => void exportStatistics('pdf')} type="button">
               {downloading ? 'Preparando…' : 'Exportar PDF'}
             </button>
@@ -418,14 +366,14 @@ export default function Statistics({ accessToken }: StatisticsProps) {
           </div>
 
           <section className="statistics-charts" aria-label="Gráficos estadísticos">
-            <StatChart title="Casos por gravedad" labels={data.gravedad_labels} values={data.gravedad_data} type={chartType} />
-            <StatChart title="Casos por curso" labels={data.cursos_labels} values={data.cursos_data} type={chartType} />
-            <StatChart title="Casos por zona" labels={data.zonas_labels} values={data.zonas_data} type={chartType} />
+            <StatChart title="Casos por gravedad" labels={data.gravedad_labels} values={data.gravedad_data} type="bar" />
+            <StatChart title="Casos por curso" labels={data.cursos_labels} values={data.cursos_data} type="bar" />
+            <StatChart title="Casos por zona" labels={data.zonas_labels} values={data.zonas_data} type="bar" />
             <StatChart
-              title={chartType === 'pie' ? 'Casos por mes' : 'Evolución mensual'}
+              title="Tendencia mensual de casos"
               labels={data.meses_labels}
               values={data.mensual_data}
-              type={chartType}
+              type="line"
             />
           </section>
 

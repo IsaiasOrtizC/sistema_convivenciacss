@@ -2,7 +2,6 @@
 
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Q
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -31,7 +30,7 @@ def notificaciones_view(request):
 
     alertas_reales = list(
         Notificacion.objects
-        .filter(Q(usuario_id=id_usuario) | Q(regla__isnull=False))
+        .filter(usuario_id=id_usuario)
         .select_related(
             'caso', 'estudiante', 'regla', 'regla__version',
             'version_reglamento', 'responsable',
@@ -101,9 +100,7 @@ def marcar_notificacion_leida_view(request, notificacion_id):
         return redirect('notificaciones')
 
     notificacion = get_object_or_404(
-        Notificacion.objects.filter(
-            Q(usuario_id=request.session['usuario_id']) | Q(regla__isnull=False)
-        ),
+        Notificacion.objects.filter(usuario_id=request.session['usuario_id']),
         pk=notificacion_id,
     )
 
@@ -123,9 +120,7 @@ def cambiar_estado_notificacion_view(request, notificacion_id):
         return HttpResponseForbidden("La acción requiere una solicitud POST.")
 
     notificacion = get_object_or_404(
-        Notificacion.objects.filter(
-            Q(usuario_id=request.session['usuario_id']) | Q(regla__isnull=False)
-        ),
+        Notificacion.objects.filter(usuario_id=request.session['usuario_id']),
         pk=notificacion_id,
     )
     estado = request.POST.get('estado', '')

@@ -15,6 +15,7 @@ from gestion_casos.models import (
     Administrador,
     Caso,
     Curso,
+    DocumentoInstitucional,
     Estudiante,
     HistorialUsuario,
     HistorialImportacionEstudiantes,
@@ -24,9 +25,11 @@ from gestion_casos.models import (
     Notificacion,
     PConvivencia,
     ProfesorJefe,
+    ReglaInstitucional,
     Rol,
     SolicitudCaso,
     Usuario,
+    VersionReglamento,
     _quitar_tildes,
 )
 from rest_framework.test import APIClient
@@ -299,6 +302,75 @@ class JwtApiTests(TransactionTestCase):
         self.assertFalse(list_response.data['puede_gestionar'])
         self.assertEqual(read_response.status_code, 200)
         self.assertEqual(status_response.status_code, 403)
+
+    def test_notifications_are_limited_to_the_authenticated_user(self):
+        another_user = Usuario.objects.create(
+            usuario_nombre='Otro',
+            usuario_apaterno='Usuario',
+            usuario_amaterno='',
+            usuario_correo='otro@example.test',
+            usuario_contrasena=make_password('ConviData-segura-2026'),
+            usuario_primer_ingreso=False,
+            rol=self.role,
+        )
+        document = DocumentoInstitucional.objects.create(
+            tipo_documento='Reglamento',
+            titulo='Reglamento de prueba',
+            archivo='',
+            usuario=another_user,
+            estado_procesamiento=DocumentoInstitucional.EstadoProcesamiento.COMPLETADO,
+            texto_extraido='Disposición de prueba.',
+        )
+        version = VersionReglamento.objects.create(
+            documento=document,
+            numero=1,
+            estado=VersionReglamento.Estado.VIGENTE,
+            creada_por=another_user,
+        )
+        rule = ReglaInstitucional.objects.create(
+            version=version,
+            titulo='Regla de prueba',
+            evidencia_textual='Disposición de prueba.',
+            hash_origen='b' * 64,
+        )
+        own_notification = Notificacion.objects.create(
+            usuario=self.user,
+            notificacion_titulo='Aviso propio',
+            notificacion_mensaje='Aviso del usuario autenticado.',
+        )
+        other_notification = Notificacion.objects.create(
+            usuario=another_user,
+            notificacion_titulo='Aviso ajeno',
+            notificacion_mensaje='Aviso asignado a otro usuario.',
+            regla=rule,
+        )
+        token_response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena': 'ConviData-segura-2026',
+            },
+            format='json',
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+
+        list_response = self.client.get('/api/v1/notificaciones/')
+        read_response = self.client.post(
+            f'/api/v1/notificaciones/{other_notification.pk}/',
+            {'accion': 'leer'},
+            format='json',
+        )
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(
+            [item['id'] for item in list_response.data['notificaciones']],
+            [own_notification.pk],
+        )
+        self.assertEqual(read_response.status_code, 404)
+        other_notification.refresh_from_db()
+        self.assertFalse(other_notification.notificacion_leido)
 
     def test_course_history_api_rejects_non_teacher_role(self):
         token_response = self.client.post(
