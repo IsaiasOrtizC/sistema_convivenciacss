@@ -1479,7 +1479,9 @@ class SolicitudesCasosAPIView(APIView):
         try:
             with transaction.atomic():
                 solicitud = get_object_or_404(
-                    SolicitudCaso.objects.select_for_update().select_related(
+                    SolicitudCaso.objects.select_for_update(
+                        of=('self',)
+                    ).select_related(
                         'solicitante__rol',
                         'lugar',
                     ),
