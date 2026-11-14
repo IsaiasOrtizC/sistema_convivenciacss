@@ -40,7 +40,8 @@ CÓMO APLICARLO (PowerShell, desde la carpeta que tiene manage.py)
 
         TRAZA_NIVEL = 0
 
-4. En tu archivo .env agrega:
+4. `python manage.py runserver` activa la trazabilidad de nivel 1 automáticamente.
+   Si quieres controlarla explícitamente, en tu archivo .env agrega:
 
         TRAZA_NIVEL=1
 
