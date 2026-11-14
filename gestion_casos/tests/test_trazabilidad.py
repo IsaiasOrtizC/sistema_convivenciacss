@@ -6,6 +6,7 @@ Estas pruebas capturan lo que se imprime en la consola y comprueban el orden de 
 import io
 from contextlib import redirect_stdout
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from django.core.management import call_command
 from django.db import connection
@@ -76,6 +77,12 @@ class ConfiguracionDeMiddlewareTests(SimpleTestCase):
 
 
 class DecoradorTrazarTests(SimpleTestCase):
+    @override_settings(TRAZA_NIVEL=1)
+    @patch('gestion_casos.trazabilidad.supports_color', return_value=True)
+    def test_colorea_la_etiqueta_cuando_la_terminal_admite_colores(self, _):
+        _, lineas = capturar(trazabilidad.traza, 'HTTP', 'GET / usuario=anonimo')
+        self.assertEqual(lineas, ['\033[1;36m[HTTP]\033[0m GET / usuario=anonimo'])
+
     @override_settings(TRAZA_NIVEL=1)
     def test_anuncia_el_servicio_y_no_altera_el_resultado(self):
         @trazabilidad.trazar('SERVICE', 'CasoService', 'validando datos')

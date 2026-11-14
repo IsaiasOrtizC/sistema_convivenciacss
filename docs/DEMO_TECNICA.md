@@ -6,7 +6,8 @@ Sirve para comprobar que el sistema funciona como indican los diagramas de secue
 
 ## 1. Cómo activarla
 
-1. En tu archivo `.env` agrega:
+1. Al iniciar `python manage.py runserver`, la trazabilidad se activa automáticamente en nivel 1.
+   Puedes controlarla desde `.env`:
 
    ```
    TRAZA_NIVEL=1
@@ -18,7 +19,9 @@ Sirve para comprobar que el sistema funciona como indican los diagramas de secue
    | `1` | Flujo principal: HTTP, vista, controlador, servicio y escrituras en la base de datos. |
    | `2` | Detallado: además **cada consulta SQL** y las comprobaciones de permisos. |
 
-   Para probar un nivel solo en esa terminal (PowerShell): `$env:TRAZA_NIVEL=2; python manage.py runserver`
+   `TRAZA_NIVEL=0` la desactiva y `TRAZA_NIVEL=2` activa el detalle SQL.
+   Para probar un nivel solo en esa terminal (PowerShell): `$env:TRAZA_NIVEL=2; python manage.py runserver`.
+   Fuera de `runserver`, permanece apagada por defecto cuando `DEBUG=False`.
 
 2. Asegúrate de que `config/settings.py` tenga estas piezas (ver `LEEME_TRAZABILIDAD.txt`):
    - `gestion_casos.trazabilidad.TrazabilidadMiddleware` en `MIDDLEWARE`, justo después de `SessionMiddleware`;
@@ -39,6 +42,9 @@ Sirve para comprobar que el sistema funciona como indican los diagramas de secue
 | `[SERVICE]` | Lógica de negocio (`CasoService`, ...) | Servicios |
 | `[DB]` | Acceso a datos con el ORM de Django: altas, cambios, bajas, filtros y un resumen de consultas | `C_Django ORM` y la entidad (`Usuario`, `Caso`, ...) |
 | `[ERROR]` | Excepción no controlada en un controlador | |
+
+Las etiquetas usan colores ANSI cuando la terminal los admite: HTTP cian, vistas azul,
+controladores/API verde, servicios amarillo, base de datos magenta y errores rojo.
 
 Si un filtro anterior responde primero (por ejemplo CSRF o la sesión única), la consola lo dice:
 `[CONTROLADOR] RegistrarCasoController: no se ejecutó (un middleware respondió antes: sesión única, CSRF u otro filtro)`.

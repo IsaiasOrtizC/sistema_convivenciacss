@@ -14,6 +14,7 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 import os
+import sys
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -34,7 +35,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
-TRAZA_NIVEL = int(os.getenv('TRAZA_NIVEL', '1' if DEBUG else '0'))
+TRAZA_NIVEL = int(os.getenv('TRAZA_NIVEL', '1' if DEBUG or 'runserver' in sys.argv else '0'))
 
 ALLOWED_HOSTS = ['*']
 
