@@ -84,7 +84,7 @@ class TokenObtainView(APIView):
 
         usuario = (
             Usuario.objects.select_related('rol')
-            .filter(usuario_correo=correo.strip())
+            .filter(usuario_correo__iexact=correo.strip())
             .first()
         )
         if usuario is None:
@@ -208,7 +208,7 @@ class RequiredPasswordChangeAPIView(APIView):
             )
 
         usuario = Usuario.objects.filter(
-            usuario_correo=correo.strip(),
+            usuario_correo__iexact=correo.strip(),
             usuario_activo=True,
             usuario_bloqueado=False,
             usuario_primer_ingreso=True,
@@ -433,6 +433,7 @@ class HistorialCasosAPIView(APIView):
             )
 
         busqueda = request.query_params.get('q', '').strip()
+        caso_id = request.query_params.get('caso_id', '').strip()
         curso_id = request.query_params.get('curso', '').strip()
         gravedad = request.query_params.get('gravedad', '').strip()
         estudiante_id = request.query_params.get('estudiante', '').strip()
@@ -457,6 +458,19 @@ class HistorialCasosAPIView(APIView):
                 {'detail': 'La fecha desde debe ser anterior o igual a la fecha hasta.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        caso_id_numero = None
+        if caso_id:
+            if not caso_id.isdecimal() or len(caso_id) > 10:
+                return Response(
+                    {'detail': 'El ID del caso no es válido.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            caso_id_numero = int(caso_id)
+            if not 1 <= caso_id_numero <= 2147483647:
+                return Response(
+                    {'detail': 'El ID del caso no es válido.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         curso_id_numero = None
         if curso_id:
             if not curso_id.isdecimal() or len(curso_id) > 10:
@@ -506,8 +520,15 @@ class HistorialCasosAPIView(APIView):
             '-caso_fecha',
             '-caso_id',
         )
+        if caso_id_numero:
+            casos = casos.filter(pk=caso_id_numero)
         if busqueda:
-            casos = casos.filter(caso_descripcion__icontains=busqueda)
+            busqueda_filtro = Q(caso_descripcion__icontains=busqueda)
+            if busqueda.isdecimal() and len(busqueda) <= 10:
+                id_busqueda = int(busqueda)
+                if 1 <= id_busqueda <= 2147483647:
+                    busqueda_filtro |= Q(pk=id_busqueda)
+            casos = casos.filter(busqueda_filtro)
         if curso_id_numero:
             casos = casos.filter(estudiantes__curso_id=curso_id_numero).distinct()
         if estudiante_id_numero:
@@ -888,7 +909,21 @@ class CasoDetalleAPIView(APIView):
                             cambiado_por=request.user,
                             motivo='Notificación creada al eliminar un caso de otro usuario.',
                         )
-                caso.delete()
+                Notificacion.objects.filter(caso_id=caso_id_eliminado).update(caso=None)
+                SeguimientoCaso.objects.filter(caso_id=caso_id_eliminado).delete()
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        'DELETE FROM involucran WHERE caso_id = %s',
+                        [caso_id_eliminado],
+                    )
+                    cursor.execute(
+                        'DELETE FROM caso WHERE caso_id = %s',
+                        [caso_id_eliminado],
+                    )
+                    if cursor.rowcount != 1:
+                        raise Caso.DoesNotExist(
+                            f'El caso #{caso_id_eliminado} ya no existe.',
+                        )
                 HistorialUsuario.objects.create(
                     usuario=request.user,
                     historial_accion='Eliminación',

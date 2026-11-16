@@ -41,7 +41,8 @@ type StatisticsProps = {
   accessToken: string
 }
 
-type ChartType = 'bar' | 'line'
+type ChartType = 'bar' | 'line' | 'doughnut'
+const CHART_COLORS = ['#7b1a1a', '#d4a017', '#54a36b', '#db9841', '#5074a5', '#9564a5']
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 const CURRENT_YEAR = new Date().getFullYear()
@@ -147,14 +148,24 @@ function StatChart({
   title,
   labels,
   values,
-  type,
+  defaultType,
 }: {
   title: string
   labels: string[]
   values: number[]
-  type: ChartType
+  defaultType: ChartType
 }) {
+  const [type, setType] = useState<ChartType>(defaultType)
   const max = Math.max(1, ...values)
+  const total = values.reduce((sum, value) => sum + value, 0)
+  const circumference = 2 * Math.PI * 40
+  const chartSegments = values.map((value, index) => {
+    const precedingTotal = values.slice(0, index).reduce((sum, item) => sum + item, 0)
+    return {
+      length: total > 0 ? (value / total) * circumference : 0,
+      offset: total > 0 ? (precedingTotal / total) * circumference : 0,
+    }
+  })
   const points = values.map((value, index) => {
     const x = values.length < 2 ? 50 : (index / (values.length - 1)) * 100
     const y = 90 - (value / max) * 80
@@ -162,8 +173,29 @@ function StatChart({
   }).join(' ')
   return (
     <article className={`stat-chart stat-chart--${type}`}>
-      <h2>{title}</h2>
-      {labels.length === 0 && <p className="dashboard-empty">Sin datos para mostrar.</p>}
+      <div className="stat-chart__header">
+        <h2>{title}</h2>
+        <label className="stat-chart__type">
+          <span>Gráfico</span>
+          <select
+            aria-label={`Tipo de gráfico para ${title}`}
+            onChange={(event) => {
+              const value = event.currentTarget.value
+              if (value === 'bar' || value === 'line' || value === 'doughnut') {
+                setType(value)
+              }
+            }}
+            value={type}
+          >
+            <option value="bar">Barras</option>
+            <option value="line">Línea</option>
+            <option value="doughnut">Circular</option>
+          </select>
+        </label>
+      </div>
+      {(labels.length === 0 || (type === 'doughnut' && total === 0)) && (
+        <p className="dashboard-empty">Sin datos para mostrar.</p>
+      )}
       {type === 'line' && labels.length > 0 && (
         <>
           <svg
@@ -202,6 +234,39 @@ function StatChart({
           </div>
         )
       })}
+      {type === 'doughnut' && labels.length > 0 && total > 0 && (
+        <div className="stat-chart__doughnut">
+          <svg
+            aria-label={`${title}: ${labels.map((label, index) => `${label}, ${values[index] ?? 0}`).join('; ')}`}
+            className="stat-doughnut-chart"
+            role="img"
+            viewBox="0 0 100 100"
+          >
+            <circle className="stat-doughnut-chart__track" cx="50" cy="50" r="40" />
+            {chartSegments.map(({ length, offset }, index) => (
+                <circle
+                  className="stat-doughnut-chart__segment"
+                  cx="50"
+                  cy="50"
+                  key={`${labels[index]}-${index}`}
+                  r="40"
+                  stroke={CHART_COLORS[index % CHART_COLORS.length]}
+                  strokeDasharray={`${length} ${circumference - length}`}
+                  strokeDashoffset={-offset}
+                />
+            ))}
+          </svg>
+          <ul className="stat-chart__legend">
+            {labels.map((label, index) => (
+              <li key={`${label}-${index}`}>
+                <span style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
+                {label}
+                <strong>{values[index] ?? 0}</strong>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </article>
   )
 }
@@ -366,14 +431,14 @@ export default function Statistics({ accessToken }: StatisticsProps) {
           </div>
 
           <section className="statistics-charts" aria-label="Gráficos estadísticos">
-            <StatChart title="Casos por gravedad" labels={data.gravedad_labels} values={data.gravedad_data} type="bar" />
-            <StatChart title="Casos por curso" labels={data.cursos_labels} values={data.cursos_data} type="bar" />
-            <StatChart title="Casos por zona" labels={data.zonas_labels} values={data.zonas_data} type="bar" />
+            <StatChart title="Casos por gravedad" labels={data.gravedad_labels} values={data.gravedad_data} defaultType="bar" />
+            <StatChart title="Casos por curso" labels={data.cursos_labels} values={data.cursos_data} defaultType="bar" />
+            <StatChart title="Casos por zona" labels={data.zonas_labels} values={data.zonas_data} defaultType="bar" />
             <StatChart
               title="Tendencia mensual de casos"
               labels={data.meses_labels}
               values={data.mensual_data}
-              type="line"
+              defaultType="line"
             />
           </section>
 
