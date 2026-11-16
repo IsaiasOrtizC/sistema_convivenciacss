@@ -27,6 +27,7 @@ from gestion_casos.models import (
     ProfesorJefe,
     ReglaInstitucional,
     Rol,
+    SeguimientoCaso,
     SolicitudCaso,
     Usuario,
     VersionReglamento,
@@ -1163,6 +1164,105 @@ class JwtApiTests(TransactionTestCase):
             evento_clave=f'caso_eliminado:{caso_eliminado.pk}:creador:{self.user.pk}',
         ).exists())
 
+    def test_case_delete_cleans_related_notifications_and_follow_up(self):
+        self.role.rol_nombre = 'Administrador'
+        self.role.save(update_fields=['rol_nombre'])
+        curso = Curso.objects.create(curso_grado='3° Medio', curso_letra='A')
+        estudiante = Estudiante.objects.create(
+            estudiante_nombre='Ana',
+            estudiante_apaterno='Pérez',
+            estudiante_amaterno='López',
+            curso=curso,
+        )
+        lugar = Lugar.objects.create(lugar_nombre='Patio')
+        caso = Caso.objects.create(
+            caso_fecha=date(2026, 10, 26),
+            caso_descripcion='[Caso relacionado] - Descripción.',
+            usuario=self.user,
+            lugar=lugar,
+        )
+        Involucran.objects.create(
+            estudiante=estudiante,
+            caso=caso,
+            tipo_falta='Grave',
+        )
+        seguimiento = SeguimientoCaso.objects.create(
+            caso=caso,
+            estudiante=estudiante,
+        )
+        notificacion = Notificacion.objects.create(
+            usuario=self.user,
+            notificacion_titulo='Caso registrado',
+            notificacion_mensaje='Se registró un caso.',
+            caso=caso,
+        )
+        token_response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena': 'ConviData-segura-2026',
+            },
+            format='json',
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+
+        response = self.client.delete(f'/api/v1/casos/{caso.pk}/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Caso.objects.filter(pk=caso.pk).exists())
+        self.assertFalse(Involucran.objects.filter(caso_id=caso.pk).exists())
+        self.assertFalse(SeguimientoCaso.objects.filter(pk=seguimiento.pk).exists())
+        notificacion.refresh_from_db()
+        self.assertIsNone(notificacion.caso_id)
+
+    def test_cases_endpoint_filters_by_exact_case_id(self):
+        lugar = Lugar.objects.create(lugar_nombre='Patio')
+        caso = Caso.objects.create(
+            caso_fecha=date(2026, 10, 26),
+            caso_descripcion='[Caso buscado] - Descripción.',
+            usuario=self.user,
+            lugar=lugar,
+        )
+        Caso.objects.create(
+            caso_fecha=date(2026, 10, 27),
+            caso_descripcion='[Otro caso] - Descripción.',
+            usuario=self.user,
+            lugar=lugar,
+        )
+        token_response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena': 'ConviData-segura-2026',
+            },
+            format='json',
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+
+        response = self.client.get('/api/v1/casos/', {'caso_id': str(caso.pk)})
+        numeric_search = self.client.get('/api/v1/casos/', {'q': str(caso.pk)})
+        invalid_response = self.client.get(
+            '/api/v1/casos/',
+            {'caso_id': 'no-es-un-id'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item['id'] for item in response.data['resultados']], [caso.pk])
+        self.assertEqual(numeric_search.status_code, 200)
+        self.assertEqual(
+            [item['id'] for item in numeric_search.data['resultados']],
+            [caso.pk],
+        )
+        self.assertEqual(invalid_response.status_code, 400)
+        self.assertEqual(
+            invalid_response.data['detail'],
+            'El ID del caso no es válido.',
+        )
+
     def test_user_admin_api_forbids_non_admin_and_lists_admin_users(self):
         response = self.client.get('/api/v1/admin/usuarios/')
         self.assertEqual(response.status_code, 401)
@@ -1485,6 +1585,129 @@ class JwtApiTests(TransactionTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual([resultado['id'] for resultado in response.data['resultados']], [caso.pk])
 
+    def test_cases_endpoint_filters_by_exact_case_id(self):
+        lugar = Lugar.objects.create(lugar_nombre='Patio')
+        caso = Caso.objects.create(
+            caso_fecha=date(2026, 10, 26),
+            caso_descripcion='[Incidente] - Descripción del caso',
+            lugar=lugar,
+            usuario=self.user,
+        )
+        Caso.objects.create(
+            caso_fecha=date(2026, 10, 27),
+            caso_descripcion='[Otro incidente] - Otro caso',
+            lugar=lugar,
+            usuario=self.user,
+        )
+        token_response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena': 'ConviData-segura-2026',
+            },
+            format='json',
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+
+        response = self.client.get('/api/v1/casos/', {'caso_id': str(caso.pk)})
+        search_response = self.client.get('/api/v1/casos/', {'q': str(caso.pk)})
+        invalid_response = self.client.get('/api/v1/casos/', {'caso_id': 'no-es-un-id'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item['id'] for item in response.data['resultados']], [caso.pk])
+        self.assertEqual(search_response.status_code, 200)
+        self.assertEqual([item['id'] for item in search_response.data['resultados']], [caso.pk])
+        self.assertEqual(invalid_response.status_code, 400)
+        self.assertEqual(invalid_response.data['detail'], 'El ID del caso no es válido.')
+
+    def test_administrator_can_delete_case_and_record_history(self):
+        self.role.rol_nombre = 'Administrador'
+        self.role.save(update_fields=['rol_nombre'])
+        lugar = Lugar.objects.create(lugar_nombre='Patio')
+        caso = Caso.objects.create(
+            caso_fecha=date(2026, 10, 26),
+            caso_descripcion='[Incidente] - Descripción del caso',
+            lugar=lugar,
+            usuario=self.user,
+        )
+        token_response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena': 'ConviData-segura-2026',
+            },
+            format='json',
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+
+        response = self.client.delete(f'/api/v1/casos/{caso.pk}/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Caso.objects.filter(pk=caso.pk).exists())
+        self.assertTrue(HistorialUsuario.objects.filter(
+            usuario=self.user,
+            historial_accion='Eliminación',
+            historial_detalle__contains=f'#{caso.pk}',
+        ).exists())
+
+    def test_administrator_can_delete_case_with_relations_created_by_another_user(self):
+        self.role.rol_nombre = 'Administrador'
+        self.role.save(update_fields=['rol_nombre'])
+        creador = Usuario.objects.create(
+            usuario_nombre='Otro',
+            usuario_apaterno='Funcionario',
+            usuario_amaterno='',
+            usuario_correo='otro-funcionario@example.test',
+            usuario_contrasena=make_password('Otra-clave-segura-2026'),
+            usuario_primer_ingreso=False,
+            rol=self.role,
+        )
+        curso = Curso.objects.create(curso_grado='3° Medio', curso_letra='A')
+        estudiante = Estudiante.objects.create(
+            estudiante_nombre='Ana',
+            estudiante_apaterno='Pérez',
+            estudiante_amaterno='López',
+            curso=curso,
+        )
+        lugar = Lugar.objects.create(lugar_nombre='Patio')
+        caso = Caso.objects.create(
+            caso_fecha=date(2026, 10, 26),
+            caso_descripcion='[Incidente] - Descripción del caso',
+            lugar=lugar,
+            usuario=creador,
+        )
+        Involucran.objects.create(
+            estudiante=estudiante,
+            caso=caso,
+            tipo_falta='Grave',
+        )
+        SeguimientoCaso.objects.create(caso=caso, estudiante=estudiante)
+        token_response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': self.user.usuario_correo,
+                'contrasena': 'ConviData-segura-2026',
+            },
+            format='json',
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}"
+        )
+
+        response = self.client.delete(f'/api/v1/casos/{caso.pk}/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Caso.objects.filter(pk=caso.pk).exists())
+        self.assertFalse(Involucran.objects.filter(caso_id=caso.pk).exists())
+        self.assertFalse(SeguimientoCaso.objects.filter(caso_id=caso.pk).exists())
+        self.assertTrue(Notificacion.objects.filter(
+            evento_clave=f'caso_eliminado:{caso.pk}:creador:{creador.pk}',
+        ).exists())
+
     def test_cases_endpoint_can_filter_cases_by_creator(self):
         otro_usuario = Usuario.objects.create(
             usuario_nombre='Otro',
@@ -1637,7 +1860,7 @@ class JwtApiTests(TransactionTestCase):
         response = self.client.post(
             '/api/auth/required-password-change/',
             {
-                'correo': self.user.usuario_correo,
+                'correo': '  CONVIVENCIA@EXAMPLE.TEST  ',
                 'contrasena_actual': 'ConviData-segura-2026',
                 'contrasena_nueva': 'Nueva-clave-segura-2026',
             },
@@ -1650,7 +1873,7 @@ class JwtApiTests(TransactionTestCase):
         login_response = self.client.post(
             '/api/auth/token/',
             {
-                'correo': self.user.usuario_correo,
+                'correo': '  CONVIVENCIA@EXAMPLE.TEST  ',
                 'contrasena': 'Nueva-clave-segura-2026',
             },
             format='json',
@@ -1691,6 +1914,19 @@ class JwtApiTests(TransactionTestCase):
         self.assertEqual(unknown_user.data['detail'], 'Usuario no existente.')
         self.assertEqual(wrong_password.status_code, 401)
         self.assertEqual(wrong_password.data['detail'], 'Contraseña incorrecta.')
+
+    def test_login_matches_email_case_insensitively_and_trims_whitespace(self):
+        response = self.client.post(
+            '/api/auth/token/',
+            {
+                'correo': '  CONVIVENCIA@EXAMPLE.TEST  ',
+                'contrasena': 'ConviData-segura-2026',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('access', response.data)
 
     def test_user_history_is_scoped_to_authenticated_user(self):
         other_user = Usuario.objects.create(

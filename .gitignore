@@ -6,6 +6,8 @@ media/
 db.sqlite3
 .env
 *.backup
+/env
+/.env remplazar por el enviado
 desktop.ini
 staticfiles/
 static/react/

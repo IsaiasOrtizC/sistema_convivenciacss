@@ -125,6 +125,7 @@ type DashboardData = {
 
 type CaseHistoryFilters = {
   q: string
+  caso_id: string
   curso: string
   gravedad: string
   fecha_desde: string
@@ -155,6 +156,7 @@ type CaseHistoryData = {
 
 const EMPTY_CASE_FILTERS: CaseHistoryFilters = {
   q: '',
+  caso_id: '',
   curso: '',
   gravedad: '',
   fecha_desde: '',
@@ -1200,6 +1202,18 @@ function App() {
                     }
                     value={caseFilters.q}
                     type="search"
+                  />
+                </label>
+                <label>
+                  ID del caso
+                  <input
+                    min="1"
+                    onChange={(event) =>
+                      setCaseFilters({ ...caseFilters, caso_id: event.target.value })
+                    }
+                    step="1"
+                    type="number"
+                    value={caseFilters.caso_id}
                   />
                 </label>
                 <label>

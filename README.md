@@ -79,8 +79,9 @@ Consume `POST /api/auth/token/`, `GET /api/v1/me/`,
 `GET /api/v1/dashboard/`, `GET /api/v1/casos/`,
 `GET /api/v1/notificaciones/`, `GET /api/v1/seguimiento/` y
 `GET /api/v1/estadisticas/`. El historial permite
-buscar y filtrar por curso, gravedad y rango de fechas, con paginación. Las
-notificaciones permiten marcar alertas como leídas y, para los roles
+buscar y filtrar por ID, curso, gravedad y rango de fechas, con paginación.
+El panel de estadísticas permite cambiar cada gráfico entre barras, línea y
+circular. Las notificaciones permiten marcar alertas como leídas y, para los roles
 autorizados, cambiar su estado dejando registro del motivo. El registro de casos
 acepta evidencia adjunta y conserva el flujo de aprobación para Profesor Jefe.
 El seguimiento permite actualizar acciones y cerrar casos dejando el historial
@@ -102,7 +103,7 @@ clientes de API:
 * `POST /api/auth/token/refresh/` recibe JSON `{"refresh": "..."}` y devuelve un nuevo `access`.
 * `GET /api/v1/me/` devuelve la identidad y el rol del usuario autenticado.
 * `GET /api/v1/dashboard/?pagina=1` devuelve el resumen del panel y requiere JWT; está restringido para el rol Profesor Jefe.
-* `GET /api/v1/casos/` devuelve el historial paginado y admite los filtros `q`, `curso`, `gravedad`, `fecha_desde` y `fecha_hasta`; requiere JWT y está restringido para el rol Profesor Jefe.
+* `GET /api/v1/casos/` devuelve el historial paginado y admite los filtros `q`, `caso_id`, `curso`, `gravedad`, `fecha_desde` y `fecha_hasta`; un valor numérico en `q` también busca por ID exacto. Requiere JWT y está restringido para el rol Profesor Jefe.
 * `GET /api/v1/notificaciones/` devuelve las alertas del usuario; requiere JWT y está limitado a Administrador, Inspector y Equipo de Convivencia. `POST /api/v1/notificaciones/<id>/` permite marcarlas como leídas; cambiar estado requiere Administrador o Equipo de Convivencia e incluye el motivo en el historial.
 * `GET /api/v1/casos/formulario/` devuelve lugares, cursos y estudiantes activos para el formulario. `POST /api/v1/casos/nuevo/` registra casos o crea una solicitud pendiente para Profesor Jefe; ambos requieren JWT.
 * `GET /api/v1/casos/pendientes/` devuelve solicitudes en espera de revisión y requiere JWT para Administrador, Inspector o Equipo de Convivencia. `POST /api/v1/casos/pendientes/<id>/` permite aprobar y registrar el caso, o rechazarlo con un comentario opcional; registra la revisión y evita procesar dos veces una solicitud.
