@@ -3,9 +3,10 @@
 import logging
 from datetime import timedelta
 
+from django.db.models import Q
 from django.utils import timezone
 
-from ..models import Caso, HistorialNotificacion, Notificacion, ProfesorJefe, Rol, Usuario
+from ..models import Caso, HistorialNotificacion, Notificacion, ProfesorJefe, Usuario
 from ..trazabilidad import trazar
 from .email_controller import programar_tarea_correo
 
@@ -84,117 +85,113 @@ def notificar_caso_gravisimo(request, caso, tipo_falta, lugar):
     )
 
 
-@trazar('CONTROLADOR', 'AlertController', 'verificando el umbral de casos del curso')
+@trazar('CONTROLADOR', 'AlertController', 'verificando el umbral de casos del curso por tramos de 10')
 def verificar_alerta_curso_mas_de_10_casos(curso):
     """
     RF-33 / RF-34
 
-    Genera una alerta cuando un curso supera los 10 casos
-    durante la semana actual (lunes a domingo).
-
-    La alerta se genera una sola vez por curso y semana.
+    - Dispara una alerta al superar 10, 20, 30... casos en la semana actual (lunes a domingo).
+    - Destinatarios exclusivos: 'PConvivencia' y Profesor(es) Jefe(s) del curso.
+    - No repite alertas dentro del mismo tramo de 10.
+    - Al avanzar a un nuevo tramo (ej. caso #21), elimina las notificaciones
+      de tramos anteriores de ese curso/semana que ya estén resueltas o leídas.
     """
-
     if not curso:
         return
 
     hoy = timezone.localdate()
-
-    # Semana actual: lunes -> domingo
     inicio_semana = hoy - timedelta(days=hoy.weekday())
     fin_semana = inicio_semana + timedelta(days=6)
 
-    # Contar casos distintos asociados al curso.
     total_casos = (
         Caso.objects
         .filter(
             caso_fecha__gte=inicio_semana,
             caso_fecha__lte=fin_semana,
-            estudiantes__curso=curso
+            estudiantes__curso=curso,
         )
         .distinct()
         .count()
     )
 
-    # La alerta aparece SOLO cuando supera 10.
-    if total_casos <= 10:
+    # Tramo 0: 1..10 | Tramo 1: 11..20 (>10) | Tramo 2: 21..30 (>20) | etc.
+    tramo_actual = (total_casos - 1) // 10
+    if tramo_actual < 1:
         return
 
-    nombre_curso = str(curso)
+    umbral_superado = tramo_actual * 10
+    prefijo_semana = f"umbral_curso:{curso.curso_id}:semana:{inicio_semana.isoformat()}:"
+    clave_tramo_actual = f"{prefijo_semana}tramo:{tramo_actual}:"
 
-    titulo = "Alerta: alta cantidad de casos"
+    # 1. Eliminar notificaciones de tramos anteriores ya resueltas (estado cambiado) o marcadas como leídas
+    estado_inicial = Notificacion.Estado.values[0]
+    Notificacion.objects.filter(
+        evento_clave__startswith=prefijo_semana
+    ).exclude(
+        evento_clave__startswith=clave_tramo_actual
+    ).filter(
+        ~Q(estado=estado_inicial) | Q(notificacion_leido=True)
+    ).delete()
 
-    mensaje = (
-        f"El curso {nombre_curso} supera los 10 casos de convivencia "
-        f"esta semana. Actualmente registra {total_casos} casos."
-    )
-
-    # ------------------------------------------------------------
-    # RF-33
-    # Administrador / Inspector / PConvivencia
-    # ------------------------------------------------------------
-
-    roles_alerta = Rol.objects.filter(
-        rol_nombre__in=[
-            'Administrador',
-            'Inspector',
-            'PConvivencia'
-        ]
-    )
-
-    usuarios_generales = Usuario.objects.filter(
-        rol__in=roles_alerta,
+    # 2. Destinatarios exclusivos: PConvivencia + Profesor Jefe del curso
+    usuarios_convivencia = Usuario.objects.filter(
+        rol__rol_nombre__iexact='PConvivencia',
         usuario_activo=True,
-        usuario_bloqueado=False
+        usuario_bloqueado=False,
     )
 
-    # ------------------------------------------------------------
-    # RF-34
-    # Profesor Jefe del curso
-    # ------------------------------------------------------------
-
-    profesor_jefe = (
+    profesores_jefe = (
         ProfesorJefe.objects
         .filter(
             curso=curso,
             usuario__usuario_activo=True,
-            usuario__usuario_bloqueado=False
+            usuario__usuario_bloqueado=False,
         )
         .select_related('usuario')
-        .first()
     )
 
     usuarios_destino = {
         usuario.usuario_id: usuario
-        for usuario in usuarios_generales
+        for usuario in usuarios_convivencia
     }
+    for pj in profesores_jefe:
+        if pj.usuario:
+            usuarios_destino[pj.usuario.usuario_id] = pj.usuario
 
-    if profesor_jefe and profesor_jefe.usuario:
-        usuarios_destino[profesor_jefe.usuario.usuario_id] = (
-            profesor_jefe.usuario
+    if not usuarios_destino:
+        logger.warning(
+            "El curso %s superó %s casos semanales, pero no tiene PConvivencia ni Profesor Jefe activo.",
+            curso,
+            umbral_superado,
         )
+        return
 
-    # ------------------------------------------------------------
-    # Evitar duplicados:
-    # una alerta por curso y semana para cada usuario.
-    # ------------------------------------------------------------
+    nombre_curso = str(curso)
+    titulo = f"Alerta: más de {umbral_superado} casos en la semana"
+    mensaje = (
+        f"El curso {nombre_curso} superó el umbral de {umbral_superado} casos "
+        f"de convivencia esta semana (actualmente registra {total_casos} casos)."
+    )
 
+    # 3. Crear alerta única por tramo y destinatario
     for usuario in usuarios_destino.values():
-
-        ya_existe = Notificacion.objects.filter(
-            usuario=usuario,
-            notificacion_titulo=titulo,
-            notificacion_mensaje__contains=f"curso {nombre_curso}",
-            notificacion_fecha__date__gte=inicio_semana,
-            notificacion_fecha__date__lte=fin_semana
-        ).exists()
-
-        if ya_existe:
-            continue
-
-        Notificacion.objects.create(
-            usuario=usuario,
-            notificacion_titulo=titulo,
-            notificacion_mensaje=mensaje,
-            notificacion_icono="⚠️"
+        clave = f"{clave_tramo_actual}usuario:{usuario.usuario_id}"
+        notificacion, creada = Notificacion.objects.get_or_create(
+            evento_clave=clave,
+            defaults={
+                'usuario': usuario,
+                'notificacion_titulo': titulo,
+                'notificacion_mensaje': mensaje,
+                'notificacion_icono': '⚠️',
+            },
         )
+        if creada:
+            HistorialNotificacion.objects.create(
+                notificacion=notificacion,
+                estado=notificacion.estado,
+                cambiado_por=usuario,
+                motivo=(
+                    f"Alerta automática generada al superar {umbral_superado} casos "
+                    f"semanales en el curso {nombre_curso}."
+                ),
+            )

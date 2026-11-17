@@ -1,11 +1,11 @@
 import importlib
 import os
-import re
 from datetime import timedelta
 from io import BytesIO
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Count
 from django.utils import timezone
 from pypdf import PdfReader
 
@@ -19,9 +19,10 @@ from .models import (
     Notificacion,
     ReglaInstitucional,
     SeguimientoCaso,
-    Estudiante,
     Usuario,
+    VersionReglamento,
 )
+from .trazabilidad import trazar
 
 
 class ErrorProcesamientoPDF(ValueError):
@@ -132,6 +133,7 @@ def _texto_ocr(pytesseract, imagen, config):
         ) from error
 
 
+@trazar('SERVICE', 'ReglamentoService', 'extrayendo páginas y aplicando OCR si es necesario')
 def extraer_paginas_pdf(contenido):
     if not contenido:
         raise ErrorProcesamientoPDF('El archivo PDF está vacío.')
@@ -242,21 +244,24 @@ def _identificador_visual(estudiante):
     return f'Estudiante #{estudiante.estudiante_id}'
 
 
-def _responsable_regla(regla, actor):
-    if regla.responsable_rol:
+def _obtener_responsable_por_rol(rol_nombre, actor, cache_responsables):
+    if not rol_nombre:
+        return actor
+    if rol_nombre not in cache_responsables:
         responsable = (
             Usuario.objects.filter(
-                rol__rol_nombre=regla.responsable_rol,
+                rol__rol_nombre=rol_nombre,
                 usuario_activo=True,
+                usuario_bloqueado=False,
             )
             .order_by('usuario_id')
             .first()
         )
-        if responsable:
-            return responsable
-    return actor
+        cache_responsables[rol_nombre] = responsable or actor
+    return cache_responsables[rol_nombre]
 
 
+@trazar('SERVICE', 'ReglamentoService', 'evaluando reglas institucionales activas para el caso')
 @transaction.atomic
 def evaluar_reglas_para_caso(
     caso: Caso,
@@ -266,18 +271,62 @@ def evaluar_reglas_para_caso(
     fecha_evento=None,
 ):
     """Evalúa solo reglas activas y aprobadas contra los eventos ya persistidos."""
-    activas = ReglaInstitucional.objects.filter(
-        estado=ReglaInstitucional.Estado.APROBADA,
-        version__estado='vigente',
-        solo_presentacion=False,
-    ).exclude(activador=ReglaInstitucional.Activador.MANUAL).select_related(
-        'version', 'version__documento',
+    estudiantes_lista = list(estudiantes)
+    if not estudiantes_lista:
+        return 0
+
+    activas = [
+        regla
+        for regla in (
+            ReglaInstitucional.objects.filter(
+                estado=ReglaInstitucional.Estado.APROBADA,
+                version__estado=VersionReglamento.Estado.VIGENTE,
+                solo_presentacion=False,
+            )
+            .exclude(activador=ReglaInstitucional.Activador.MANUAL)
+            .select_related('version', 'version__documento')
+        )
+        if regla.puede_activarse()
+    ]
+
+    estudiante_ids = [est.estudiante_id for est in estudiantes_lista]
+
+    # Precarga de categorías asociadas a cada estudiante en este caso
+    categorias_caso_por_estudiante = {}
+    for est_id, tipo_falta in Involucran.objects.filter(
+        caso_id=caso.caso_id,
+        estudiante_id__in=estudiante_ids,
+    ).values_list('estudiante_id', 'tipo_falta'):
+        if tipo_falta:
+            categorias_caso_por_estudiante.setdefault(est_id, set()).add(
+                tipo_falta.strip().casefold()
+            )
+
+    # Precarga de conteo histórico de casos distintos por (estudiante, categoría) si hay reglas de umbral
+    hay_reglas_umbral = any(
+        r.activador == ReglaInstitucional.Activador.UMBRAL_CASOS for r in activas
     )
+    conteo_historico = {}
+    if hay_reglas_umbral and activas:
+        for fila in (
+            Involucran.objects.filter(estudiante_id__in=estudiante_ids)
+            .values('estudiante_id', 'tipo_falta')
+            .annotate(total_casos=Count('caso_id', distinct=True))
+        ):
+            clave_hist = (
+                fila['estudiante_id'],
+                (fila['tipo_falta'] or '').strip().casefold(),
+            )
+            conteo_historico[clave_hist] = (
+                conteo_historico.get(clave_hist, 0) + fila['total_casos']
+            )
+
     momento_evento = fecha_evento or caso.caso_creado_en or timezone.now()
     fecha_evento_local = timezone.localtime(momento_evento).date()
     notificaciones_creadas = 0
+    cache_responsables = {}
 
-    for estudiante in estudiantes:
+    for estudiante in estudiantes_lista:
         seguimiento, seguimiento_creado = SeguimientoCaso.objects.get_or_create(
             caso=caso,
             estudiante=estudiante,
@@ -289,32 +338,35 @@ def evaluar_reglas_para_caso(
                 cambiado_por=actor,
                 motivo='Seguimiento creado al registrar o actualizar un caso.',
             )
+
+        categorias_estudiante = categorias_caso_por_estudiante.get(
+            estudiante.estudiante_id, set()
+        )
+        if not categorias_estudiante or not activas:
+            continue
+
         for regla in activas:
-            if not regla.categoria_falta or not regla.accion_requerida.strip():
-                continue
-            tiene_categoria = Involucran.objects.filter(
-                caso_id=caso.caso_id,
-                estudiante_id=estudiante.estudiante_id,
-                tipo_falta__iexact=regla.categoria_falta,
-            ).exists()
-            if not tiene_categoria:
+            categoria_regla_norm = regla.categoria_falta.strip().casefold()
+            if categoria_regla_norm not in categorias_estudiante:
                 continue
 
             if regla.activador == ReglaInstitucional.Activador.UMBRAL_CASOS:
-                if not regla.umbral_casos:
+                umbral_objetivo = regla.umbral_casos or regla.umbral_anotaciones
+                if not umbral_objetivo:
                     continue
-                total = Involucran.objects.filter(
-                    estudiante_id=estudiante.estudiante_id,
-                    tipo_falta__iexact=regla.categoria_falta,
-                ).values('caso_id').distinct().count()
-                if total < regla.umbral_casos:
+                total = conteo_historico.get(
+                    (estudiante.estudiante_id, categoria_regla_norm), 0
+                )
+                if total < umbral_objetivo:
                     continue
 
             clave = (
                 f'{evento_tipo}:caso:{caso.caso_id}:'
                 f'estudiante:{estudiante.estudiante_id}:regla:{regla.pk}'
             )
-            responsable = _responsable_regla(regla, actor)
+            responsable = _obtener_responsable_por_rol(
+                regla.responsable_rol, actor, cache_responsables
+            )
             fecha_limite = (
                 fecha_evento_local + timedelta(days=regla.plazo_dias)
                 if (
@@ -326,6 +378,7 @@ def evaluar_reglas_para_caso(
             texto_mensaje = regla.accion_requerida.strip()
             if regla.requiere_citacion_apoderado:
                 texto_mensaje += ' También requiere citar al apoderado.'
+
             notificacion, creada = Notificacion.objects.get_or_create(
                 evento_clave=clave,
                 defaults={
@@ -356,9 +409,11 @@ def evaluar_reglas_para_caso(
                 cambiado_por=actor,
                 motivo='Notificación creada por una regla institucional aprobada.',
             )
+
             acciones_requeridas = [regla.accion_requerida.strip()]
             if regla.requiere_citacion_apoderado:
                 acciones_requeridas.append('Citar al apoderado')
+
             for numero_accion, titulo_accion in enumerate(acciones_requeridas, start=1):
                 accion, accion_creada = AccionSeguimiento.objects.get_or_create(
                     clave_idempotencia=f'{clave}:accion:{numero_accion}',

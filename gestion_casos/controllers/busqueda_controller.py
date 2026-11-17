@@ -1,53 +1,81 @@
-"""Buscador global de la barra superior (alumnos y casos)."""
+"""Buscador global de la barra superior (alumnos, casos y funcionarios)."""
 
-from django.db.models import Q
+from django.db.models import Q, Value
+from django.db.models.functions import Concat
 from django.http import JsonResponse
+from django.urls import reverse
 
 from ..models import Caso, Estudiante, Usuario, _quitar_tildes
+from ..trazabilidad import trazar
 
-# ============================================================
-#  BÚSQUEDA GLOBAL (lupa en la barra superior)
-# ============================================================
 
+@trazar('CONTROLADOR', 'BusquedaController', 'ejecutando búsqueda global')
 def busqueda_global_view(request):
     """API JSON para el buscador global de la barra superior (alumnos, casos y funcionarios).
-    Ignora tildes y mayúsculas/minúsculas en ambos lados (lo que se busca y lo guardado)."""
+    Ignora tildes y mayúsculas/minúsculas tanto en el término buscado como en los registros."""
     if 'usuario_id' not in request.session:
         return JsonResponse({'error': 'No autenticado'}, status=401)
 
-    # El Profesor Jefe no tiene acceso al buscador global (solo ve su propio curso)
-    if request.session.get('usuario_rol') == 'Profesor Jefe':
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    rol_usuario = (request.session.get('usuario_rol') or '').strip()
+    if 'profesor' in rol_usuario.casefold():
         return JsonResponse({'error': 'Acceso denegado'}, status=403)
 
-    query = request.GET.get('q', '').strip()
+    query = request.GET.get('q', '').strip()[:80]
     resultado = {'estudiantes': [], 'casos': [], 'usuarios': []}
 
     if len(query) < 2:
         return JsonResponse(resultado)
 
-    # Se le quitan las tildes al término buscado, para que coincida sin importar
-    # si el usuario escribe "jose" o "josé" (el campo también se compara sin tildes,
-    # vía la extensión 'unaccent' de PostgreSQL con el lookup __unaccent).
     query_normalizada = _quitar_tildes(query)
+    rut_normalizado = query.upper().replace('.', '').strip()
 
     # ---- Alumnos ----
-    estudiantes = Estudiante.objects.select_related('curso').filter(
-        Q(estudiante_nombre__unaccent__icontains=query_normalizada) |
-        Q(estudiante_apaterno__unaccent__icontains=query_normalizada) |
-        Q(estudiante_amaterno__unaccent__icontains=query_normalizada) |
-        Q(estudiante_identificador__icontains=query.upper())
-    )[:8]
+    estudiantes = (
+        Estudiante.objects
+        .select_related('curso')
+        .annotate(
+            nombre_completo_db=Concat(
+                'estudiante_nombre',
+                Value(' '),
+                'estudiante_apaterno',
+                Value(' '),
+                'estudiante_amaterno',
+            )
+        )
+        .filter(
+            Q(nombre_completo_db__unaccent__icontains=query_normalizada)
+            | Q(estudiante_identificador__icontains=rut_normalizado)
+        )
+        .order_by('estudiante_apaterno', 'estudiante_nombre')[:8]
+    )
     for e in estudiantes:
         resultado['estudiantes'].append({
             'id': e.estudiante_id,
-            'nombre_completo': f"{e.estudiante_nombre} {e.estudiante_apaterno} {e.estudiante_amaterno}",
-            'curso': f"{e.curso.curso_grado} {e.curso.curso_letra}" if e.curso else "Sin curso asignado",
+            'nombre_completo': f"{e.estudiante_nombre} {e.estudiante_apaterno} {e.estudiante_amaterno}".strip(),
+            'curso': f"{e.curso.curso_grado} {e.curso.curso_letra}".strip() if e.curso else "Sin curso asignado",
+            'url': reverse('detalle_estudiante', args=[e.estudiante_id]),
         })
 
-    # ---- Casos ----
-    casos = Caso.objects.filter(
-        caso_descripcion__unaccent__icontains=query_normalizada
-    ).select_related('lugar').order_by('-caso_fecha')[:8]
+    # ---- Casos (por #ID, descripción o alumno involucrado) ----
+    filtro_casos = (
+        Q(caso_descripcion__unaccent__icontains=query_normalizada)
+        | Q(estudiantes__estudiante_nombre__unaccent__icontains=query_normalizada)
+        | Q(estudiantes__estudiante_apaterno__unaccent__icontains=query_normalizada)
+    )
+    codigo_numerico = query.lstrip('#').strip()
+    if codigo_numerico.isdigit():
+        filtro_casos |= Q(caso_id=int(codigo_numerico))
+
+    casos = (
+        Caso.objects
+        .filter(filtro_casos)
+        .select_related('lugar')
+        .distinct()
+        .order_by('-caso_fecha', '-caso_id')[:8]
+    )
     for c in casos:
         texto = c.caso_descripcion or ""
         titulo = texto
@@ -59,21 +87,36 @@ def busqueda_global_view(request):
             'titulo': titulo if titulo else f"Caso #{c.caso_id}",
             'fecha': c.caso_fecha.strftime('%d/%m/%Y') if c.caso_fecha else '',
             'lugar': c.lugar.lugar_nombre if c.lugar else 'No especificado',
+            'url': reverse('detalle_caso', args=[c.caso_id]),
         })
 
-    # ---- Funcionarios (Profesor Jefe, Inspector, Administrador, Convivencia) ----
-    usuarios = Usuario.objects.select_related('rol').filter(
-        Q(usuario_nombre__unaccent__icontains=query_normalizada) |
-        Q(usuario_apaterno__unaccent__icontains=query_normalizada) |
-        Q(usuario_amaterno__unaccent__icontains=query_normalizada) |
-        Q(usuario_correo__icontains=query)
-    )[:6]
+    # ---- Funcionarios activos ----
+    usuarios = (
+        Usuario.objects
+        .select_related('rol')
+        .annotate(
+            nombre_completo_db=Concat(
+                'usuario_nombre',
+                Value(' '),
+                'usuario_apaterno',
+                Value(' '),
+                'usuario_amaterno',
+            )
+        )
+        .filter(usuario_activo=True)
+        .filter(
+            Q(nombre_completo_db__unaccent__icontains=query_normalizada)
+            | Q(usuario_correo__icontains=query)
+        )
+        .order_by('usuario_apaterno', 'usuario_nombre')[:6]
+    )
     for u in usuarios:
         resultado['usuarios'].append({
             'id': u.usuario_id,
-            'nombre_completo': f"{u.usuario_nombre} {u.usuario_apaterno} {u.usuario_amaterno}",
+            'nombre_completo': f"{u.usuario_nombre} {u.usuario_apaterno} {u.usuario_amaterno}".strip(),
             'correo': u.usuario_correo,
             'rol': u.rol.rol_nombre if u.rol else '',
+            'url': f"{reverse('gestion_de_usuarios')}?q={u.usuario_correo}",
         })
 
     return JsonResponse(resultado)

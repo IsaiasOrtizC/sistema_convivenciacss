@@ -11,7 +11,6 @@ from ..trazabilidad import trazar
 
 logger = logging.getLogger(__name__)
 
-
 # Configuración global del cliente de Resend (servicio externo de correo)
 resend.api_key = getattr(settings, 'RESEND_API_KEY', '')
 
@@ -24,23 +23,45 @@ REMITENTE_POR_DEFECTO = getattr(
 
 @trazar('CONTROLADOR', 'EmailController', 'enviando correo mediante Resend')
 def enviar_correo_html(destinatario, asunto, html, remitente=REMITENTE_POR_DEFECTO):
-    """Envía de inmediato un correo HTML mediante Resend (cliente del servicio externo)."""
+    """Envía de inmediato un correo HTML mediante Resend (soporta str o iterable de correos)."""
+    destinatarios = (
+        [destinatario.strip()]
+        if isinstance(destinatario, str)
+        else [correo.strip() for correo in destinatario if correo and correo.strip()]
+    )
+
+    if not destinatarios:
+        logger.warning("Intento de envío de correo '%s' sin destinatarios válidos.", asunto)
+        return None
+
+    if not resend.api_key:
+        logger.warning(
+            "RESEND_API_KEY no configurada. Correo '%s' para %s omitido.",
+            asunto,
+            destinatarios,
+        )
+        return None
+
     return resend.Emails.send({
         "from": remitente,
-        "to": [destinatario],
+        "to": destinatarios,
         "subject": asunto,
         "html": html,
     })
 
 
-
 @trazar('CONTROLADOR', 'EmailController', 'encolando el envío de correo (Celery)')
 def programar_tarea_correo(request, tarea, argumentos, mensaje_error):
+    """Encola una tarea de Celery tras confirmar la transacción de base de datos."""
     def encolar():
         try:
             tarea.delay(*argumentos)
         except Exception:
-            logger.exception("No se pudo encolar el envío de correo.")
-            messages.warning(request, mensaje_error)
+            logger.exception("No se pudo encolar el envío de correo (%s).", getattr(tarea, 'name', tarea))
+            if request is not None and mensaje_error:
+                try:
+                    messages.warning(request, mensaje_error)
+                except Exception:
+                    logger.debug("No fue posible adjuntar el mensaje de advertencia al request.")
 
     transaction.on_commit(encolar)

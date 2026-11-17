@@ -5,16 +5,27 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="ConviData, plataforma de gestión de convivencia escolar." />
+    <meta name="csrf-token" content="{{ csrf_token }}" />
     <meta name="theme-color" content="#7B1A1A" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#121214" media="(prefers-color-scheme: dark)" />
 
     <title>ConviData | Convivencia escolar</title>
+    <link rel="icon" href="{% static 'favicon.ico' %}" sizes="any" />
 
-    <!-- Detección inmediata de tema para evitar flash blanco en modo oscuro -->
+    <!-- Detección inmediata de tema (preferencia guardada o tema del sistema) -->
     <script>
       (() => {
         const mq = window.matchMedia('(prefers-color-scheme: dark)');
-        const apply = () => document.documentElement.setAttribute('data-theme', mq.matches ? 'dark' : 'light');
+        const apply = () => {
+          let saved = null;
+          try {
+            saved = window.localStorage.getItem('convidata-theme');
+          } catch (_) {}
+          const theme = (saved === 'dark' || saved === 'light')
+            ? saved
+            : (mq.matches ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', theme);
+        };
         apply();
         if (mq.addEventListener) mq.addEventListener('change', apply);
         else mq.addListener(apply);
@@ -34,10 +45,17 @@
       media="print"
       onload="this.media='all'"
     />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
 
-    <!-- Estilos base macOS + skeleton mínimo mientras monta React -->
+    <!-- Estilos base + skeleton mínimo mientras monta React -->
     <style>
       :root {
+        color-scheme: light dark;
         --bg-base: #F5F5F7;
         --text-main: #1D1D1F;
         --accent: #7B1A1A;
@@ -75,8 +93,13 @@
     </style>
   </head>
   <body>
+    <noscript>
+      <p style="padding: 1.5rem; text-align: center;">
+        ConviData requiere JavaScript habilitado para funcionar correctamente.
+      </p>
+    </noscript>
     <div id="root">
-      <div class="app-boot-loader" aria-label="Cargando ConviData">
+      <div class="app-boot-loader" role="status" aria-live="polite" aria-label="Cargando ConviData">
         <div class="app-boot-spinner"></div>
       </div>
     </div>

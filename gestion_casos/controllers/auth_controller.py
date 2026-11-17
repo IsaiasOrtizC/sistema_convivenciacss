@@ -1,26 +1,39 @@
 """Auth Controller: inicio y cierre de sesión, credenciales y recuperación de acceso."""
 
+import logging
 import secrets
 import string
 
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.messages import get_messages
-from django.utils.html import escape
+from django.db import transaction
+from django.db.models import F
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.utils.html import escape
 
 from ..models import SesionActiva, Usuario
 from .email_controller import enviar_correo_html
 
+logger = logging.getLogger(__name__)
+
+
+def _generar_contrasena_temporal(longitud=12):
+    alfabeto = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alfabeto) for _ in range(longitud))
+
 
 def solicitar_recuperacion_contrasena(correo_destino):
-    usuario = Usuario.objects.filter(usuario_correo__iexact=correo_destino.strip()).first()
+    correo_limpio = (correo_destino or '').strip()
+    if not correo_limpio:
+        return False
+
+    usuario = Usuario.objects.filter(usuario_correo__iexact=correo_limpio).first()
     if usuario is None or not usuario.usuario_activo:
         return False
 
-    alfabeto = string.ascii_letters + string.digits
-    contrasena_temporal = ''.join(secrets.choice(alfabeto) for _ in range(10))
+    contrasena_temporal = _generar_contrasena_temporal(12)
     html_recuperacion_contrasena = f"""
     <div style="font-family: 'Segoe UI', sans-serif; max-width: 550px; margin: 0 auto; border: 1px solid rgba(123,26,26,0.15); border-radius: 12px; overflow: hidden;">
         <div style="background: linear-gradient(90deg, #5A1010 0%, #7B1A1A 100%); padding: 24px; text-align: center; border-bottom: 3px solid #D4A017;">
@@ -41,122 +54,143 @@ def solicitar_recuperacion_contrasena(correo_destino):
     </div>
     """
 
-    enviar_correo_html(
-        destinatario=usuario.usuario_correo,
-        asunto="Recuperación de Contraseña - ConviData",
-        html=html_recuperacion_contrasena,
-    )
+    with transaction.atomic():
+        usuario.usuario_contrasena = make_password(contrasena_temporal)
+        usuario.usuario_primer_ingreso = True
+        usuario.usuario_bloqueado = False
+        usuario.usuario_intentos_fallidos = 0
+        usuario.save(update_fields=[
+            'usuario_contrasena',
+            'usuario_primer_ingreso',
+            'usuario_bloqueado',
+            'usuario_intentos_fallidos',
+        ])
+        SesionActiva.objects.filter(usuario=usuario).delete()
 
-    usuario.usuario_contrasena = make_password(contrasena_temporal)
-    usuario.usuario_primer_ingreso = True
-    usuario.usuario_bloqueado = False
-    usuario.usuario_intentos_fallidos = 0
-    usuario.save(update_fields=[
-        'usuario_contrasena',
-        'usuario_primer_ingreso',
-        'usuario_bloqueado',
-        'usuario_intentos_fallidos',
-    ])
+        enviar_correo_html(
+            destinatario=usuario.usuario_correo,
+            asunto="Recuperación de Contraseña - ConviData",
+            html=html_recuperacion_contrasena,
+        )
+
     return True
 
 
 def login_view(request):
     if request.method == 'POST':
-        
         if 'correo_recuperacion' in request.POST:
             correo_destino = request.POST.get('correo_recuperacion', '').strip()
             try:
                 solicitar_recuperacion_contrasena(correo_destino)
-                messages.success(request, "Si el correo está registrado y activo, recibirás una contraseña temporal.")
-                return redirect('login')
-            except Exception as e:
-                messages.error(request, f"Error en el servidor de correos: {str(e)}")
-                return redirect('login')
+                messages.success(
+                    request,
+                    "Si el correo está registrado y activo, recibirás una contraseña temporal.",
+                )
+            except Exception:
+                logger.exception("Error al enviar correo de recuperación de contraseña.")
+                messages.error(
+                    request,
+                    "No se pudo procesar la solicitud en este momento. Inténtalo nuevamente más tarde.",
+                )
+            return redirect('login')
 
-        # INICIO SESION
-        else:
-            correo_ingresado = request.POST.get('correo', '').strip()
-            contrasena_ingresada = request.POST.get('contrasena', '')
-            
-            try:
-                # Buscamos al funcionario por su correo real
-                usuario = Usuario.objects.get(usuario_correo=correo_ingresado)
+        # INICIO DE SESIÓN
+        correo_ingresado = request.POST.get('correo', '').strip()
+        contrasena_ingresada = request.POST.get('contrasena', '')
 
-                # RF: cuenta bloqueada por intentos fallidos -> ni siquiera se valida la contraseña
+        if not correo_ingresado or not contrasena_ingresada:
+            messages.error(request, "Ingresa tu correo institucional y contraseña.")
+            return redirect('login')
+
+        try:
+            with transaction.atomic():
+                usuario = (
+                    Usuario.objects
+                    .select_for_update()
+                    .select_related('rol')
+                    .get(usuario_correo__iexact=correo_ingresado)
+                )
+
+                # Cuenta bloqueada por intentos fallidos -> no se valida contraseña
                 if usuario.usuario_bloqueado:
-                    messages.error(request, "Cuenta bloqueada. Contacta al Administrador del sistema para restablecer el acceso.")
+                    messages.error(
+                        request,
+                        "Cuenta bloqueada. Contacta al Administrador del sistema para restablecer el acceso.",
+                    )
                     return redirect('login')
 
-                # Validamos credenciales directo con tu string de contraseña de la BD
                 if check_password(contrasena_ingresada, usuario.usuario_contrasena):
-
-                    # RF: no dejar entrar a cuentas marcadas como inactivas
                     if not usuario.usuario_activo:
-                        messages.error(request, "Tu cuenta se encuentra inactiva. Contacta al Administrador del sistema.")
+                        messages.error(
+                            request,
+                            "Tu cuenta se encuentra inactiva. Contacta al Administrador del sistema.",
+                        )
                         return redirect('login')
 
                     usuario.usuario_intentos_fallidos = 0
-                    usuario.usuario_ultimo_acceso=timezone.now()
+                    usuario.usuario_ultimo_acceso = timezone.now()
                     usuario.save(update_fields=['usuario_intentos_fallidos', 'usuario_ultimo_acceso'])
-
-
-                    # Inyectamos las variables obligatorias en la sesión web
-                    request.session['usuario_id'] = usuario.usuario_id
-                    request.session['usuario_nombre'] = f"{usuario.usuario_nombre} {usuario.usuario_apaterno}"
-                    request.session['usuario_rol'] = usuario.rol.rol_nombre
-                    request.session['usuario_correo'] = usuario.usuario_correo
-                    
-                    # CONTROL PARA PRIMER INGRESO
-                    try:
-                        request.session['primer_ingreso'] = usuario.usuario_primer_ingreso
-                    except AttributeError:
-                        request.session['primer_ingreso'] = False
-
-                    # SESIÓN ÚNICA: esta sesión pasa a ser la única válida para esta cuenta.
-                    # Si esta cuenta estaba abierta en otro dispositivo/navegador, ese quedará invalidado.
-                    request.session.save()  # fuerza la creación del session_key si aún no existía
-                    SesionActiva.objects.update_or_create(
-                        usuario=usuario,
-                        defaults={'session_key': request.session.session_key, 'fecha_inicio': timezone.now()}
-                    )
-                    
-                    # El Profesor Jefe no tiene panel general: entra directo a su curso
-                    if usuario.rol.rol_nombre == 'Profesor Jefe':
-                        return redirect('mis_casos_curso')
-
-                    return redirect('dashboard')
                 else:
-                    # RF: contraseña incorrecta -> cuenta el intento y bloquea al llegar a 5
-                    usuario.usuario_intentos_fallidos += 1
+                    # Incremento atómico de intentos fallidos
+                    usuario.usuario_intentos_fallidos = F('usuario_intentos_fallidos') + 1
+                    usuario.save(update_fields=['usuario_intentos_fallidos'])
+                    usuario.refresh_from_db(fields=['usuario_intentos_fallidos'])
 
                     if usuario.usuario_intentos_fallidos >= 5:
                         usuario.usuario_bloqueado = True
-                        usuario.save(update_fields=['usuario_intentos_fallidos', 'usuario_bloqueado'])
-                        messages.error(request, "Cuenta bloqueada. Se detectaron 5 intentos fallidos consecutivos. Contacta al Administrador del sistema.")
+                        usuario.save(update_fields=['usuario_bloqueado'])
+                        messages.error(
+                            request,
+                            "Cuenta bloqueada. Se detectaron 5 intentos fallidos consecutivos. Contacta al Administrador del sistema.",
+                        )
                     else:
-                        usuario.save(update_fields=['usuario_intentos_fallidos'])
                         intentos_restantes = 5 - usuario.usuario_intentos_fallidos
-                        messages.error(request, f"Contraseña incorrecta. Te quedan {intentos_restantes} intento(s) antes de que la cuenta se bloquee.")
-
+                        messages.error(
+                            request,
+                            f"Contraseña incorrecta. Te quedan {intentos_restantes} intento(s) antes de que la cuenta se bloquee.",
+                        )
                     return redirect('login')
-                    
-            except Usuario.DoesNotExist:
-                messages.error(request, "Usuario no existente: el correo ingresado no está registrado en el sistema.")
-                return redirect('login')
+
+            # Evita session fixation y crea nueva clave de sesión única
+            request.session.cycle_key()
+            request.session['usuario_id'] = usuario.usuario_id
+            request.session['usuario_nombre'] = f"{usuario.usuario_nombre} {usuario.usuario_apaterno}".strip()
+            request.session['usuario_rol'] = usuario.rol.rol_nombre
+            request.session['usuario_correo'] = usuario.usuario_correo
+            request.session['primer_ingreso'] = bool(usuario.usuario_primer_ingreso)
+            request.session.save()
+
+            SesionActiva.objects.update_or_create(
+                usuario=usuario,
+                defaults={
+                    'session_key': request.session.session_key,
+                    'fecha_inicio': timezone.now(),
+                },
+            )
+
+            if usuario.rol.rol_nombre == 'Profesor Jefe':
+                return redirect('mis_casos_curso')
+
+            return redirect('dashboard')
+
+        except Usuario.DoesNotExist:
+            messages.error(
+                request,
+                "Usuario no existente: el correo ingresado no está registrado en el sistema.",
+            )
+            return redirect('login')
 
     return render(request, 'gestion_casos/login.html')
 
 
-# CIERRE SESION
+# CIERRE DE SESIÓN
 def logout_view(request):
     storage = get_messages(request)
-    for message in storage:
-        pass  
+    storage.used = True
 
     usuario_id = request.session.get('usuario_id')
     if usuario_id:
         SesionActiva.objects.filter(usuario_id=usuario_id).delete()
 
     request.session.flush()
-    
     return redirect('login')

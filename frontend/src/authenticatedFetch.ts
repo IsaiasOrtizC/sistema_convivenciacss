@@ -7,12 +7,18 @@ let refreshToken: string | null = null
 let sessionVersion = 0
 let refreshPromise: { version: number; promise: Promise<string | null> } | null = null
 
-function isAccessResponse(value: unknown): value is { access: string } {
+interface RefreshResponse {
+  access: string
+  refresh?: string
+}
+
+function isAccessResponse(value: unknown): value is RefreshResponse {
   return (
     typeof value === 'object' &&
     value !== null &&
     'access' in value &&
-    typeof value.access === 'string'
+    typeof value.access === 'string' &&
+    (!('refresh' in value) || typeof value.refresh === 'string')
   )
 }
 
@@ -28,6 +34,31 @@ export function clearAuthTokens() {
   accessToken = null
   refreshToken = null
   refreshPromise = null
+}
+
+export function hasAuthTokens(): boolean {
+  return Boolean(accessToken || refreshToken)
+}
+
+function resolveUrl(input: RequestInfo | URL): RequestInfo | URL {
+  if (typeof input === 'string' && input.startsWith('/') && API_BASE_URL) {
+    return `${API_BASE_URL}${input}`
+  }
+  return input
+}
+
+function getCsrfToken(): string | null {
+  if (typeof document === 'undefined') return null
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content?.trim()
+  if (meta && meta !== 'NOTPROVIDED') return meta
+
+  const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+function isMutatingMethod(method?: string): boolean {
+  const normalized = (method ?? 'GET').toUpperCase()
+  return normalized !== 'GET' && normalized !== 'HEAD' && normalized !== 'OPTIONS'
 }
 
 function sessionExpiredResponse() {
@@ -61,6 +92,7 @@ async function refreshAccessToken(
     try {
       response = await fetch(`${API_BASE_URL}/api/auth/token/refresh/`, {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh: tokenToRefresh }),
       })
@@ -82,6 +114,9 @@ async function refreshAccessToken(
     if (version !== sessionVersion || tokenToRefresh !== refreshToken) return null
 
     accessToken = body.access
+    if (body.refresh) {
+      refreshToken = body.refresh
+    }
     return accessToken
   })()
 
@@ -96,13 +131,30 @@ async function refreshAccessToken(
 function requestWithToken(
   input: RequestInfo | URL,
   init: RequestInit,
-  token: string,
+  token: string | null,
 ) {
-  const requestHeaders = input instanceof Request ? input.headers : undefined
+  const target = input instanceof Request ? input.clone() : resolveUrl(input)
+  const requestHeaders = target instanceof Request ? target.headers : undefined
   const headers = new Headers(requestHeaders)
   new Headers(init.headers).forEach((value, key) => headers.set(key, value))
-  headers.set('Authorization', `Bearer ${token}`)
-  return fetch(input, { ...init, headers })
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+
+  const method = init.method ?? (target instanceof Request ? target.method : 'GET')
+  if (isMutatingMethod(method) && !headers.has('X-CSRFToken')) {
+    const csrfToken = getCsrfToken()
+    if (csrfToken) {
+      headers.set('X-CSRFToken', csrfToken)
+    }
+  }
+
+  return fetch(target, {
+    credentials: 'same-origin',
+    ...init,
+    headers,
+  })
 }
 
 export async function authenticatedFetch(
@@ -110,7 +162,9 @@ export async function authenticatedFetch(
   init: RequestInit = {},
 ): Promise<Response> {
   const token = accessToken
-  if (!token) return fetch(input, init)
+  if (!token) {
+    return requestWithToken(input, init, null)
+  }
 
   const version = sessionVersion
   const response = await requestWithToken(input, init, token)

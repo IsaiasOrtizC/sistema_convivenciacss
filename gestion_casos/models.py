@@ -8,8 +8,10 @@ from cloudinary_document_storage import CloudinaryDocumentStorage
 def _quitar_tildes(texto):
     """Quita tildes/acentos de un texto (ej: 'Á' -> 'A'), para que el
     identificador del alumno solo use letras planas, como exige el formato."""
+    if not texto:
+        return ''
     return ''.join(
-        c for c in unicodedata.normalize('NFD', texto)
+        c for c in unicodedata.normalize('NFD', str(texto))
         if unicodedata.category(c) != 'Mn'
     )
 
@@ -24,7 +26,7 @@ def generar_identificador_alumno(nombre, apaterno, numero_lista, curso_grado, cu
     Reglas:
     - Básica: cursos válidos del 1 al 8 (nivel 'B')
     - Media: cursos válidos del 1 al 4 (nivel 'M')
-    - El N° de lista es por curso + paralelo (no es global)
+    - El N° de lista es por curso + paralelo (1..99)
 
     Devuelve None si falta algún dato o si el resultado no cumple el formato
     (^[A-ZÑ]{2}\\d{2}([1-8]B|[1-4]M)[A-Z]$).
@@ -32,18 +34,27 @@ def generar_identificador_alumno(nombre, apaterno, numero_lista, curso_grado, cu
     if not (nombre and apaterno and numero_lista and curso_grado and curso_letra):
         return None
 
-    inicial_nombre = _quitar_tildes(nombre.strip()[0]).upper()
-    inicial_apaterno = _quitar_tildes(apaterno.strip()[0]).upper()
+    nombre_limpio = nombre.strip()
+    apaterno_limpio = apaterno.strip()
+    if not nombre_limpio or not apaterno_limpio:
+        return None
+
+    inicial_nombre = _quitar_tildes(nombre_limpio[0]).upper()
+    inicial_apaterno = _quitar_tildes(apaterno_limpio[0]).upper()
 
     if not inicial_nombre.isalpha() or not inicial_apaterno.isalpha():
         return None
 
     try:
-        lista_str = f"{int(numero_lista):02d}"
+        num_lista_int = int(numero_lista)
     except (ValueError, TypeError):
         return None
 
-    match_curso = re.search(r'(\d+)', curso_grado)
+    if not (1 <= num_lista_int <= 99):
+        return None
+    lista_str = f"{num_lista_int:02d}"
+
+    match_curso = re.search(r'(\d+)', str(curso_grado))
     if not match_curso:
         return None
     curso_num = int(match_curso.group(1))
@@ -60,17 +71,17 @@ def generar_identificador_alumno(nombre, apaterno, numero_lista, curso_grado, cu
     else:
         return None
 
-    paralelo = curso_letra.strip().upper()[:1]
+    paralelo = str(curso_letra).strip().upper()[:1]
     if not paralelo.isalpha():
         return None
 
     identificador = f"{inicial_nombre}{inicial_apaterno}{lista_str}{curso_num}{nivel}{paralelo}"
 
-    # Validación final contra el regex oficial de la especificación
     if not re.match(r'^[A-ZÑ]{2}\d{2}([1-8]B|[1-4]M)[A-Z]$', identificador):
         return None
 
     return identificador
+
 
 # 1. TABLA ROL
 class Rol(models.Model):
@@ -79,11 +90,12 @@ class Rol(models.Model):
     rol_descripcion = models.TextField(blank=True, null=True)
 
     class Meta:
-        db_table = 'rol'       
-        managed = False        
+        db_table = 'rol'
+        managed = False
 
     def __str__(self):
         return self.rol_nombre
+
 
 # 2. TABLA USUARIO
 class Usuario(models.Model):
@@ -94,26 +106,31 @@ class Usuario(models.Model):
     usuario_correo = models.EmailField(unique=True)
     usuario_contrasena = models.CharField(max_length=255)
     usuario_ultimo_acceso = models.DateTimeField(null=True, blank=True)
-    
+
     usuario_primer_ingreso = models.BooleanField(default=True)
     usuario_activo = models.BooleanField(default=True)
 
     # RF: bloqueo de cuenta tras 5 intentos fallidos consecutivos de inicio de sesión
     usuario_intentos_fallidos = models.IntegerField(default=0)
     usuario_bloqueado = models.BooleanField(default=False)
-    
+
     rol = models.ForeignKey(Rol, on_delete=models.PROTECT, db_column='rol_id')
 
     class Meta:
-        db_table = 'usuario'   
-        managed = False  
+        db_table = 'usuario'
+        managed = False
 
     @property
     def is_authenticated(self):
         return True
 
+    @property
+    def nombre_completo(self):
+        return f"{self.usuario_nombre} {self.usuario_apaterno} {self.usuario_amaterno}".strip()
+
     def __str__(self):
         return f"{self.usuario_nombre} {self.usuario_apaterno} ({self.rol.rol_nombre})"
+
 
 # 3. TABLA CURSO
 class Curso(models.Model):
@@ -122,11 +139,12 @@ class Curso(models.Model):
     curso_letra = models.CharField(max_length=1)
 
     class Meta:
-        db_table = 'curso'     
+        db_table = 'curso'
         managed = False
 
     def __str__(self):
-        return f"{self.curso_grado} {self.curso_letra}"
+        return f"{self.curso_grado} {self.curso_letra}".strip()
+
 
 # 4. TABLA ESTUDIANTE
 class Estudiante(models.Model):
@@ -141,15 +159,17 @@ class Estudiante(models.Model):
     estudiante_identificador = models.CharField(max_length=10, unique=True, null=True, blank=True)
 
     class Meta:
-        db_table = 'estudiante' 
+        db_table = 'estudiante'
         managed = False
 
+    @property
+    def nombre_completo(self):
+        return f"{self.estudiante_nombre} {self.estudiante_apaterno} {self.estudiante_amaterno}".strip()
+
     def __str__(self):
-        return f"{self.estudiante_nombre} {self.estudiante_apaterno}"
+        return f"{self.estudiante_nombre} {self.estudiante_apaterno}".strip()
 
     def save(self, *args, **kwargs):
-        # Recalcula el identificador único cada vez que se guarda el alumno,
-        # siempre que tenga los datos necesarios (nombre, apellido, N° lista y curso).
         if self.estudiante_numero_lista and self.curso_id:
             try:
                 curso_obj = self.curso
@@ -163,9 +183,13 @@ class Estudiante(models.Model):
                     curso_obj.curso_grado,
                     curso_obj.curso_letra,
                 )
-                if nuevo_id:
+                if nuevo_id and nuevo_id != self.estudiante_identificador:
                     self.estudiante_identificador = nuevo_id
+                    update_fields = kwargs.get('update_fields')
+                    if update_fields is not None:
+                        kwargs['update_fields'] = list({*update_fields, 'estudiante_identificador'})
         super().save(*args, **kwargs)
+
 
 # 5. TABLA LUGAR
 class Lugar(models.Model):
@@ -174,11 +198,12 @@ class Lugar(models.Model):
     lugar_descripcion = models.TextField(blank=True, null=True)
 
     class Meta:
-        db_table = 'lugar'     
+        db_table = 'lugar'
         managed = False
 
     def __str__(self):
         return self.lugar_nombre
+
 
 # 6. TABLA CASO
 class Caso(models.Model):
@@ -194,11 +219,12 @@ class Caso(models.Model):
     caso_creado_en = models.DateTimeField(default=timezone.now, null=True, blank=True)
 
     class Meta:
-        db_table = 'caso'      
+        db_table = 'caso'
         managed = False
 
     def __str__(self):
         return f"Caso #{self.caso_id} - {self.caso_fecha}"
+
 
 # 7. TABLA INTERMEDIA: INVOLUCRAN
 class Involucran(models.Model):
@@ -207,12 +233,12 @@ class Involucran(models.Model):
     tipo_falta = models.CharField(max_length=100)
 
     class Meta:
-        db_table = 'involucran' 
+        db_table = 'involucran'
         managed = False
         unique_together = (('estudiante', 'caso'),)
 
-#ROLES
 
+# ROLES
 class Administrador(models.Model):
     administrador_id = models.AutoField(primary_key=True)
     admin_nombre = models.CharField(max_length=100)
@@ -221,8 +247,9 @@ class Administrador(models.Model):
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, db_column='usuario_id')
 
     class Meta:
-        db_table = 'administrador' 
+        db_table = 'administrador'
         managed = False
+
 
 class Inspector(models.Model):
     inspector_id = models.AutoField(primary_key=True)
@@ -232,8 +259,9 @@ class Inspector(models.Model):
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, db_column='usuario_id')
 
     class Meta:
-        db_table = 'inspector' 
+        db_table = 'inspector'
         managed = False
+
 
 class PConvivencia(models.Model):
     pconvivencia_id = models.AutoField(primary_key=True)
@@ -243,8 +271,9 @@ class PConvivencia(models.Model):
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, db_column='usuario_id')
 
     class Meta:
-        db_table = 'pconvivencia' 
+        db_table = 'pconvivencia'
         managed = False
+
 
 class ProfesorJefe(models.Model):
     profesorjefe_id = models.AutoField(primary_key=True)
@@ -255,11 +284,11 @@ class ProfesorJefe(models.Model):
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, db_column='usuario_id')
 
     class Meta:
-        db_table = 'profesorjefe' 
+        db_table = 'profesorjefe'
         managed = False
 
-#tabla notificaciones
 
+# TABLA NOTIFICACIONES
 class Notificacion(models.Model):
     class Estado(models.TextChoices):
         ESPERA = 'espera', 'En espera de resolución'
@@ -272,7 +301,7 @@ class Notificacion(models.Model):
 
     notificacion_id = models.AutoField(primary_key=True)
     usuario = models.ForeignKey('Usuario', on_delete=models.CASCADE, related_name='notificaciones')
-    
+
     notificacion_titulo = models.CharField(max_length=150)
     notificacion_mensaje = models.TextField()
     notificacion_fecha = models.DateTimeField(default=timezone.now)
@@ -310,21 +339,31 @@ class Notificacion(models.Model):
     class Meta:
         db_table = 'notificacion'
         ordering = ['-notificacion_fecha']
+        indexes = [
+            models.Index(
+                fields=['usuario', 'notificacion_leido', '-notificacion_fecha'],
+                name='idx_notif_usuario_leido_fecha',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.notificacion_titulo} - {self.usuario.usuario_nombre}"
-    
+
+
 class HistorialUsuario(models.Model):
     historial_id = models.AutoField(primary_key=True)
     usuario = models.ForeignKey('Usuario', on_delete=models.CASCADE, related_name='historial_acciones')
-    
-    historial_accion = models.CharField(max_length=50) # 'Creación' o 'Modificación'
-    historial_detalle = models.TextField() # Detalles si creo o edito un caso
+
+    historial_accion = models.CharField(max_length=50)  # 'Creación' o 'Modificación'
+    historial_detalle = models.TextField()
     historial_fecha = models.DateTimeField(default=timezone.now)
 
     class Meta:
         db_table = 'historial_usuario'
         ordering = ['-historial_fecha']
+        indexes = [
+            models.Index(fields=['usuario', '-historial_fecha'], name='idx_hist_usr_fecha'),
+        ]
 
     def __str__(self):
         return f"{self.usuario.usuario_nombre} - {self.historial_accion} - {self.historial_fecha}"
@@ -591,14 +630,20 @@ class SeguimientoCaso(models.Model):
                 fields=['caso', 'estudiante'], name='uniq_seguimiento_caso_estudiante',
             ),
         ]
+        indexes = [
+            models.Index(fields=['estado', '-creado_en'], name='idx_seg_estado_creado'),
+        ]
 
     @property
     def porcentaje_avance(self):
-        total = self.acciones.count()
-        if not total:
+        acciones = list(self.acciones.all())
+        if not acciones:
             return None
-        completadas = self.acciones.filter(estado=AccionSeguimiento.Estado.COMPLETADA).count()
-        return round(completadas * 100 / total)
+        completadas = sum(
+            1 for a in acciones
+            if a.estado == AccionSeguimiento.Estado.COMPLETADA
+        )
+        return round((completadas * 100) / len(acciones))
 
 
 class AccionSeguimiento(models.Model):
@@ -749,3 +794,6 @@ class SolicitudCaso(models.Model):
     class Meta:
         db_table = 'solicitud_caso'
         ordering = ['-creada_en', '-pk']
+        indexes = [
+            models.Index(fields=['estado', '-creada_en'], name='idx_sol_caso_estado_fecha'),
+        ]

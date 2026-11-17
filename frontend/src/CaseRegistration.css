@@ -1,30 +1,45 @@
 .case-registration-form {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .case-registration-form label {
   display: grid;
   gap: 6px;
   color: var(--text-mid);
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .case-registration-form input,
 .case-registration-form select,
 .case-registration-form textarea {
   width: 100%;
-  min-height: 2.5rem;
-  padding: 0.6rem 0.7rem;
+  min-width: 0;
+  min-height: 2.6rem;
+  padding: 0.6rem 0.78rem;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 10px;
   background: var(--input-bg);
   color: var(--text-dark);
+  font: inherit;
+  font-size: 0.9rem;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.case-registration-form input:focus-visible,
+.case-registration-form select:focus-visible,
+.case-registration-form textarea:focus-visible {
+  outline: none;
+  border-color: var(--guinda);
+  box-shadow: 0 0 0 3px rgb(123 26 26 / 16%);
 }
 
 .case-registration-form textarea {
+  min-height: 6.5rem;
   resize: vertical;
+  line-height: 1.5;
 }
 
 .case-registration-form__grid {
@@ -42,33 +57,42 @@
   display: grid;
   gap: 14px;
   margin: 0;
-  padding: 16px;
+  padding: 16px 18px;
   border: 1px solid var(--border);
   border-radius: 12px;
+  background: var(--panel-bg);
 }
 
 .case-students legend,
 .case-severity legend {
-  padding: 0 6px;
+  padding: 0 8px;
   color: var(--text-dark);
   font-family: var(--font-serif);
+  font-size: 0.92rem;
   font-weight: 800;
 }
 
 .case-student {
+  position: relative;
   display: grid;
   gap: 12px;
-  padding: 14px;
+  padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--panel-bg);
+  background: var(--input-bg);
+  overflow: visible;
 }
 
 .case-student__heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
   color: var(--text-dark);
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 .case-severity {
@@ -78,29 +102,93 @@
 .case-severity label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--text-mid);
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--input-bg);
+  color: var(--text-dark);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.case-severity label:hover {
+  border-color: rgb(123 26 26 / 45%);
+}
+
+.case-severity label:has(input:checked) {
+  border-color: var(--guinda);
+  background: rgb(123 26 26 / 9%);
+  box-shadow: 0 0 0 2px rgb(123 26 26 / 12%);
+  font-weight: 700;
 }
 
 .case-severity input {
-  width: auto;
+  width: 1rem;
+  height: 1rem;
   min-height: auto;
+  margin: 0;
+  padding: 0;
   accent-color: var(--guinda);
+  cursor: pointer;
+}
+
+.case-registration-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
 }
 
 .case-registration-form__submit {
   justify-self: start;
+  min-height: 2.7rem;
+  padding: 0.65rem 1.35rem;
+  border: 0;
+  border-radius: 10px;
   background: var(--guinda);
-  color: #fff;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
+}
+
+.case-registration-form__submit:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.case-registration-form__submit:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.case-registration-form__submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.case-success,
+.case-error {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 9px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text-dark);
 }
 
 .case-success {
-  margin: 0 0 14px;
-  padding: 12px 14px;
   border-left: 4px solid #2e7d32;
-  border-radius: 8px;
-  background: rgb(46 125 50 / 9%);
-  color: var(--text-dark);
+  background: rgb(46 125 50 / 10%);
+}
+
+.case-error {
+  border-left: 4px solid #c62828;
+  background: rgb(198 40 40 / 10%);
 }
 
 @media (max-width: 760px) {
@@ -116,4 +204,99 @@
   .case-severity {
     grid-template-columns: 1fr;
   }
+
+  .case-registration-form__submit {
+    width: 100%;
+    justify-self: stretch;
+  }
+  .case-student__linked-badge {
+  color: #2e7d32;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.case-student__autocomplete {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.case-student__autocomplete input {
+  padding-right: 2.2rem;
+}
+
+.case-student__clear {
+  position: absolute;
+  right: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(120, 120, 128, 0.2);
+  color: var(--text-mid);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.case-student__dropdown {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--input-bg);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+}
+
+.case-student__dropdown-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dark);
+  text-align: left;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.case-student__dropdown-item:hover,
+.case-student__dropdown-item.is-active {
+  background: rgb(123 26 26 / 12%);
+}
+
+.case-student__dropdown-item small {
+  color: var(--text-mid);
+  font-weight: 400;
+}
+
+.case-student__course-tag {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgb(212 160 23 / 18%);
+  color: #8c5a00;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.case-student__dropdown-empty {
+  padding: 10px 12px;
+  color: var(--text-mid);
+  font-size: 0.82rem;
+  text-align: center;
+ }
 }

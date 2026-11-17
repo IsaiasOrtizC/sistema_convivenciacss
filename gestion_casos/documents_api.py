@@ -4,8 +4,8 @@ import hashlib
 import logging
 
 from django.conf import settings
-from django.db import transaction
-from django.db.models import Q
+from django.db import IntegrityError, transaction
+from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -14,22 +14,32 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .controllers.documento_controller import _procesar_documento_institucional
 from .models import (
     DocumentoInstitucional,
     HistorialUsuario,
     Notificacion,
     ReglaInstitucional,
-    Usuario,
     VersionReglamento,
 )
 from .reglamento import ErrorProcesamientoPDF
-from .controllers.documento_controller import _procesar_documento_institucional
 
 logger = logging.getLogger(__name__)
 
 
+def _usuario_habilitado(user):
+    return bool(
+        getattr(user, 'usuario_activo', True)
+        and not getattr(user, 'usuario_bloqueado', False)
+    )
+
+
 def _es_administrador(request):
-    return request.user.rol.rol_nombre == 'Administrador'
+    rol = getattr(request.user, 'rol', None)
+    return (
+        _usuario_habilitado(request.user)
+        and (getattr(rol, 'rol_nombre', '') or '').strip() == 'Administrador'
+    )
 
 
 def _datos_regla(regla):
@@ -76,11 +86,26 @@ class DocumentosAPIView(APIView):
     parser_classes = (JSONParser, FormParser, MultiPartParser)
 
     def get(self, request):
+        if not _usuario_habilitado(request.user):
+            return Response(
+                {'detail': 'Tu cuenta se encuentra desactivada o bloqueada.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        versiones_prefetch = Prefetch(
+            'versiones_reglamento',
+            queryset=VersionReglamento.objects.prefetch_related('reglas').order_by('-creada_en'),
+        )
+        queryset_docs = (
+            DocumentoInstitucional.objects
+            .select_related('usuario')
+            .prefetch_related(versiones_prefetch)
+            .order_by('-fecha_subida')
+        )
+
         documentos = []
         versiones = []
-        for documento in DocumentoInstitucional.objects.select_related(
-            'usuario',
-        ).order_by('-fecha_subida'):
+        for documento in queryset_docs:
             documentos.append({
                 'id': documento.pk,
                 'tipo': documento.tipo_documento,
@@ -89,16 +114,20 @@ class DocumentosAPIView(APIView):
                 'fecha_subida': documento.fecha_subida.isoformat(),
                 'subido_por': (
                     f'{documento.usuario.usuario_nombre} '
-                    f'{documento.usuario.usuario_apaterno}'
+                    f'{documento.usuario.usuario_apaterno}'.strip()
                     if documento.usuario else 'Usuario eliminado'
                 ),
                 'estado_procesamiento': documento.estado_procesamiento,
                 'error_procesamiento': documento.error_procesamiento,
                 'numero_paginas': documento.numero_paginas,
             })
-            for version in documento.versiones_reglamento.prefetch_related(
-                'reglas',
-            ).order_by('-creada_en'):
+
+            doc_completado = (
+                documento.estado_procesamiento
+                == DocumentoInstitucional.EstadoProcesamiento.COMPLETADO
+            )
+            for version in documento.versiones_reglamento.all():
+                reglas_version = list(version.reglas.all())
                 versiones.append({
                     'id': version.pk,
                     'documento_id': documento.pk,
@@ -106,20 +135,17 @@ class DocumentosAPIView(APIView):
                     'numero': version.numero,
                     'estado': version.estado,
                     'creada_en': version.creada_en.isoformat(),
-                    'reglas': [
-                        _datos_regla(regla)
-                        for regla in version.reglas.all()
-                    ],
+                    'reglas': [_datos_regla(regla) for regla in reglas_version],
                     'puede_activar': (
-                        documento.estado_procesamiento
-                        == DocumentoInstitucional.EstadoProcesamiento.COMPLETADO
+                        doc_completado
                         and any(
                             regla.estado == ReglaInstitucional.Estado.APROBADA
                             and regla.puede_activarse()
-                            for regla in version.reglas.all()
+                            for regla in reglas_version
                         )
                     ),
                 })
+
         return Response({
             'documentos': documentos,
             'versiones': versiones,
@@ -161,6 +187,7 @@ class DocumentosAPIView(APIView):
                 {'detail': 'Solo un Administrador puede subir documentos.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
+
         tipo = request.data.get('tipo_documento')
         titulo = request.data.get('titulo', '')
         archivo = request.FILES.get('archivo')
@@ -174,6 +201,7 @@ class DocumentosAPIView(APIView):
                 {'detail': 'Selecciona un archivo PDF válido.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
         limite = getattr(settings, 'REGLAMENTO_PDF_MAX_BYTES', 20 * 1024 * 1024)
         if not archivo.size or archivo.size > limite:
             return Response(
@@ -186,6 +214,7 @@ class DocumentosAPIView(APIView):
                 {'detail': 'El archivo seleccionado no es un PDF.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
         contenido = archivo.read()
         archivo.seek(0)
         if not contenido.startswith(b'%PDF-'):
@@ -193,10 +222,11 @@ class DocumentosAPIView(APIView):
                 {'detail': 'El contenido del archivo no corresponde a un PDF válido.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
         try:
             documento = DocumentoInstitucional.objects.create(
                 tipo_documento=tipo,
-                titulo=(titulo.strip() or archivo.name)[:150],
+                titulo=(str(titulo).strip() or archivo.name)[:150],
                 archivo=archivo,
                 usuario=request.user,
                 estado_procesamiento=DocumentoInstitucional.EstadoProcesamiento.PROCESANDO,
@@ -208,6 +238,7 @@ class DocumentosAPIView(APIView):
                 {'detail': 'No se pudo almacenar el documento. Revisa el almacenamiento.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
         try:
             propuestas = _procesar_documento_institucional(
                 documento,
@@ -266,9 +297,11 @@ class DocumentosAPIView(APIView):
                 {'detail': 'Solo se pueden reprocesar documentos con error.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
         documento.estado_procesamiento = DocumentoInstitucional.EstadoProcesamiento.PROCESANDO
         documento.error_procesamiento = ''
         documento.save(update_fields=['estado_procesamiento', 'error_procesamiento'])
+
         limite = getattr(settings, 'REGLAMENTO_PDF_MAX_BYTES', 20 * 1024 * 1024)
         try:
             with documento.archivo.open('rb') as archivo:
@@ -340,11 +373,15 @@ class DocumentosAPIView(APIView):
                     ),
                 )
                 documento.delete()
+
             try:
                 if archivo:
                     storage.delete(archivo)
             except Exception:
-                logger.exception('El documento %s se eliminó, pero falló la limpieza del archivo.', documento_id)
+                logger.exception(
+                    'El documento %s se eliminó, pero falló la limpieza del archivo.',
+                    documento_id,
+                )
                 return Response({
                     'mensaje': 'Se eliminó el registro, pero el archivo almacenado no pudo limpiarse.',
                     'advertencia': True,
@@ -378,28 +415,45 @@ class VersionReglamentoAPIView(APIView):
                 {'detail': 'Una versión vigente es inmutable; sube una nueva versión.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
         evidencia = request.data.get('evidencia_textual', '')
-        if not isinstance(evidencia, str) or not evidencia.strip() or evidencia not in version.documento.texto_extraido:
+        if (
+            not isinstance(evidencia, str)
+            or not evidencia.strip()
+            or evidencia not in version.documento.texto_extraido
+        ):
             return Response(
                 {'detail': 'La cita debe coincidir con texto extraído del documento.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
         pagina = request.data.get('pagina')
         referencia = f'Página {pagina}' if isinstance(pagina, int) and pagina > 0 else ''
-        regla = ReglaInstitucional.objects.create(
-            version=version,
-            titulo=(request.data.get('titulo', '').strip() or evidencia[:180])[:180],
-            evidencia_textual=evidencia,
-            referencia_origen=referencia,
-            hash_origen=hashlib.sha256(
-                f'manual\0{version.pk}\0{referencia}\0{evidencia}'.encode('utf-8')
-            ).hexdigest(),
-        )
-        HistorialUsuario.objects.create(
-            usuario=request.user,
-            historial_accion='Creación',
-            historial_detalle=f'Creó una propuesta de regla para la versión {version.pk}.',
-        )
+        titulo_raw = request.data.get('titulo', '')
+        titulo_limpio = (titulo_raw.strip() if isinstance(titulo_raw, str) else '') or evidencia.strip()
+
+        try:
+            with transaction.atomic():
+                regla = ReglaInstitucional.objects.create(
+                    version=version,
+                    titulo=titulo_limpio[:180],
+                    evidencia_textual=evidencia,
+                    referencia_origen=referencia,
+                    hash_origen=hashlib.sha256(
+                        f'manual\0{version.pk}\0{referencia}\0{evidencia}'.encode('utf-8')
+                    ).hexdigest(),
+                )
+                HistorialUsuario.objects.create(
+                    usuario=request.user,
+                    historial_accion='Creación',
+                    historial_detalle=f'Creó una propuesta de regla para la versión {version.pk}.',
+                )
+        except IntegrityError:
+            return Response(
+                {'detail': 'Ya existe una propuesta con esa misma cita y referencia en esta versión.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         return Response(
             {'regla': _datos_regla(regla)},
             status=status.HTTP_201_CREATED,
@@ -425,6 +479,7 @@ class ReglaInstitucionalAPIView(APIView):
                 {'detail': 'Una versión vigente es inmutable.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
         datos = request.data
         estado = datos.get('estado')
         activador = datos.get('activador')
@@ -434,6 +489,7 @@ class ReglaInstitucionalAPIView(APIView):
             ReglaInstitucional.ReferenciaPlazo.SIN_DEFINIR,
         )
         responsable = datos.get('responsable_rol', '')
+
         if estado not in ReglaInstitucional.Estado.values:
             return Response({'detail': 'Selecciona un estado de revisión válido.'}, status=400)
         if activador not in ReglaInstitucional.Activador.values:
@@ -444,18 +500,25 @@ class ReglaInstitucionalAPIView(APIView):
             return Response({'detail': 'Selecciona un responsable válido.'}, status=400)
         if plazo_desde not in ReglaInstitucional.ReferenciaPlazo.values:
             return Response({'detail': 'Selecciona un inicio de plazo válido.'}, status=400)
+
         try:
             umbral = int(datos['umbral_casos']) if datos.get('umbral_casos') not in (None, '') else None
-            umbral_anotaciones = int(datos['umbral_anotaciones']) if datos.get('umbral_anotaciones') not in (None, '') else None
+            umbral_anotaciones = (
+                int(datos['umbral_anotaciones'])
+                if datos.get('umbral_anotaciones') not in (None, '')
+                else None
+            )
             plazo = int(datos['plazo_dias']) if datos.get('plazo_dias') not in (None, '') else None
         except (TypeError, ValueError):
             return Response({'detail': 'Umbrales y plazos deben ser números enteros.'}, status=400)
+
         if (
             (umbral is not None and not 1 <= umbral <= 10000)
             or (umbral_anotaciones is not None and not 1 <= umbral_anotaciones <= 10000)
             or (plazo is not None and not 0 <= plazo <= 3650)
         ):
             return Response({'detail': 'El umbral o plazo está fuera del rango permitido.'}, status=400)
+
         if activador == ReglaInstitucional.Activador.UMBRAL_CASOS and umbral is None:
             return Response({'detail': 'La condición por umbral requiere un número de casos.'}, status=400)
         if plazo_desde == ReglaInstitucional.ReferenciaPlazo.EVENTO and plazo is None:
@@ -466,48 +529,36 @@ class ReglaInstitucionalAPIView(APIView):
         accion = datos.get('accion_requerida', '')
         if not all(isinstance(value, str) for value in (titulo, categoria, accion)):
             return Response({'detail': 'Los campos de revisión deben ser texto.'}, status=400)
-        if estado == ReglaInstitucional.Estado.APROBADA and (
-            not regla.evidencia_textual.strip()
-            or not (
-                categoria.strip()
-                or regla.conducta_condicion.strip()
-                or regla.medida_asociada.strip()
-            )
-            or (not regla.solo_presentacion and (not categoria.strip() or not accion.strip()))
-        ):
+
+        regla.titulo = titulo.strip()[:180] or regla.titulo
+        regla.tipo_medida = tipo_medida
+        regla.categoria_falta = categoria.strip()[:100]
+        regla.activador = activador
+        regla.umbral_casos = (
+            umbral if activador == ReglaInstitucional.Activador.UMBRAL_CASOS else None
+        )
+        regla.umbral_anotaciones = umbral_anotaciones
+        regla.accion_requerida = accion.strip()
+        regla.requiere_citacion_apoderado = datos.get('requiere_citacion_apoderado') is True
+        regla.plazo_dias = plazo
+        regla.plazo_desde = plazo_desde
+        regla.responsable_rol = responsable
+        regla.estado = estado
+        regla.revisada_por = request.user
+        regla.revisada_en = timezone.now()
+
+        if estado == ReglaInstitucional.Estado.APROBADA and not regla.puede_activarse():
             return Response(
-                {'detail': 'Completa la disposición y evidencia antes de aprobar.'},
+                {
+                    'detail': (
+                        'La disposición no cumple los requisitos mínimos para aprobarse '
+                        '(revisa categoría, acción requerida, evidencia y umbrales).'
+                    )
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if estado == ReglaInstitucional.Estado.APROBADA and regla.solo_presentacion and (
-            tipo_medida == ReglaInstitucional.TipoMedida.NO_CLASIFICADA
-            or not regla.version_fuente.strip()
-            or not regla.titulo_fuente.strip()
-            or not regla.seccion_fuente.strip()
-            or not regla.pagina_impresa
-            or not regla.pagina_pdf
-        ):
-            return Response(
-                {'detail': 'Completa tipo y referencia verificable para aprobar.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+
         with transaction.atomic():
-            regla.titulo = titulo.strip()[:180] or regla.titulo
-            regla.tipo_medida = tipo_medida
-            regla.categoria_falta = categoria.strip()[:100]
-            regla.activador = activador
-            regla.umbral_casos = (
-                umbral if activador == ReglaInstitucional.Activador.UMBRAL_CASOS else None
-            )
-            regla.umbral_anotaciones = umbral_anotaciones
-            regla.accion_requerida = accion.strip()
-            regla.requiere_citacion_apoderado = datos.get('requiere_citacion_apoderado') is True
-            regla.plazo_dias = plazo
-            regla.plazo_desde = plazo_desde
-            regla.responsable_rol = responsable
-            regla.estado = estado
-            regla.revisada_por = request.user
-            regla.revisada_en = timezone.now()
             regla.save(update_fields=[
                 'titulo', 'tipo_medida', 'categoria_falta', 'activador',
                 'umbral_casos', 'accion_requerida', 'umbral_anotaciones',
@@ -552,13 +603,15 @@ class ActivarVersionReglamentoAPIView(APIView):
                     {
                         'detail': (
                             'No se puede activar: el documento debe estar procesado '
-                            'y debe existir una disposición aprobada y completa.'
+                            'y debe existir al menos una disposición aprobada y completa.'
                         )
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+
             VersionReglamento.objects.filter(
                 estado=VersionReglamento.Estado.VIGENTE,
+                documento__tipo_documento=version.documento.tipo_documento,
             ).exclude(pk=version.pk).update(
                 estado=VersionReglamento.Estado.REEMPLAZADA,
             )
@@ -569,6 +622,8 @@ class ActivarVersionReglamentoAPIView(APIView):
             HistorialUsuario.objects.create(
                 usuario=request.user,
                 historial_accion='Modificación',
-                historial_detalle=f'Activó la versión {version.pk} del reglamento institucional.',
+                historial_detalle=(
+                    f'Activó la versión {version.pk} ({version.documento.tipo_documento}).'
+                ),
             )
         return Response({'mensaje': 'La versión aprobada ahora está vigente.'})

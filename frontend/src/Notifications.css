@@ -1,3 +1,23 @@
+.notification-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.notification-filters .button--quiet {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.76rem;
+  border-radius: 999px;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.notification-filters .button--quiet[aria-pressed='true'] {
+  border-color: var(--guinda);
+  background: var(--guinda);
+  color: #ffffff;
+}
+
 .notification-card {
   display: flex;
   gap: 14px;
@@ -6,6 +26,7 @@
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--surface-soft);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .notification-card--unread {
@@ -42,6 +63,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 9px;
+  margin-bottom: 4px;
 }
 
 .notification-card__heading h3 {
@@ -52,15 +74,21 @@
 }
 
 .notification-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   color: var(--text-lo);
-  font-size: 0.72rem;
+  font-size: 0.74rem;
 }
 
 .notification-card__evidence,
 .notification-card__history {
   margin: 10px 0;
-  padding: 10px 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
   border-left: 3px solid var(--gold);
+  border-radius: 8px;
   background: var(--panel-bg);
   color: var(--text-mid);
 }
@@ -68,12 +96,24 @@
 .notification-card__evidence summary,
 .notification-card__history summary {
   color: var(--guinda);
+  font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
+  user-select: none;
 }
 
 .notification-card__evidence blockquote {
   margin: 10px 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--text-dark);
+  font-style: italic;
+}
+
+.notification-card__history p {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
 }
 
 .notification-card__manage {
@@ -102,10 +142,24 @@
   border-radius: 8px;
   background: var(--input-bg);
   color: var(--text-dark);
+  font: inherit;
+  font-size: 0.82rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.notification-card__manage select:focus-visible,
+.notification-card__manage input:focus-visible {
+  outline: none;
+  border-color: var(--guinda);
+  box-shadow: 0 0 0 3px rgb(123 26 26 / 16%);
 }
 
 .notification-card__manage input {
   width: min(320px, 65vw);
+}
+
+.notification-card__manage .button--quiet {
+  min-height: 2.35rem;
 }
 
 @media (max-width: 600px) {

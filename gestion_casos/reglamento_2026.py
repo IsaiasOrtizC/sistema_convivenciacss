@@ -1,32 +1,36 @@
 """Disposiciones seleccionadas manualmente del Reglamento Interno 2026."""
 
+from types import MappingProxyType
+
 from .models import ReglaInstitucional
 
 PDF_SHA256_REGLAMENTO_2026 = (
     '9e3e308b4471c66d9880124f88c337150572cad508789792b2cae660965cfaf8'
 )
 
-REFERENCIAS_TITULOS_2026 = {
-    'IX': {
+VERSION_FUENTE_REGLAMENTO_2026 = 'Reglamento Interno 2026'
+
+REFERENCIAS_TITULOS_2026 = MappingProxyType({
+    'IX': MappingProxyType({
         'titulo': 'RELACIÓN ENTRE LA FAMILIA Y EL ESTABLECIMIENTO',
         'pagina_impresa': 32,
         'pagina_pdf': 33,
-    },
-    'XVIII': {
+    }),
+    'XVIII': MappingProxyType({
         'titulo': 'DE LAS FALTAS, DEBIDO PROCESO, MEDIDAS PEDAGÓGICAS, REPARATORIAS Y SANCIONES',
         'pagina_impresa': 48,
         'pagina_pdf': 49,
         'ultima_pagina_impresa': 57,
         'ultima_pagina_pdf': 58,
-    },
-    'pagina_impresa_34': {
+    }),
+    'pagina_impresa_34': MappingProxyType({
         'titulo': 'USO DEL UNIFORME Y LA PRESENTACIÓN PERSONAL DE LOS ALUMNOS',
         'pagina_pdf': 35,
         'no_corresponde_a_titulo': 'IX',
-    },
-}
+    }),
+})
 
-DISPOSICIONES_REGLAMENTO_2026 = (
+_DISPOSICIONES_BASE = (
     {
         'clave': 'clasificacion-leve',
         'titulo': 'Clasificación de falta leve',
@@ -403,7 +407,6 @@ DISPOSICIONES_REGLAMENTO_2026 = (
     },
 )
 
-VERSION_FUENTE_REGLAMENTO_2026 = 'Reglamento Interno 2026'
 _TIPOS_MEDIDA_REGLAMENTO_2026 = {
     'clasificacion-leve': ReglaInstitucional.TipoMedida.CLASIFICACION,
     'clasificacion-grave': ReglaInstitucional.TipoMedida.CLASIFICACION,
@@ -419,11 +422,26 @@ _TIPOS_MEDIDA_REGLAMENTO_2026 = {
     'cancelacion-matricula-riesgo': ReglaInstitucional.TipoMedida.SANCION_DISCIPLINARIA,
     'expulsion-riesgo': ReglaInstitucional.TipoMedida.SANCION_DISCIPLINARIA,
 }
+
+# Validación de integridad al cargar el módulo
+_claves_lista = [d['clave'] for d in _DISPOSICIONES_BASE]
+_claves_set = set(_claves_lista)
+if len(_claves_lista) != len(_claves_set):
+    raise ValueError("Existen claves duplicadas en _DISPOSICIONES_BASE.")
+if _claves_set != set(_TIPOS_MEDIDA_REGLAMENTO_2026):
+    faltantes = _claves_set ^ set(_TIPOS_MEDIDA_REGLAMENTO_2026)
+    raise ValueError(f"Desajuste de claves entre disposiciones y tipos de medida: {faltantes}")
+
 DISPOSICIONES_REGLAMENTO_2026 = tuple(
-    {
+    MappingProxyType({
         **disposicion,
         'tipo_medida': _TIPOS_MEDIDA_REGLAMENTO_2026[disposicion['clave']],
         'version_fuente': VERSION_FUENTE_REGLAMENTO_2026,
-    }
-    for disposicion in DISPOSICIONES_REGLAMENTO_2026
+    })
+    for disposicion in _DISPOSICIONES_BASE
 )
+
+DISPOSICIONES_POR_CLAVE = MappingProxyType({
+    disposicion['clave']: disposicion
+    for disposicion in DISPOSICIONES_REGLAMENTO_2026
+})

@@ -1,4 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react'
 import { authenticatedFetch } from './authenticatedFetch'
 import './CaseRegistration.css'
 
@@ -17,9 +24,12 @@ type CaseRegistrationOptions = {
   fecha_hoy: string
 }
 
+type StudentOption = CaseRegistrationOptions['estudiantes'][number]
+
 type StudentDraft = {
   key: number
   estudiante_id: string
+  search_query: string
   nombre: string
   apellido_paterno: string
   apellido_materno: string
@@ -32,6 +42,14 @@ type RegistrationProps = {
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+
+function normalizeText(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -87,6 +105,7 @@ function emptyStudent(key: number): StudentDraft {
   return {
     key,
     estudiante_id: '',
+    search_query: '',
     nombre: '',
     apellido_paterno: '',
     apellido_materno: '',
@@ -110,11 +129,18 @@ export default function CaseRegistration({ accessToken }: RegistrationProps) {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
+  // Control del desplegable de autocompletado por tarjeta de estudiante
+  const [openStudentKey, setOpenStudentKey] = useState<number | null>(null)
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     let active = true
     fetchOptions(accessToken)
       .then((result) => {
-        if (active) setOptions(result)
+        if (!active) return
+        setOptions(result)
+        setFecha((prev) => prev || result.fecha_hoy)
       })
       .catch((requestError: unknown) => {
         if (!active) return
@@ -134,6 +160,48 @@ export default function CaseRegistration({ accessToken }: RegistrationProps) {
     }
   }, [accessToken])
 
+  // Mapa rápido de curso_id -> nombre de curso
+  const cursosMap = useMemo(() => {
+    const map = new Map<number, string>()
+    options?.cursos.forEach((curso) => map.set(curso.id, curso.nombre))
+    return map
+  }, [options])
+
+  // IDs de estudiantes ya seleccionados en otras tarjetas para evitar duplicados en el mismo caso
+  const selectedIds = useMemo(
+    () => new Set(students.map((s) => s.estudiante_id).filter(Boolean)),
+    [students],
+  )
+
+  function getMatchingStudents(student: StudentDraft): StudentOption[] {
+    if (!options) return []
+    const term = normalizeText(student.search_query)
+    if (!term) return []
+
+    return options.estudiantes
+      .filter((existing) => {
+        if (
+          selectedIds.has(String(existing.id)) &&
+          String(existing.id) !== student.estudiante_id
+        ) {
+          return false
+        }
+        const fullName = normalizeText(
+          `${existing.nombre} ${existing.apellido_paterno} ${existing.apellido_materno}`,
+        )
+        const reverseName = normalizeText(
+          `${existing.apellido_paterno} ${existing.apellido_materno} ${existing.nombre}`,
+        )
+        const courseName = normalizeText(cursosMap.get(existing.curso_id) ?? '')
+        return (
+          fullName.includes(term) ||
+          reverseName.includes(term) ||
+          courseName.includes(term)
+        )
+      })
+      .slice(0, 8)
+  }
+
   function updateStudent(key: number, patch: Partial<StudentDraft>) {
     setStudents((current) =>
       current.map((student) =>
@@ -142,20 +210,41 @@ export default function CaseRegistration({ accessToken }: RegistrationProps) {
     )
   }
 
-  function selectStudent(key: number, selectedId: string) {
-    const existing = options?.estudiantes.find((item) => String(item.id) === selectedId)
-    if (!existing) {
-      updateStudent(key, { ...emptyStudent(key) })
-      return
-    }
+  function applySelectedStudent(key: number, existing: StudentOption) {
+    const label = `${existing.nombre} ${existing.apellido_paterno} ${existing.apellido_materno}`.trim()
     updateStudent(key, {
-      estudiante_id: selectedId,
+      estudiante_id: String(existing.id),
+      search_query: label,
       nombre: existing.nombre,
       apellido_paterno: existing.apellido_paterno,
       apellido_materno: existing.apellido_materno,
       numero_lista: existing.numero_lista === null ? '' : String(existing.numero_lista),
       curso_id: String(existing.curso_id),
     })
+    setOpenStudentKey(null)
+    setHighlightedIndex(-1)
+  }
+
+  function handleAutocompleteKeyDown(
+    event: KeyboardEvent<HTMLInputElement>,
+    student: StudentDraft,
+    matches: StudentOption[],
+  ) {
+    if (openStudentKey !== student.key || matches.length === 0) return
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setHighlightedIndex((prev) => (prev + 1) % matches.length)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setHighlightedIndex((prev) => (prev <= 0 ? matches.length - 1 : prev - 1))
+    } else if (event.key === 'Enter' && highlightedIndex >= 0) {
+      event.preventDefault()
+      applySelectedStudent(student.key, matches[highlightedIndex])
+    } else if (event.key === 'Escape') {
+      setOpenStudentKey(null)
+      setHighlightedIndex(-1)
+    }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -199,11 +288,12 @@ export default function CaseRegistration({ accessToken }: RegistrationProps) {
       }
       setSuccess(result.mensaje)
       setTitulo('')
-      setFecha('')
+      setFecha(options?.fecha_hoy ?? '')
       setLugarId('')
       setDescripcion('')
       setTipoFalta('')
       setEvidencia(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
       setStudents([emptyStudent(nextKey)])
       setNextKey(nextKey + 1)
     } catch (requestError) {
@@ -233,7 +323,7 @@ export default function CaseRegistration({ accessToken }: RegistrationProps) {
 
       <section className="dashboard-panel">
         {loading && <p className="dashboard-empty" role="status">Cargando formulario…</p>}
-        {error && <p className="form-error" role="alert">{error}</p>}
+        {error && <p className="case-error" role="alert">{error}</p>}
         {success && <p className="case-success" role="status">{success}</p>}
         {options && (
           <form className="case-registration-form" onSubmit={submit}>
@@ -242,6 +332,7 @@ export default function CaseRegistration({ accessToken }: RegistrationProps) {
               <input
                 maxLength={180}
                 onChange={(event) => setTitulo(event.target.value)}
+                placeholder="Ej. Altercado en patio durante recreo"
                 required
                 value={titulo}
               />
@@ -275,6 +366,7 @@ export default function CaseRegistration({ accessToken }: RegistrationProps) {
               Descripción
               <textarea
                 onChange={(event) => setDescripcion(event.target.value)}
+                placeholder="Describe detalladamente los hechos ocurridos…"
                 required
                 rows={5}
                 value={descripcion}
@@ -282,97 +374,186 @@ export default function CaseRegistration({ accessToken }: RegistrationProps) {
             </label>
             <fieldset className="case-students">
               <legend>Estudiantes involucrados</legend>
-              {students.map((student, index) => (
-                <div className="case-student" key={student.key}>
-                  <div className="case-student__heading">
-                    <strong>Estudiante {index + 1}</strong>
-                    {students.length > 1 && (
-                      <button
-                        className="button--quiet"
-                        onClick={() =>
-                          setStudents((current) =>
-                            current.filter((entry) => entry.key !== student.key),
-                          )
-                        }
-                        type="button"
-                      >
-                        Quitar
-                      </button>
-                    )}
+              {students.map((student, index) => {
+                const matches = getMatchingStudents(student)
+                const isDropdownOpen =
+                  openStudentKey === student.key && student.search_query.trim().length > 0
+
+                return (
+                  <div className="case-student" key={student.key}>
+                    <div className="case-student__heading">
+                      <strong>
+                        Estudiante {index + 1}
+                        {student.estudiante_id && (
+                          <span className="case-student__linked-badge"> · Vinculado</span>
+                        )}
+                      </strong>
+                      {students.length > 1 && (
+                        <button
+                          className="button--quiet"
+                          onClick={() =>
+                            setStudents((current) =>
+                              current.filter((entry) => entry.key !== student.key),
+                            )
+                          }
+                          type="button"
+                        >
+                          Quitar
+                        </button>
+                      )}
+                    </div>
+
+                    <label className="case-student__search-label">
+                      Buscar y rellenar estudiante existente (opcional)
+                      <div className="case-student__autocomplete">
+                        <input
+                          aria-autocomplete="list"
+                          aria-expanded={isDropdownOpen}
+                          autoComplete="off"
+                          onBlur={() => {
+                            window.setTimeout(() => {
+                              setOpenStudentKey((prev) =>
+                                prev === student.key ? null : prev,
+                              )
+                            }, 150)
+                          }}
+                          onChange={(event) => {
+                            const value = event.target.value
+                            updateStudent(student.key, {
+                              search_query: value,
+                              ...(value === '' ? { estudiante_id: '' } : {}),
+                            })
+                            setOpenStudentKey(student.key)
+                            setHighlightedIndex(0)
+                          }}
+                          onFocus={() => {
+                            if (student.search_query.trim().length > 0) {
+                              setOpenStudentKey(student.key)
+                            }
+                          }}
+                          onKeyDown={(event) =>
+                            handleAutocompleteKeyDown(event, student, matches)
+                          }
+                          placeholder="Escribe nombre, apellido o curso para autocompletar…"
+                          role="combobox"
+                          type="text"
+                          value={student.search_query}
+                        />
+                        {student.search_query && (
+                          <button
+                            aria-label="Limpiar selección de estudiante"
+                            className="case-student__clear"
+                            onClick={() => {
+                              updateStudent(student.key, emptyStudent(student.key))
+                              setOpenStudentKey(null)
+                            }}
+                            type="button"
+                          >
+                            ✕
+                          </button>
+                        )}
+
+                        {isDropdownOpen && (
+                          <div className="case-student__dropdown" role="listbox">
+                            {matches.length > 0 ? (
+                              matches.map((match, matchIdx) => (
+                                <button
+                                  aria-selected={matchIdx === highlightedIndex}
+                                  className={`case-student__dropdown-item${
+                                    matchIdx === highlightedIndex ? ' is-active' : ''
+                                  }`}
+                                  key={match.id}
+                                  onMouseDown={(event) => {
+                                    event.preventDefault()
+                                    applySelectedStudent(student.key, match)
+                                  }}
+                                  onMouseEnter={() => setHighlightedIndex(matchIdx)}
+                                  role="option"
+                                  type="button"
+                                >
+                                  <span>
+                                    <strong>
+                                      {match.apellido_paterno} {match.apellido_materno}, {match.nombre}
+                                    </strong>
+                                    {match.numero_lista !== null && (
+                                      <small> · Lista #{match.numero_lista}</small>
+                                    )}
+                                  </span>
+                                  <span className="case-student__course-tag">
+                                    {cursosMap.get(match.curso_id) ?? 'Sin curso'}
+                                  </span>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="case-student__dropdown-empty">
+                                Sin coincidencias. Completa los campos manualmente abajo.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </label>
+
+                    <div className="case-registration-form__grid case-registration-form__grid--student">
+                      <label>
+                        Nombre
+                        <input
+                          onChange={(event) => updateStudent(student.key, {
+                            estudiante_id: '', nombre: event.target.value,
+                          })}
+                          required
+                          value={student.nombre}
+                        />
+                      </label>
+                      <label>
+                        Apellido paterno
+                        <input
+                          onChange={(event) => updateStudent(student.key, {
+                            estudiante_id: '', apellido_paterno: event.target.value,
+                          })}
+                          required
+                          value={student.apellido_paterno}
+                        />
+                      </label>
+                      <label>
+                        Apellido materno
+                        <input
+                          onChange={(event) => updateStudent(student.key, {
+                            estudiante_id: '', apellido_materno: event.target.value,
+                          })}
+                          value={student.apellido_materno}
+                        />
+                      </label>
+                      <label>
+                        Número de lista
+                        <input
+                          min="0"
+                          onChange={(event) => updateStudent(student.key, {
+                            numero_lista: event.target.value,
+                          })}
+                          type="number"
+                          value={student.numero_lista}
+                        />
+                      </label>
+                      <label>
+                        Curso
+                        <select
+                          onChange={(event) => updateStudent(student.key, {
+                            estudiante_id: '', curso_id: event.target.value,
+                          })}
+                          required
+                          value={student.curso_id}
+                        >
+                          <option value="">Selecciona un curso</option>
+                          {options.cursos.map((curso) => (
+                            <option key={curso.id} value={curso.id}>{curso.nombre}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
                   </div>
-                  <label>
-                    Seleccionar estudiante existente (opcional)
-                    <select
-                      onChange={(event) => selectStudent(student.key, event.target.value)}
-                      value={student.estudiante_id}
-                    >
-                      <option value="">Ingreso manual</option>
-                      {options.estudiantes.map((existing) => (
-                        <option key={existing.id} value={existing.id}>
-                          {existing.apellido_paterno} {existing.apellido_materno}, {existing.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <div className="case-registration-form__grid case-registration-form__grid--student">
-                    <label>
-                      Nombre
-                      <input
-                        onChange={(event) => updateStudent(student.key, {
-                          estudiante_id: '', nombre: event.target.value,
-                        })}
-                        required
-                        value={student.nombre}
-                      />
-                    </label>
-                    <label>
-                      Apellido paterno
-                      <input
-                        onChange={(event) => updateStudent(student.key, {
-                          estudiante_id: '', apellido_paterno: event.target.value,
-                        })}
-                        required
-                        value={student.apellido_paterno}
-                      />
-                    </label>
-                    <label>
-                      Apellido materno
-                      <input
-                        onChange={(event) => updateStudent(student.key, {
-                          estudiante_id: '', apellido_materno: event.target.value,
-                        })}
-                        value={student.apellido_materno}
-                      />
-                    </label>
-                    <label>
-                      Número de lista
-                      <input
-                        min="0"
-                        onChange={(event) => updateStudent(student.key, {
-                          estudiante_id: '', numero_lista: event.target.value,
-                        })}
-                        type="number"
-                        value={student.numero_lista}
-                      />
-                    </label>
-                    <label>
-                      Curso
-                      <select
-                        onChange={(event) => updateStudent(student.key, {
-                          estudiante_id: '', curso_id: event.target.value,
-                        })}
-                        required
-                        value={student.curso_id}
-                      >
-                        <option value="">Selecciona un curso</option>
-                        {options.cursos.map((curso) => (
-                          <option key={curso.id} value={curso.id}>{curso.nombre}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
               <button
                 className="button--quiet"
                 onClick={() => {
@@ -405,10 +586,15 @@ export default function CaseRegistration({ accessToken }: RegistrationProps) {
               <input
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.png,.jpg,.jpeg"
                 onChange={(event) => setEvidencia(event.target.files?.[0] ?? null)}
+                ref={fileInputRef}
                 type="file"
               />
             </label>
-            <button className="button--quiet case-registration-form__submit" disabled={submitting} type="submit">
+            <button
+              className="button--quiet case-registration-form__submit"
+              disabled={submitting}
+              type="submit"
+            >
               {submitting ? 'Enviando…' : options.requiere_aprobacion ? 'Enviar a revisión' : 'Registrar caso'}
             </button>
           </form>

@@ -1,14 +1,27 @@
-from django.shortcuts import redirect
 from django.contrib import messages
+from django.http import JsonResponse
+from django.shortcuts import redirect
+
+from gestion_casos.models import SesionActiva
+
+
+def _es_peticion_api(request):
+    """Detecta si la solicitud proviene de la API REST o espera respuesta JSON."""
+    accept = request.headers.get('Accept', '')
+    return (
+        request.path.startswith('/api/')
+        or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in accept
+    )
 
 
 class ForzarSesionUnicaMiddleware:
     """
-    En cada petición, revisa si la sesión actual del usuario sigue siendo
-    la única válida para su cuenta. Si en otro dispositivo/navegador se
-    inició sesión con la misma cuenta después, esta sesión queda obsoleta
-    y se cierra automáticamente.
+    En cada petición, revisa que la sesión actual siga siendo la única válida
+    para la cuenta y que el usuario permanezca activo y sin bloqueo.
     """
+
+    RUTAS_EXCLUIDAS = ('/logout/',)
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -16,53 +29,79 @@ class ForzarSesionUnicaMiddleware:
     def __call__(self, request):
         usuario_id = request.session.get('usuario_id')
 
-        if usuario_id:
-            # Import local para evitar problemas de carga de apps al iniciar Django
-            from gestion_casos.models import SesionActiva
+        if usuario_id and request.path not in self.RUTAS_EXCLUIDAS:
+            registro = (
+                SesionActiva.objects
+                .filter(usuario_id=usuario_id)
+                .values_list(
+                    'session_key',
+                    'usuario__usuario_activo',
+                    'usuario__usuario_bloqueado',
+                )
+                .first()
+            )
 
-            try:
-                sesion_activa = SesionActiva.objects.get(usuario_id=usuario_id)
-                if sesion_activa.session_key != request.session.session_key:
-                    # Esta sesión ya no es la vigente: alguien más inició sesión con esta cuenta.
+            if registro is not None:
+                session_key_activa, activo, bloqueado = registro
+                session_key_actual = request.session.session_key
+
+                if not activo or bloqueado:
                     request.session.flush()
-                    messages.error(
-                        request,
-                        "Tu sesión se cerró porque esta cuenta inició sesión en otro dispositivo o navegador."
-                    )
+                    mensaje = "Tu cuenta ha sido desactivada o bloqueada. Contacta al Administrador."
+                    if _es_peticion_api(request):
+                        return JsonResponse({'detail': mensaje}, status=403)
+                    messages.error(request, mensaje)
                     return redirect('login')
-            except SesionActiva.DoesNotExist:
-                # No hay registro de sesión activa (por ejemplo, cuentas creadas antes de
-                # activar esta función). No se bloquea, simplemente no aplica el control.
-                pass
 
-        response = self.get_response(request)
-        return response
+                if session_key_actual and session_key_activa != session_key_actual:
+                    request.session.flush()
+                    mensaje = (
+                        "Tu sesión se cerró porque esta cuenta inició sesión "
+                        "en otro dispositivo o navegador."
+                    )
+                    if _es_peticion_api(request):
+                        return JsonResponse({'detail': mensaje}, status=401)
+                    messages.error(request, mensaje)
+                    return redirect('login')
+
+        return self.get_response(request)
 
 
 class ExigirCambioContrasenaMiddleware:
     """
-    RF: si el usuario inició sesión con una contraseña temporal (primer ingreso),
-    lo obliga a cambiarla antes de poder usar cualquier otra parte del sistema.
-    Cualquier página que intente visitar lo redirige de vuelta a Configuración,
-    donde se le muestra una ventana emergente pidiéndole el cambio.
+    Obliga a los usuarios con contraseña temporal (primer ingreso) a cambiarla
+    antes de acceder al resto del sistema.
     """
 
-    RUTAS_PERMITIDAS = ('/mis-datos/configuracion/', '/logout/')
+    RUTAS_PERMITIDAS = (
+        '/mis-datos/configuracion/',
+        '/logout/',
+        '/api/v1/auth/logout/',
+        '/api/v1/perfil/contrasena/',
+    )
+    PREFIJOS_EXCLUIDOS = ('/static/', '/media/')
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.session.get('primer_ingreso'):
+        if request.session.get('usuario_id') and request.session.get('primer_ingreso'):
             path = request.path
             excluido = (
                 path in self.RUTAS_PERMITIDAS
-                or path.startswith('/static/')
-                or path.startswith('/media/')
+                or path.startswith(self.PREFIJOS_EXCLUIDOS)
             )
             if not excluido:
-                messages.error(request, "Debes cambiar tu contraseña temporal antes de continuar usando el sistema.")
+                mensaje = (
+                    "Debes cambiar tu contraseña temporal antes de continuar "
+                    "usando el sistema."
+                )
+                if _es_peticion_api(request):
+                    return JsonResponse(
+                        {'detail': mensaje, 'requiere_cambio_contrasena': True},
+                        status=403,
+                    )
+                messages.error(request, mensaje)
                 return redirect('gestion_configuracion')
 
-        response = self.get_response(request)
-        return response
+        return self.get_response(request)

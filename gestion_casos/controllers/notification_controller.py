@@ -11,6 +11,7 @@ from ..models import (
     HistorialNotificacion,
     Involucran,
     Notificacion,
+    ProfesorJefe,
     ReglaInstitucional,
     SeguimientoCaso,
     VersionReglamento,
@@ -19,7 +20,7 @@ from ..permissions import ROLES_GESTION_SEGUIMIENTO, rol_seguimiento_permitido
 from ..services.seguimiento_service import obtener_filas_seguimiento
 
 
-#vistas de notificaciones
+# Vistas de notificaciones
 def notificaciones_view(request):
     if 'usuario_id' not in request.session:
         return redirect('login')
@@ -27,7 +28,11 @@ def notificaciones_view(request):
         return HttpResponseForbidden("No tienes permiso para consultar el módulo de seguimiento.")
 
     id_usuario = request.session['usuario_id']
+    rol_usuario = (request.session.get('usuario_rol') or '').strip()
+    es_rol_gestion = rol_usuario in ROLES_GESTION_SEGUIMIENTO
+    es_profesor = 'profesor' in rol_usuario.casefold()
 
+    # 1. Notificaciones dirigidas exclusivamente a este usuario
     alertas_reales = list(
         Notificacion.objects
         .filter(usuario_id=id_usuario)
@@ -71,14 +76,37 @@ def notificaciones_view(request):
                 'al personal autorizado.'
             )
 
+    # 2. Seguimiento de casos:
+    #    - Administrador, PConvivencia e Inspector: visión global de todos los cursos.
+    #    - Profesor Jefe: restringido estrictamente a los casos de su(s) curso(s).
     filtro_estado = request.GET.get('estado_seguimiento', '')
     if filtro_estado not in ('', *SeguimientoCaso.Estado.values):
         filtro_estado = ''
+
+    filas_seguimiento = obtener_filas_seguimiento(filtro_estado)
+
+    if es_profesor and not es_rol_gestion:
+        cursos_profesor_ids = set(
+            ProfesorJefe.objects.filter(usuario_id=id_usuario).values_list('curso_id', flat=True)
+        )
+        if cursos_profesor_ids:
+            casos_permitidos_ids = set(
+                Involucran.objects.filter(
+                    estudiante__curso_id__in=cursos_profesor_ids
+                ).values_list('caso_id', flat=True)
+            )
+            filas_seguimiento = [
+                fila for fila in filas_seguimiento
+                if _extraer_caso_id_fila(fila) in casos_permitidos_ids
+            ]
+        else:
+            filas_seguimiento = []
+
     context = {
         'notificaciones': alertas_reales,
-        'filas_seguimiento': obtener_filas_seguimiento(filtro_estado),
+        'filas_seguimiento': filas_seguimiento,
         'filtro_estado': filtro_estado,
-        'puede_gestionar': request.session.get('usuario_rol') in ROLES_GESTION_SEGUIMIENTO,
+        'puede_gestionar': es_rol_gestion,
         'hoy': timezone.localdate(),
         'estados_notificacion': Notificacion.Estado.choices,
     }
@@ -86,8 +114,15 @@ def notificaciones_view(request):
     return render(
         request,
         'gestion_casos/notificaciones.html',
-        context
+        context,
     )
+
+
+def _extraer_caso_id_fila(fila):
+    """Obtiene el caso_id independientemente de si obtener_filas_seguimiento devuelve dicts u objetos."""
+    if isinstance(fila, dict):
+        return fila.get('caso_id') or getattr(fila.get('caso'), 'caso_id', None)
+    return getattr(fila, 'caso_id', None) or getattr(getattr(fila, 'caso', None), 'caso_id', None)
 
 
 def marcar_notificacion_leida_view(request, notificacion_id):
@@ -136,7 +171,12 @@ def cambiar_estado_notificacion_view(request, notificacion_id):
 
     with transaction.atomic():
         notificacion.estado = estado
-        notificacion.save(update_fields=['estado'])
+        campos_actualizar = ['estado']
+        if not notificacion.notificacion_leido:
+            notificacion.notificacion_leido = True
+            campos_actualizar.append('notificacion_leido')
+        notificacion.save(update_fields=campos_actualizar)
+
         HistorialNotificacion.objects.create(
             notificacion=notificacion,
             estado=estado,

@@ -9,27 +9,55 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from ..models import Caso, Involucran
+from ..trazabilidad import trazar
 from .auth_casos_controller import bloquear_si_profesor_jefe
 
 
-def obtener_datos_dashboard(request):
-    # CONTADOR DE CASOS
-    total_casos = Caso.objects.count()
-    casos_leves = Involucran.objects.filter(tipo_falta='Leve').values('caso_id').distinct().count()
-    casos_graves = Involucran.objects.filter(tipo_falta='Grave').values('caso_id').distinct().count()
-    casos_gravisimas = Involucran.objects.filter(tipo_falta='Gravísima').values('caso_id').distinct().count()
+def _extraer_titulo_caso(caso):
+    texto = caso.caso_descripcion or ''
+    if '] -' in texto:
+        titulo = texto.split('] -', 1)[0].replace('[', '').strip()
+        if titulo:
+            return titulo
+    return f'Caso #{caso.caso_id}'
 
+
+@trazar('CONTROLLER', 'DashboardController', 'calculando indicadores y resumen del panel')
+def obtener_datos_dashboard(request):
+    # CONTADOR GLOBAL DE CASOS Y DESGLOSE POR GRAVEDAD (1 sola consulta agrupada)
+    total_casos = Caso.objects.count()
+    conteo_por_gravedad = dict(
+        Involucran.objects
+        .values('tipo_falta')
+        .annotate(total=Count('caso_id', distinct=True))
+        .values_list('tipo_falta', 'total')
+    )
+    casos_leves = conteo_por_gravedad.get('Leve', 0)
+    casos_graves = conteo_por_gravedad.get('Grave', 0)
+    casos_gravisimas = conteo_por_gravedad.get('Gravísima', 0)
+
+    # VENTANA DE ÚLTIMOS 30 DÍAS VS PERIODO ANTERIOR
     hoy = timezone.localdate()
     fecha_inicio = hoy - timedelta(days=29)
     fecha_inicio_anterior = fecha_inicio - timedelta(days=30)
     fecha_fin_anterior = fecha_inicio - timedelta(days=1)
+
     casos_periodo = Caso.objects.filter(caso_fecha__range=(fecha_inicio, hoy))
     total_casos_periodo = casos_periodo.count()
     total_casos_periodo_anterior = Caso.objects.filter(
         caso_fecha__range=(fecha_inicio_anterior, fecha_fin_anterior)
     ).count()
 
-    # CASOS POR ZONA
+    if total_casos_periodo_anterior:
+        variacion_periodo = round(
+            (total_casos_periodo - total_casos_periodo_anterior)
+            / total_casos_periodo_anterior * 100,
+            1,
+        )
+    else:
+        variacion_periodo = 100.0 if total_casos_periodo else 0.0
+
+    # CASOS POR ZONA EN EL PERIODO
     casos_por_zona = list(
         casos_periodo.values('lugar__lugar_nombre')
         .annotate(total=Count('caso_id', distinct=True))
@@ -38,20 +66,30 @@ def obtener_datos_dashboard(request):
 
     zonas_labels = []
     zonas_data = []
+    casos_por_zona_lista = []
     for registro in casos_por_zona:
-        nombre_zona = registro['lugar__lugar_nombre'] if registro['lugar__lugar_nombre'] else "No asignado"
+        nombre_zona = registro['lugar__lugar_nombre'] or 'No asignado'
         zonas_labels.append(nombre_zona)
         zonas_data.append(registro['total'])
+        casos_por_zona_lista.append({
+            'nombre': nombre_zona,
+            'total': registro['total'],
+        })
 
+    # INDICADORES DESTACADOS DEL PERIODO
     resumen_tipo = (
-        Involucran.objects.filter(caso__caso_fecha__range=(fecha_inicio, hoy))
+        Involucran.objects
+        .filter(caso__caso_fecha__range=(fecha_inicio, hoy))
+        .exclude(tipo_falta='')
         .values('tipo_falta')
         .annotate(total=Count('caso_id', distinct=True))
         .order_by('-total', 'tipo_falta')
         .first()
     )
     resumen_curso = (
-        casos_periodo.values(
+        casos_periodo
+        .filter(estudiantes__curso__isnull=False)
+        .values(
             'estudiantes__curso__curso_grado',
             'estudiantes__curso__curso_letra',
         )
@@ -63,29 +101,20 @@ def obtener_datos_dashboard(request):
         )
         .first()
     )
-    if total_casos_periodo_anterior:
-        variacion_periodo = round(
-            (total_casos_periodo - total_casos_periodo_anterior)
-            / total_casos_periodo_anterior * 100,
-            1,
-        )
-    else:
-        variacion_periodo = 100.0 if total_casos_periodo else 0.0
 
     curso_mas_incidentes = (
         f"{resumen_curso['estudiantes__curso__curso_grado']} "
-        f"{resumen_curso['estudiantes__curso__curso_letra']}"
-        if resumen_curso else "Sin datos"
+        f"{resumen_curso['estudiantes__curso__curso_letra']}".strip()
+        if resumen_curso else 'Sin datos'
     )
     tipo_falta_frecuente = (
-        resumen_tipo['tipo_falta'] if resumen_tipo else "Sin datos"
+        resumen_tipo['tipo_falta'] if resumen_tipo else 'Sin datos'
     )
     zona_mas_conflictos = (
-        (casos_por_zona[0]['lugar__lugar_nombre'] or "No asignado")
-        if casos_por_zona else "Sin datos"
+        casos_por_zona_lista[0]['nombre'] if casos_por_zona_lista else 'Sin datos'
     )
 
-    # El listado completo se pagina y prioriza los incidentes más recientes.
+    # LISTADO PAGINADO DE INCIDENTES RECIENTES
     casos_query = Caso.objects.select_related('lugar').order_by(
         '-caso_fecha', '-caso_id',
     )
@@ -93,25 +122,17 @@ def obtener_datos_dashboard(request):
         request.GET.get('pagina'),
     )
 
-    # PARA VER EL TITULO DEL CASO
-    lista_casos_dashboard = []
-    for caso in pagina_casos:
-        texto_completo = caso.caso_descripcion if caso.caso_descripcion else ""
-        
-        if "]" in texto_completo and "-" in texto_completo:
-            partes = texto_completo.split("] -", 1)
-            titulo_limpio = partes[0].replace("[", "").strip()
-        else:
-            titulo_limpio = f"Caso #{caso.caso_id}"
-        lista_casos_dashboard.append({
+    lista_casos_dashboard = [
+        {
             'id': caso.caso_id,
-            'titulo': titulo_limpio,
+            'titulo': _extraer_titulo_caso(caso),
             'fecha': caso.caso_fecha,
-            'lugar': caso.lugar.lugar_nombre if caso.lugar else "No asignado"
-        })
+            'lugar': caso.lugar.lugar_nombre if caso.lugar else 'No asignado',
+        }
+        for caso in pagina_casos
+    ]
 
-    
-    context = {
+    return {
         'total_casos': total_casos,
         'casos_leves': casos_leves,
         'casos_graves': casos_graves,
@@ -125,16 +146,8 @@ def obtener_datos_dashboard(request):
         'variacion_periodo': variacion_periodo,
         'zonas_labels_json': json.dumps(zonas_labels),
         'zonas_data_json': json.dumps(zonas_data),
-        'casos_por_zona': [
-            {
-                'nombre': registro['lugar__lugar_nombre'] or 'No asignado',
-                'total': registro['total'],
-            }
-            for registro in casos_por_zona
-        ],
+        'casos_por_zona': casos_por_zona_lista,
     }
-
-    return context
 
 
 def dashboard_view(request):
