@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { authenticatedFetch } from './authenticatedFetch'
 import './CaseRegistration.css'
 
 type CaseRegistrationOptions = {
@@ -69,7 +70,7 @@ async function getErrorMessage(response: Response, fallback: string) {
 }
 
 async function fetchOptions(accessToken: string) {
-  const response = await fetch(`${API_BASE_URL}/api/v1/casos/formulario/`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/casos/formulario/`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   if (!response.ok) {
@@ -183,7 +184,7 @@ export default function CaseRegistration({ accessToken }: RegistrationProps) {
       body.append('datos', JSON.stringify(payload))
       if (evidencia) body.append('evidencia_foto', evidencia)
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/casos/nuevo/`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/casos/nuevo/`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}` },
         body,

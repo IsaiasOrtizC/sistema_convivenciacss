@@ -8,1981 +8,733 @@
 
   <title>{% block title %}ConviData – Colegio San Sebastián{% endblock %}</title>
 
+  <!-- Preconexión y fuente de respaldo (prioriza SF Pro del sistema en macOS/iOS) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:wght@700;900&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
     rel="stylesheet"
+    media="print"
+    onload="this.media='all'"
   />
 
-  <!-- Gráficos y Alertas Estilizadas -->
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-  <!-- ============================================================
-       TEMA AUTOMÁTICO
-       Se adapta a la preferencia de tema del sistema.
-       No utiliza localStorage ni botón manual.
-       ============================================================ -->
-
+  <!-- Tema automático sin bloqueo -->
   <script>
     (() => {
-      const mediaQuery = window.matchMedia(
-        '(prefers-color-scheme: dark)'
-      );
-
-      const aplicarTema = () => {
-        document.documentElement.setAttribute(
-          'data-theme',
-          mediaQuery.matches ? 'dark' : 'light'
-        );
-      };
-
-      aplicarTema();
-
-      if (mediaQuery.addEventListener) {
-        mediaQuery.addEventListener('change', aplicarTema);
-      } else {
-        mediaQuery.addListener(aplicarTema);
-      }
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const apply = () => document.documentElement.setAttribute('data-theme', mq.matches ? 'dark' : 'light');
+      apply();
+      if (mq.addEventListener) mq.addEventListener('change', apply);
+      else mq.addListener(apply);
     })();
   </script>
 
-
   <style>
-
     /* ============================================================
-       VARIABLES GLOBALES
-       CONVIDATA / COLEGIO SAN SEBASTIÁN
+       DESIGN SYSTEM — CONVIDATA (ESTÉTICA MACOS + IDENTIDAD CSS)
        ============================================================ */
-
     :root {
-
-      /* ----------------------------------------------------------
-         IDENTIDAD INSTITUCIONAL
-         ---------------------------------------------------------- */
-
+      /* Identidad Institucional */
       --guinda: #7B1A1A;
       --guinda-dark: #5A1010;
-      --guinda-mid: #8F2020;
-      --guinda-light: #A52A2A;
-
-      --gold: #D4A017;
+      --guinda-mid: #922222;
+      --guinda-soft: rgba(123, 26, 26, 0.08);
+      --gold: #C89614;
       --gold-bright: #F0C030;
-      --gold-soft: #E6C65C;
 
-
-      /* ----------------------------------------------------------
-         FONDOS
-         ---------------------------------------------------------- */
-
-      --cream: #F3EFE9;
-      --cream-dark: #E8E1D7;
-
-      --surface: rgba(255, 255, 255, .88);
-      --surface-soft: rgba(251, 249, 246, .82);
+      /* Superficies estilo macOS Light */
+      --bg-base: #F5F5F7;
+      --bg-elevated: #FFFFFF;
+      --surface: rgba(255, 255, 255, 0.82);
+      --surface-soft: rgba(245, 245, 247, 0.72);
       --surface-solid: #FFFFFF;
 
+      /* Tipografía */
+      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui, sans-serif;
+      --text-dark: #1D1D1F;
+      --text-mid: #424245;
+      --text-lo: #86868B;
 
-      /* ----------------------------------------------------------
-         TEXTO
-         ---------------------------------------------------------- */
+      /* Bordes hairline macOS */
+      --border: rgba(0, 0, 0, 0.08);
+      --border-strong: rgba(0, 0, 0, 0.14);
+      --glass-border: 1px solid rgba(255, 255, 255, 0.7);
 
-      --text-dark: #181313;
-      --text-mid: #514747;
-      --text-lo: #807575;
+      /* Estados semánticos Apple HIG */
+      --success: #248A3D;
+      --success-bg: rgba(52, 199, 89, 0.14);
+      --warning: #B25000;
+      --warning-bg: rgba(255, 159, 10, 0.15);
+      --danger: #D70015;
+      --danger-bg: rgba(255, 59, 48, 0.13);
+      --info: #0066CC;
+      --info-bg: rgba(0, 122, 255, 0.12);
 
-      --text-inverse: #FFFFFF;
+      /* Sombras difusas */
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03);
+      --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.10), 0 2px 8px rgba(0, 0, 0, 0.04);
+      --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.18);
 
-
-      /* ----------------------------------------------------------
-         BORDES
-         ---------------------------------------------------------- */
-
-      --border: rgba(123, 26, 26, .12);
-      --border-soft: rgba(0, 0, 0, .07);
-
-
-      /* ----------------------------------------------------------
-         ESTADOS
-         ---------------------------------------------------------- */
-
-      --success: #35C46A;
-      --success-bg: rgba(53, 196, 106, .12);
-
-      --warning: #D6A11E;
-      --warning-bg: rgba(214, 161, 30, .13);
-
-      --danger: #E05252;
-      --danger-bg: rgba(224, 82, 82, .12);
-
-      --info: #4D9DE0;
-      --info-bg: rgba(77, 157, 224, .12);
-
-
-      /* ----------------------------------------------------------
-         SOMBRAS
-         ---------------------------------------------------------- */
-
-      --shadow:
-        0 4px 18px rgba(0, 0, 0, .08);
-
-      --shadow-lg:
-        0 18px 50px rgba(0, 0, 0, .14);
-
-      --shadow-xl:
-        0 28px 80px rgba(0, 0, 0, .18);
-
-
-      /* ----------------------------------------------------------
-         GLASS
-         ---------------------------------------------------------- */
-
-      --glass-blur: blur(18px);
-      --glass-blur-heavy: blur(28px);
-
-      --glass-border:
-        1px solid rgba(255, 255, 255, .55);
-
-
-      /* ----------------------------------------------------------
-         DIMENSIONES
-         ---------------------------------------------------------- */
-
+      /* Radios y layout */
       --radius-sm: 8px;
-      --radius: 14px;
-      --radius-lg: 18px;
-      --radius-xl: 24px;
-
-      --nav-h: 68px;
-
-
-      /* ----------------------------------------------------------
-         TRANSICIONES
-         ---------------------------------------------------------- */
-
-      --transition:
-        200ms cubic-bezier(.4, 0, .2, 1);
-
-      --transition-fast:
-        140ms cubic-bezier(.4, 0, .2, 1);
+      --radius: 12px;
+      --radius-lg: 16px;
+      --nav-h: 58px;
+      --transition: 180ms cubic-bezier(0.25, 0.1, 0.25, 1);
     }
-
-
-    /* ============================================================
-       TEMA OSCURO
-       ============================================================ */
 
     html[data-theme="dark"] {
+      --bg-base: #121214;
+      --bg-elevated: #1C1C1E;
+      --surface: rgba(28, 28, 30, 0.78);
+      --surface-soft: rgba(44, 44, 46, 0.65);
+      --surface-solid: #1C1C1E;
 
-      /* ----------------------------------------------------------
-         FONDOS
-         ---------------------------------------------------------- */
+      --text-dark: #F5F5F7;
+      --text-mid: #D1D1D6;
+      --text-lo: #8E8E93;
 
-      --cream: #0C0D0F;
-      --cream-dark: #141518;
+      --border: rgba(255, 255, 255, 0.10);
+      --border-strong: rgba(255, 255, 255, 0.18);
+      --glass-border: 1px solid rgba(255, 255, 255, 0.10);
 
-      --surface: rgba(25, 27, 30, .76);
-      --surface-soft: rgba(31, 33, 37, .72);
-      --surface-solid: #191B1E;
+      --success: #32D74B;
+      --success-bg: rgba(50, 215, 75, 0.15);
+      --warning: #FFD60A;
+      --warning-bg: rgba(255, 214, 10, 0.15);
+      --danger: #FF453A;
+      --danger-bg: rgba(255, 69, 58, 0.16);
+      --info: #0A84FF;
+      --info-bg: rgba(10, 132, 255, 0.16);
 
-
-      /* ----------------------------------------------------------
-         TEXTO
-         ---------------------------------------------------------- */
-
-      --text-dark: #FFFFFF;
-      --text-mid: #E2E4E7;
-      --text-lo: #A5A9AF;
-
-      --text-inverse: #FFFFFF;
-
-
-      /* ----------------------------------------------------------
-         BORDES
-         ---------------------------------------------------------- */
-
-      --border:
-        rgba(255, 255, 255, .105);
-
-      --border-soft:
-        rgba(255, 255, 255, .065);
-
-
-      /* ----------------------------------------------------------
-         GLASS
-         ---------------------------------------------------------- */
-
-      --glass-border:
-        1px solid rgba(255, 255, 255, .09);
-
-
-      /* ----------------------------------------------------------
-         SOMBRAS
-         ---------------------------------------------------------- */
-
-      --shadow:
-        0 6px 22px rgba(0, 0, 0, .32);
-
-      --shadow-lg:
-        0 18px 55px rgba(0, 0, 0, .48);
-
-      --shadow-xl:
-        0 30px 90px rgba(0, 0, 0, .62);
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25);
+      --shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+      --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.45);
+      --shadow-xl: 0 28px 70px rgba(0, 0, 0, 0.65);
     }
 
-
-    /* ============================================================
-       RESET
-       ============================================================ */
-
-    *,
-    *::before,
-    *::after {
+    *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
 
-
     html {
-      background: var(--cream);
-
+      background: var(--bg-base);
       scroll-behavior: smooth;
-
-      transition:
-        background-color var(--transition),
-        color var(--transition);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
-
 
     body {
-
-      position: relative;
-
-      font-family: 'Inter', sans-serif;
-
-      background:
-        radial-gradient(
-          circle at 8% 10%,
-          rgba(123, 26, 26, .075),
-          transparent 32%
-        ),
-        radial-gradient(
-          circle at 92% 85%,
-          rgba(212, 160, 23, .045),
-          transparent 30%
-        ),
-        var(--cream);
-
-      background-attachment: fixed;
-
+      font-family: var(--font-sans);
+      background-color: var(--bg-base);
       color: var(--text-dark);
-
       min-height: 100vh;
-
       overflow-x: hidden;
-
-      transition:
-        background-color var(--transition),
-        color var(--transition);
+      line-height: 1.45;
     }
-
-
-    /* ------------------------------------------------------------
-       AMBIENTE OSCURO
-       ------------------------------------------------------------ */
-
-    html[data-theme="dark"] body {
-
-      background:
-        radial-gradient(
-          circle at 8% 8%,
-          rgba(123, 26, 26, .22),
-          transparent 34%
-        ),
-        radial-gradient(
-          circle at 88% 82%,
-          rgba(212, 160, 23, .065),
-          transparent 30%
-        ),
-        radial-gradient(
-          circle at 55% 45%,
-          rgba(255, 255, 255, .018),
-          transparent 45%
-        ),
-        #0C0D0F;
-    }
-
-
-    /* ============================================================
-       SELECCIÓN DE TEXTO
-       ============================================================ */
 
     ::selection {
       background: var(--guinda);
       color: #FFFFFF;
     }
 
-
-    /* ============================================================
-       SCROLLBAR
-       ============================================================ */
-
+    /* Scrollbar sutil estilo macOS */
     ::-webkit-scrollbar {
-      width: 9px;
-      height: 9px;
+      width: 8px;
+      height: 8px;
     }
-
     ::-webkit-scrollbar-track {
-      background: var(--cream-dark);
+      background: transparent;
     }
-
     ::-webkit-scrollbar-thumb {
-      background: rgba(123, 26, 26, .55);
+      background: rgba(134, 134, 139, 0.35);
       border-radius: 999px;
-      border: 2px solid var(--cream-dark);
     }
-
     ::-webkit-scrollbar-thumb:hover {
-      background: var(--guinda);
+      background: rgba(134, 134, 139, 0.55);
     }
-
 
     /* ============================================================
-       NAVBAR
+       NAVBAR TRANSLÚCIDA ESTILO MACOS
        ============================================================ */
-
     .navbar {
-
       position: fixed;
-
       top: 0;
       left: 0;
       right: 0;
-
       height: var(--nav-h);
-
       display: flex;
       align-items: center;
-
-      padding: 0 28px;
-
-      background:
-        linear-gradient(
-          90deg,
-          rgba(90, 16, 16, .97),
-          rgba(123, 26, 26, .94)
-        );
-
-      border-bottom:
-        2px solid rgba(240, 192, 48, .88);
-
-      box-shadow:
-        0 6px 30px rgba(0, 0, 0, .28);
-
+      padding: 0 24px;
+      background: rgba(108, 20, 20, 0.88);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 1px solid rgba(240, 192, 48, 0.45);
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.14);
       z-index: 1000;
-
-      isolation: isolate;
     }
-
-
-    .navbar::before {
-
-      content: "";
-
-      position: absolute;
-
-      inset: 0;
-
-      background:
-        linear-gradient(
-          90deg,
-          rgba(255,255,255,.025),
-          transparent 35%,
-          rgba(255,255,255,.02)
-        );
-
-      pointer-events: none;
-
-      z-index: -1;
-    }
-
-
-    /* ============================================================
-       MARCA
-       ============================================================ */
 
     .nav-brand {
-
       display: flex;
       align-items: center;
-
-      gap: 11px;
-
+      gap: 10px;
       text-decoration: none;
-
-      margin-right: 30px;
-
+      margin-right: 26px;
       flex-shrink: 0;
     }
 
-
     .nav-brand img {
-
-      height: 40px;
+      height: 34px;
       width: auto;
-
-      filter:
-        drop-shadow(
-          0 3px 7px rgba(0, 0, 0, .38)
-        );
-
-      transition:
-        transform var(--transition);
+      transition: transform var(--transition);
     }
-
 
     .nav-brand:hover img {
-      transform: scale(1.04);
+      transform: scale(1.03);
     }
-
 
     .nav-brand-text {
-
-      font-family: 'Merriweather', serif;
-
-      font-size: .96rem;
-
-      font-weight: 900;
-
-      letter-spacing: -.015em;
-
+      font-size: 0.98rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
       color: #FFFFFF;
-
       white-space: nowrap;
     }
-
 
     .nav-brand-text span {
       color: var(--gold-bright);
     }
 
-
-    /* ============================================================
-       NAVEGACIÓN
-       ============================================================ */
-
     .nav-links {
-
       display: flex;
       align-items: center;
-
-      gap: 3px;
-
+      gap: 4px;
       flex: 1;
-
       min-width: 0;
     }
-
 
     .nav-item {
       position: relative;
     }
 
-
     .nav-link {
-
       display: flex;
       align-items: center;
-
-      gap: 7px;
-
-      padding: 9px 13px;
-
-      border-radius: 9px;
-
-      color: rgba(255, 255, 255, .78);
-
-      font-size: .82rem;
-      font-weight: 600;
-
+      gap: 6px;
+      padding: 7px 12px;
+      border-radius: var(--radius-sm);
+      color: rgba(255, 255, 255, 0.84);
+      font-size: 0.82rem;
+      font-weight: 500;
       cursor: pointer;
-
-      border: 1px solid transparent;
-
+      border: none;
       background: transparent;
-
-      transition:
-        background var(--transition),
-        color var(--transition),
-        border-color var(--transition),
-        transform var(--transition);
-
+      transition: background var(--transition), color var(--transition);
       white-space: nowrap;
-
       text-decoration: none;
     }
 
-
-    .nav-link:hover {
-
-      background:
-        rgba(255, 255, 255, .09);
-
-      border-color:
-        rgba(255, 255, 255, .08);
-
-      color: #FFFFFF;
-
-      transform: translateY(-1px);
-    }
-
-
-    .nav-link.active {
-
-      background:
-        rgba(255, 255, 255, .13);
-
+    .nav-link:hover,
+    .nav-item.open .nav-link {
+      background: rgba(255, 255, 255, 0.14);
       color: #FFFFFF;
     }
-
 
     .nav-link .chevron {
-
-      margin-left: 2px;
-
-      transition:
-        transform var(--transition);
+      opacity: 0.75;
+      transition: transform var(--transition);
     }
-
 
     .nav-item.open .chevron {
       transform: rotate(180deg);
     }
 
-
     /* ============================================================
-       DROPDOWNS
+       MENÚS DESPLEGABLES ESTILO MACOS POPOVER
        ============================================================ */
-
     .dropdown {
-
       position: absolute;
-
-      top: calc(100% + 10px);
+      top: calc(100% + 8px);
       left: 0;
-
-      min-width: 225px;
-
+      min-width: 224px;
       max-width: calc(100vw - 20px);
-
-      padding: 6px;
-
-      background:
-        var(--surface);
-
-      backdrop-filter:
-        var(--glass-blur);
-
-      -webkit-backdrop-filter:
-        var(--glass-blur);
-
-      border:
-        var(--glass-border);
-
-      border-top:
-        2px solid var(--gold);
-
-      border-radius:
-        0 0 var(--radius) var(--radius);
-
-      box-shadow:
-        var(--shadow-lg);
-
+      padding: 5px;
+      background: var(--surface);
+      backdrop-filter: saturate(180%) blur(22px);
+      -webkit-backdrop-filter: saturate(180%) blur(22px);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
       opacity: 0;
       visibility: hidden;
-
-      transform:
-        translateY(-8px)
-        scale(.985);
-
+      transform: translateY(-6px) scale(0.98);
       transform-origin: top left;
-
-      transition:
-        opacity var(--transition),
-        transform var(--transition),
-        visibility var(--transition);
-
+      transition: opacity var(--transition), transform var(--transition), visibility var(--transition);
       z-index: 999;
     }
 
-
     .nav-item.open .dropdown {
-
       opacity: 1;
       visibility: visible;
-
-      transform:
-        translateY(0)
-        scale(1);
+      transform: translateY(0) scale(1);
     }
-
 
     .dropdown-header {
-
-      padding: 11px 12px 8px;
-
-      font-size: .66rem;
-
-      font-weight: 800;
-
-      letter-spacing: .11em;
-
+      padding: 7px 10px 6px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
-
       color: var(--text-lo);
-
-      border-bottom:
-        1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
     }
-
 
     .dropdown-item {
-
       display: flex;
       align-items: center;
-
-      gap: 10px;
-
-      padding: 10px 12px;
-
-      min-height: 40px;
-
-      font-size: .82rem;
+      gap: 9px;
+      padding: 8px 10px;
+      min-height: 36px;
+      font-size: 0.82rem;
       font-weight: 500;
-
       color: var(--text-dark);
-
       cursor: pointer;
-
-      transition:
-        background var(--transition),
-        color var(--transition),
-        transform var(--transition);
-
       border: none;
-
-      border-radius: 8px;
-
+      border-radius: 7px;
       background: transparent;
-
       width: 100%;
-
       text-align: left;
-
       text-decoration: none;
+      transition: background var(--transition), color var(--transition);
     }
-
 
     .dropdown-item:hover {
-
-      background:
-        rgba(123, 26, 26, .09);
-
-      color: var(--guinda);
-
-      transform: translateX(2px);
-    }
-
-
-    html[data-theme="dark"] .dropdown-item:hover {
-
-      background:
-        rgba(255, 255, 255, .075);
-
+      background: var(--guinda);
       color: #FFFFFF;
     }
 
-
     .dropdown-item svg {
-
       color: var(--guinda);
-
       flex-shrink: 0;
-
-      transition:
-        color var(--transition);
+      transition: color var(--transition);
     }
-
 
     html[data-theme="dark"] .dropdown-item svg {
       color: var(--gold-bright);
     }
 
+    .dropdown-item:hover svg {
+      color: #FFFFFF;
+    }
 
     /* ============================================================
-       BARRA DERECHA
+       BARRA DERECHA Y CONTROLES
        ============================================================ */
-
     .nav-right {
-
       display: flex;
       align-items: center;
-
-      gap: 8px;
-
+      gap: 10px;
       margin-left: auto;
-
       flex-shrink: 0;
     }
 
-
-    /* ============================================================
-       BADGE DE ROL
-       ============================================================ */
-
     .role-badge {
-
-      padding: 4px 10px;
-
+      padding: 3px 10px;
       border-radius: 999px;
-
-      font-size: .64rem;
-      font-weight: 800;
-
-      letter-spacing: .055em;
-
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
       text-transform: uppercase;
-
       white-space: nowrap;
-    }
-
-
-    .role-badge.admin {
-
-      background:
-        linear-gradient(
-          135deg,
-          var(--gold-bright),
-          var(--gold)
-        );
-
+      background: rgba(240, 192, 48, 0.92);
       color: var(--guinda-dark);
-
-      box-shadow:
-        0 3px 10px rgba(212, 160, 23, .22);
     }
-
-
-    /* ============================================================
-       BOTONES DE NAVBAR
-       ============================================================ */
 
     .btn-search-global {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 32px;
+      padding: 0 11px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 0.76rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background var(--transition);
+    }
 
+    .btn-search-global:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: #FFFFFF;
+    }
+
+    .kbd-hint {
+      font-size: 0.66rem;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.22);
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 600;
+    }
+
+    .nav-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1.5px solid rgba(240, 192, 48, 0.75);
       display: flex;
       align-items: center;
       justify-content: center;
-
-      width: 36px;
-      height: 36px;
-
-      border-radius: 50%;
-
-      background:
-        rgba(255, 255, 255, .09);
-
-      border:
-        1px solid rgba(255, 255, 255, .13);
-
-      color: #FFFFFF;
-
+      color: var(--gold-bright);
+      font-weight: 700;
+      font-size: 0.74rem;
       cursor: pointer;
-
-      transition:
-        background var(--transition),
-        transform var(--transition),
-        border-color var(--transition);
+      text-transform: uppercase;
+      user-select: none;
+      transition: transform var(--transition), background var(--transition);
     }
 
-
-    .btn-search-global:hover {
-
-      background:
-        rgba(255, 255, 255, .18);
-
-      border-color:
-        rgba(255, 255, 255, .25);
-
-      transform:
-        translateY(-1px);
+    .nav-avatar:hover {
+      background: rgba(255, 255, 255, 0.24);
+      transform: scale(1.04);
     }
 
-
-    .btn-search-global:active {
-      transform: scale(.94);
+    .dropdown.profile-drop {
+      left: auto;
+      right: 0;
+      min-width: 250px;
     }
 
+    .profile-info {
+      padding: 10px 10px 12px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+
+    .profile-name {
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--text-dark);
+    }
+
+    .profile-role {
+      font-size: 0.73rem;
+      color: var(--text-lo);
+      margin-top: 2px;
+      overflow-wrap: anywhere;
+    }
+
+    .dropdown-item.logout {
+      color: var(--danger);
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+      padding-top: 9px;
+    }
+
+    .dropdown-item.logout:hover {
+      background: var(--danger);
+      color: #FFFFFF;
+    }
 
     /* ============================================================
-       BUSCADOR MODAL
+       BUSCADOR GLOBAL ESTILO MACOS SPOTLIGHT
        ============================================================ */
-
     .search-modal-overlay {
-
       display: none;
-
       position: fixed;
-
       inset: 0;
-
-      background:
-        rgba(5, 6, 8, .66);
-
-      backdrop-filter:
-        blur(8px);
-
-      -webkit-backdrop-filter:
-        blur(8px);
-
+      background: rgba(0, 0, 0, 0.38);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
       z-index: 3000;
-
       align-items: flex-start;
       justify-content: center;
-
-      padding:
-        calc(var(--nav-h) + 22px)
-        20px
-        20px;
+      padding: calc(var(--nav-h) + 32px) 16px 20px;
     }
-
 
     .search-modal-overlay.open {
       display: flex;
     }
 
-
     .search-modal-box {
-
-      background:
-        var(--surface);
-
-      backdrop-filter:
-        var(--glass-blur-heavy);
-
-      -webkit-backdrop-filter:
-        var(--glass-blur-heavy);
-
-      border:
-        var(--glass-border);
-
-      border-top:
-        2px solid var(--gold);
-
-      border-radius:
-        var(--radius-lg);
-
+      background: var(--surface);
+      backdrop-filter: saturate(180%) blur(24px);
+      -webkit-backdrop-filter: saturate(180%) blur(24px);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
       width: 100%;
-
-      max-width: 600px;
-
-      max-height: 75vh;
-
+      max-width: 580px;
+      max-height: 72vh;
       display: flex;
       flex-direction: column;
-
-      box-shadow:
-        var(--shadow-xl);
-
+      box-shadow: var(--shadow-xl);
       overflow: hidden;
-
-      animation:
-        modalIn 180ms ease-out;
+      animation: spotlightIn 160ms cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-
-    @keyframes modalIn {
-
-      from {
-        opacity: 0;
-        transform: translateY(-8px) scale(.985);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
+    @keyframes spotlightIn {
+      from { opacity: 0; transform: scale(0.97) translateY(-8px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
     }
-
 
     .search-modal-input-wrap {
-
       display: flex;
       align-items: center;
-
-      gap: 11px;
-
-      padding: 17px 20px;
-
-      border-bottom:
-        1px solid var(--border);
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
     }
 
-
     .search-modal-input-wrap svg {
-      color: var(--gold);
+      color: var(--text-lo);
       flex-shrink: 0;
     }
 
-
     .search-modal-input {
-
       border: none;
       outline: none;
-
       flex: 1;
-
       min-width: 0;
-
-      font-size: .95rem;
+      font-size: 1rem;
       font-family: inherit;
-
       color: var(--text-dark);
-
       background: transparent;
     }
-
 
     .search-modal-input::placeholder {
       color: var(--text-lo);
     }
 
-
     .search-modal-close {
-
       cursor: pointer;
-
       color: var(--text-lo);
-
-      background: transparent;
-
-      border: none;
-
-      padding: 6px;
-
-      border-radius: 7px;
-
-      display: flex;
-
-      transition:
-        background var(--transition),
-        color var(--transition);
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      transition: background var(--transition), color var(--transition);
     }
-
 
     .search-modal-close:hover {
-
-      background:
-        rgba(123, 26, 26, .09);
-
-      color: var(--guinda);
+      color: var(--text-dark);
+      background: var(--border);
     }
 
+    .search-modal-results {
+      overflow-y: auto;
+      padding: 6px;
+    }
 
-    html[data-theme="dark"] .search-modal-close:hover {
+    .search-section-title {
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-lo);
+      padding: 8px 10px 4px;
+    }
 
-      background:
-        rgba(255, 255, 255, .08);
+    .search-result-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 10px;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: background var(--transition);
+    }
 
+    .search-result-item:hover {
+      background: var(--guinda);
       color: #FFFFFF;
     }
 
-
-    .search-modal-results {
-
-      overflow-y: auto;
-
-      padding: 8px;
+    .search-result-item:hover .search-result-title,
+    .search-result-item:hover .search-result-sub {
+      color: #FFFFFF;
     }
-
-
-    .search-section-title {
-
-      font-size: .65rem;
-
-      font-weight: 800;
-
-      text-transform: uppercase;
-
-      letter-spacing: .09em;
-
-      color: var(--text-lo);
-
-      padding:
-        10px 12px 6px;
-    }
-
-
-    .search-result-item {
-
-      display: flex;
-      align-items: center;
-
-      gap: 12px;
-
-      padding: 11px 12px;
-
-      border-radius: 10px;
-
-      cursor: pointer;
-
-      transition:
-        background var(--transition),
-        transform var(--transition);
-    }
-
-
-    .search-result-item:hover {
-
-      background:
-        rgba(123, 26, 26, .075);
-
-      transform:
-        translateX(2px);
-    }
-
-
-    html[data-theme="dark"] .search-result-item:hover {
-
-      background:
-        rgba(255, 255, 255, .06);
-    }
-
 
     .search-result-icon {
-
-      width: 36px;
-      height: 36px;
-
-      border-radius: 10px;
-
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-
       flex-shrink: 0;
     }
 
-
-    .search-result-icon.alumno {
-
-      background:
-        var(--success-bg);
-
-      color:
-        var(--success);
-    }
-
-
-    .search-result-icon.caso {
-
-      background:
-        rgba(123, 26, 26, .12);
-
-      color:
-        var(--guinda);
-    }
-
+    .search-result-icon.alumno { background: var(--success-bg); color: var(--success); }
+    .search-result-icon.caso   { background: var(--guinda-soft); color: var(--guinda); }
+    .search-result-icon.usuario{ background: var(--warning-bg); color: var(--warning); }
 
     html[data-theme="dark"] .search-result-icon.caso {
-
-      background:
-        rgba(165, 42, 42, .18);
-
-      color:
-        #F06A6A;
+      background: rgba(240, 192, 48, 0.14);
+      color: var(--gold-bright);
     }
-
-
-    .search-result-icon.usuario {
-
-      background:
-        var(--warning-bg);
-
-      color:
-        var(--warning);
-    }
-
 
     .search-result-title {
-
-      font-weight: 700;
-
-      font-size: .85rem;
-
-      color:
-        var(--text-dark);
+      font-weight: 600;
+      font-size: 0.84rem;
+      color: var(--text-dark);
     }
-
 
     .search-result-sub {
-
-      font-size: .73rem;
-
-      color:
-        var(--text-lo);
-
-      margin-top: 2px;
+      font-size: 0.73rem;
+      color: var(--text-lo);
+      margin-top: 1px;
     }
-
 
     .search-empty-state {
-
       text-align: center;
-
-      padding: 44px 20px;
-
-      color:
-        var(--text-lo);
-
-      font-size: .83rem;
+      padding: 36px 20px;
+      color: var(--text-lo);
+      font-size: 0.83rem;
     }
-
 
     /* ============================================================
-       PERFIL
+       CONTENIDO PRINCIPAL Y UTILIDADES
        ============================================================ */
-
-    .nav-avatar {
-
-      width: 37px;
-      height: 37px;
-
-      border-radius: 50%;
-
-      background:
-        linear-gradient(
-          145deg,
-          rgba(255,255,255,.18),
-          rgba(255,255,255,.07)
-        );
-
-      border:
-        2px solid rgba(240, 192, 48, .62);
-
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      color:
-        var(--gold-bright);
-
-      font-weight: 800;
-
-      font-size: .78rem;
-
-      cursor: pointer;
-
-      text-transform: uppercase;
-
-      user-select: none;
-
-      box-shadow:
-        0 3px 12px rgba(0,0,0,.18);
-
-      transition:
-        transform var(--transition),
-        background var(--transition);
-    }
-
-
-    .nav-avatar:hover {
-
-      background:
-        rgba(255,255,255,.2);
-
-      transform:
-        translateY(-1px);
-    }
-
-
-    .dropdown.profile-drop {
-
-      left: auto;
-      right: 0;
-
-      min-width: 270px;
-    }
-
-
-    .profile-info {
-
-      padding: 15px 14px;
-
-      border-bottom:
-        1px solid var(--border);
-    }
-
-
-    .profile-name {
-
-      font-weight: 800;
-
-      font-size: .88rem;
-
-      color:
-        var(--text-dark);
-    }
-
-
-    .profile-role {
-
-      font-size: .72rem;
-
-      color:
-        var(--text-lo);
-
-      margin-top: 3px;
-
-      overflow-wrap: anywhere;
-    }
-
-
-    .dropdown-item.logout {
-
-      color:
-        #C0392B;
-
-      border-top:
-        1px solid var(--border);
-
-      margin-top: 5px;
-    }
-
-
-    html[data-theme="dark"] .dropdown-item.logout {
-      color: #F06A6A;
-    }
-
-
-    /* ============================================================
-       CONTENIDO PRINCIPAL
-       ============================================================ */
-
     .main-content {
-
-      position: relative;
-
       margin-top: var(--nav-h);
-
-      padding:
-        34px
-        38px
-        50px;
-
+      padding: 28px 32px 48px;
       width: 100%;
-
-      max-width: 1500px;
-
+      max-width: 1440px;
       margin-left: auto;
       margin-right: auto;
-
-      min-height:
-        calc(100vh - var(--nav-h));
-
-      isolation: isolate;
+      min-height: calc(100vh - var(--nav-h));
     }
-
-
-    /* ============================================================
-       HAMBURGUESA
-       ============================================================ */
 
     .hamburger-btn {
-
       display: none;
-
       align-items: center;
       justify-content: center;
-
-      width: 38px;
-      height: 38px;
-
-      border-radius: 9px;
-
-      background:
-        rgba(255, 255, 255, .09);
-
-      border:
-        1px solid rgba(255, 255, 255, .14);
-
-      color:
-        #FFFFFF;
-
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #FFFFFF;
       cursor: pointer;
-
       flex-shrink: 0;
-
-      margin-right: 8px;
-
-      transition:
-        background var(--transition),
-        transform var(--transition);
+      margin-right: 10px;
     }
-
-
-    .hamburger-btn:hover {
-
-      background:
-        rgba(255,255,255,.18);
-
-      transform:
-        translateY(-1px);
-    }
-
-
-    /* ============================================================
-       ELEMENTOS GLOBALES DE APOYO
-       Estas clases pueden ser utilizadas por las páginas hijas.
-       ============================================================ */
 
     .glass-card {
-
-      background:
-        var(--surface);
-
-      backdrop-filter:
-        var(--glass-blur);
-
-      -webkit-backdrop-filter:
-        var(--glass-blur);
-
-      border:
-        var(--glass-border);
-
-      border-radius:
-        var(--radius-lg);
-
-      box-shadow:
-        var(--shadow);
-
-      transition:
-        transform var(--transition),
-        box-shadow var(--transition),
-        border-color var(--transition);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
     }
-
-
-    .glass-card:hover {
-
-      box-shadow:
-        var(--shadow-lg);
-
-      border-color:
-        rgba(123, 26, 26, .18);
-    }
-
-
-    html[data-theme="dark"] .glass-card:hover {
-
-      border-color:
-        rgba(255, 255, 255, .14);
-    }
-
-
-    .stat-number {
-
-      font-size:
-        clamp(2.4rem, 5vw, 4.5rem);
-
-      line-height: .95;
-
-      font-weight: 800;
-
-      letter-spacing:
-        -.055em;
-
-      color:
-        var(--text-dark);
-    }
-
-
-    .stat-label {
-
-      margin-top: 8px;
-
-      font-size: .72rem;
-
-      font-weight: 800;
-
-      letter-spacing: .09em;
-
-      text-transform: uppercase;
-
-      color:
-        var(--text-lo);
-    }
-
-
-    .accent-line {
-
-      width: 42px;
-      height: 3px;
-
-      border-radius: 999px;
-
-      background:
-        linear-gradient(
-          90deg,
-          var(--guinda),
-          var(--gold)
-        );
-    }
-
-
-    /* ============================================================
-       FOCUS ACCESIBLE
-       ============================================================ */
 
     button:focus-visible,
     a:focus-visible,
     input:focus-visible,
     select:focus-visible,
     textarea:focus-visible {
-
-      outline:
-        2px solid var(--gold-bright);
-
-      outline-offset:
-        2px;
+      outline: 2px solid var(--gold-bright);
+      outline-offset: 2px;
     }
-
 
     /* ============================================================
        RESPONSIVE
        ============================================================ */
-
-    @media (max-width: 1100px) {
-
-      .navbar {
-        padding: 0 18px;
-      }
-
-      .nav-brand {
-        margin-right: 14px;
-      }
-
-      .nav-link {
-        padding:
-          8px 10px;
-
-        font-size: .78rem;
-      }
-
-      .main-content {
-        padding:
-          28px
-          24px
-          42px;
-      }
-    }
-
-
     @media (max-width: 900px) {
-
-      :root {
-        --nav-h: 62px;
-      }
-
-
-      /* ----------------------------------------------------------
-         NAVBAR
-         ---------------------------------------------------------- */
-
-      .navbar {
-
-        padding:
-          0 12px;
-
-        border-bottom-width:
-          2px;
-      }
-
-
-      .hamburger-btn {
-        display: flex;
-      }
-
-
-      .nav-brand {
-
-        margin-right: 8px;
-
-        gap: 8px;
-      }
-
-
-      .nav-brand img {
-        height: 34px;
-      }
-
-
-      .nav-brand-text {
-        font-size: .86rem;
-      }
-
-
-      /* ----------------------------------------------------------
-         MENÚ MÓVIL
-         ---------------------------------------------------------- */
+      .navbar { padding: 0 14px; }
+      .hamburger-btn { display: flex; }
+      .kbd-hint, .role-badge { display: none; }
+      .btn-search-global { padding: 0 9px; }
 
       .nav-links {
-
         display: none;
-
         position: fixed;
-
         top: var(--nav-h);
-
         left: 0;
         right: 0;
-
         bottom: 0;
-
-        background:
-          linear-gradient(
-            180deg,
-            rgba(90, 16, 16, .985),
-            rgba(72, 12, 12, .985)
-          );
-
+        background: rgba(78, 14, 14, 0.96);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
         flex-direction: column;
-
         align-items: stretch;
-
-        gap: 3px;
-
-        padding:
-          14px;
-
+        gap: 4px;
+        padding: 14px;
         overflow-y: auto;
-
         z-index: 1500;
-
-        box-shadow:
-          inset 0 8px 20px rgba(0,0,0,.22);
       }
 
-
-      .nav-links.mobile-open {
-        display: flex;
-      }
-
-
-      .nav-item {
-        width: 100%;
-      }
-
-
-      .nav-link {
-
-        width: 100%;
-
-        justify-content: flex-start;
-
-        padding:
-          13px 14px;
-
-        min-height: 46px;
-
-        font-size: .9rem;
-
-        border-radius:
-          11px;
-      }
-
-
-      .nav-link:hover,
-      .nav-link.active {
-
-        background:
-          rgba(255,255,255,.11);
-
-        transform: none;
-      }
-
-
-      /* ----------------------------------------------------------
-         DROPDOWNS MÓVILES
-         ---------------------------------------------------------- */
+      .nav-links.mobile-open { display: flex; }
+      .nav-item { width: 100%; }
+      .nav-link { width: 100%; padding: 12px 14px; font-size: 0.9rem; }
 
       .nav-links .dropdown {
-
         position: static;
-
         opacity: 1;
         visibility: visible;
-
         transform: none;
-
         display: none;
-
         box-shadow: none;
-
-        border:
-          1px solid rgba(255,255,255,.08);
-
-        border-top:
-          1px solid rgba(240,192,48,.35);
-
-        border-radius:
-          10px;
-
-        background:
-          rgba(0,0,0,.14);
-
-        margin:
-          3px 0 8px 10px;
-
-        min-width: 0;
-
-        backdrop-filter:
-          blur(10px);
-
-        -webkit-backdrop-filter:
-          blur(10px);
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        margin: 4px 0 8px 10px;
       }
 
+      .nav-item.open .dropdown { display: block; }
+      .nav-links .dropdown-header { color: rgba(255, 255, 255, 0.55); border-bottom-color: rgba(255, 255, 255, 0.1); }
+      .nav-links .dropdown-item { color: rgba(255, 255, 255, 0.9); }
+      .nav-links .dropdown-item svg { color: var(--gold-bright); }
 
-      .nav-item.open .dropdown {
-        display: block;
-      }
-
-
-      .nav-links .dropdown-header {
-
-        color:
-          rgba(255,255,255,.52);
-
-        border-bottom-color:
-          rgba(255,255,255,.1);
-      }
-
-
-      .nav-links .dropdown-item {
-
-        color:
-          rgba(255,255,255,.9);
-
-        min-height: 43px;
-      }
-
-
-      .nav-links .dropdown-item:hover {
-
-        background:
-          rgba(255,255,255,.08);
-
-        color:
-          #FFFFFF;
-
-        transform: none;
-      }
-
-
-      .nav-links .dropdown-item svg {
-        color:
-          var(--gold-bright);
-      }
-
-
-      /* ----------------------------------------------------------
-         BARRA DERECHA
-         ---------------------------------------------------------- */
-
-      .nav-right {
-        gap: 5px;
-      }
-
-
-      .role-badge {
-        display: none;
-      }
-
-
-      .btn-search-global,
-      .nav-avatar {
-
-        width: 35px;
-        height: 35px;
-      }
-
-
-      /* ----------------------------------------------------------
-         CONTENIDO
-         ---------------------------------------------------------- */
-
-      .main-content {
-
-        padding:
-          22px
-          16px
-          36px;
-      }
-
-
-      /* ----------------------------------------------------------
-         BUSCADOR
-         ---------------------------------------------------------- */
-
-      .search-modal-overlay {
-
-        padding:
-          calc(var(--nav-h) + 12px)
-          10px
-          10px;
-      }
-
-
-      .search-modal-box {
-
-        max-width:
-          100%;
-
-        max-height:
-          84vh;
-
-        border-radius:
-          var(--radius);
-      }
+      .main-content { padding: 20px 16px 36px; }
     }
-
 
     @media (max-width: 600px) {
-
-      body {
-        background-attachment: scroll;
-      }
-
-
-      .main-content {
-
-        padding:
-          18px
-          12px
-          30px;
-      }
-
-
-      .nav-brand-text {
-        display: none;
-      }
-
-
-      .nav-brand img {
-        height: 33px;
-      }
-
-
-      .nav-avatar,
-      .btn-search-global,
-      .hamburger-btn {
-
-        width: 35px;
-        height: 35px;
-      }
-
-
-      .search-modal-input-wrap {
-        padding:
-          14px 15px;
-      }
-
-
-      .search-modal-results {
-        padding:
-          6px;
-      }
-
-
-      .search-result-item {
-        padding:
-          10px;
-      }
-
-
-      .glass-card {
-        border-radius:
-          var(--radius);
-      }
-
-
-      .stat-number {
-        font-size:
-          clamp(2.3rem, 13vw, 3.5rem);
-      }
+      .nav-brand-text { display: none; }
+      .main-content { padding: 16px 12px 28px; }
     }
-
-
-    @media (max-width: 380px) {
-
-      .navbar {
-        padding:
-          0 8px;
-      }
-
-
-      .nav-brand {
-        margin-right:
-          4px;
-      }
-
-
-      .nav-right {
-        gap:
-          3px;
-      }
-
-
-      .btn-search-global,
-      .nav-avatar,
-      .hamburger-btn {
-
-        width: 33px;
-        height: 33px;
-      }
-
-
-      .main-content {
-        padding:
-          16px 10px 28px;
-      }
-    }
-
-
-    /* ============================================================
-       TRANSICIONES
-       ============================================================ */
-
-    .dropdown,
-    .search-modal-box,
-    .search-modal-input,
-    .search-result-item,
-    .dropdown-item,
-    .glass-card {
-
-      transition:
-        background-color var(--transition),
-        color var(--transition),
-        border-color var(--transition),
-        box-shadow var(--transition),
-        transform var(--transition);
-    }
-
-
-    /* ============================================================
-       RESPETO POR REDUCCIÓN DE MOVIMIENTO
-       ============================================================ */
 
     @media (prefers-reduced-motion: reduce) {
-
-      html {
-        scroll-behavior: auto;
-      }
-
-      *,
-      *::before,
-      *::after {
-
-        transition-duration:
-          0.01ms !important;
-
-        animation-duration:
-          0.01ms !important;
-
-        animation-iteration-count:
-          1 !important;
-
-        scroll-behavior:
-          auto !important;
+      *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
       }
     }
 
-    /* ============================================================
-       CORRECCIONES MODO OSCURO (FORMULARIOS Y MODALES)
-       ============================================================ */
-    
-    /* 1. Fondo de inputs y textareas en modo oscuro */
+    /* Formularios en modo oscuro */
     html[data-theme="dark"] input:not([type="submit"]):not([type="checkbox"]):not([type="radio"]),
     html[data-theme="dark"] select,
     html[data-theme="dark"] textarea {
-        background-color: rgba(0, 0, 0, 0.25);
-        color: var(--text-dark); /* Texto blanco en modo oscuro */
-        border: 1px solid var(--border);
-        color-scheme: dark; /* Ayuda a los iconos de calendario nativos */
-    }
-
-    html[data-theme="dark"] input::placeholder,
-    html[data-theme="dark"] textarea::placeholder {
-        color: var(--text-lo);
-    }
-
-    /* 2. Forzar contraste en textos de modales y etiquetas (labels) */
-    html[data-theme="dark"] label,
-    html[data-theme="dark"] .modal p,
-    html[data-theme="dark"] .modal span,
-    html[data-theme="dark"] .modal div {
-        color: var(--text-mid);
-    }
-
-    /* 3. Títulos y Checkboxes que necesitan blanco absoluto */
-    html[data-theme="dark"] h1,
-    html[data-theme="dark"] h2,
-    html[data-theme="dark"] h3,
-    html[data-theme="dark"] h4,
-    html[data-theme="dark"] .modal h1,
-    html[data-theme="dark"] .modal h2,
-    html[data-theme="dark"] .modal h3,
-    html[data-theme="dark"] input[type="checkbox"] + label,
-    html[data-theme="dark"] label.checkbox-label,
-    html[data-theme="dark"] strong,
-    html[data-theme="dark"] b {
-        color: var(--text-dark) !important;
+      background-color: #2C2C2E;
+      color: var(--text-dark);
+      border: 1px solid var(--border);
+      color-scheme: dark;
     }
   </style>
 
   {% block extra_css %}{% endblock %}
-
 </head>
 
-
 <body>
-
   <!-- ============================================================
        NAVBAR
        ============================================================ -->
-
   <nav class="navbar">
-
     <a
       class="nav-brand"
       href="{% if request.session.usuario_rol == 'Profesor Jefe' %}{% url 'mis_casos_curso' %}{% else %}{% url 'dashboard' %}{% endif %}"
     >
-
-      <img
-        src="{% static 'Insignia.png' %}"
-        alt="Logo Colegio San Sebastián"
-      />
-
-      <span class="nav-brand-text">
-        Convi<span>Data</span>
-      </span>
-
+      <img src="{% static 'Insignia.png' %}" alt="Logo Colegio San Sebastián" />
+      <span class="nav-brand-text">Convi<span>Data</span></span>
     </a>
-
-
-    <!-- ==========================================================
-         MENÚ HAMBURGUESA
-         ========================================================== -->
 
     <button
       type="button"
@@ -1991,391 +743,109 @@
       title="Menú"
       aria-label="Abrir menú"
     >
-
-      <svg
-        id="hamburgerIconOpen"
-        width="20"
-        height="20"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        stroke-width="2.2"
-      >
-
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M4 6h16M4 12h16M4 18h16"
-        />
-
+      <svg id="hamburgerIconOpen" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
       </svg>
-
-
-      <svg
-        id="hamburgerIconClose"
-        width="20"
-        height="20"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        stroke-width="2.2"
-        style="display:none;"
-      >
-
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M6 18L18 6M6 6l12 12"
-        />
-
+      <svg id="hamburgerIconClose" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" style="display:none;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
       </svg>
-
     </button>
 
-
-    <!-- ==========================================================
-         LINKS
-         ========================================================== -->
-
-    <div
-      class="nav-links"
-      id="navLinksPanel"
-    >
-
-      <!-- INICIO -->
-
+    <div class="nav-links" id="navLinksPanel">
       <div class="nav-item">
-
         <a
           class="nav-link"
           href="{% if request.session.usuario_rol == 'Profesor Jefe' %}{% url 'mis_casos_curso' %}{% else %}{% url 'dashboard' %}{% endif %}"
         >
-
-          <svg
-            width="15"
-            height="15"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-            />
-
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
-
           Inicio
-
         </a>
-
       </div>
-
-
-      <!-- CASOS -->
 
       {% if request.session.usuario_rol != 'Profesor Jefe' %}
-
-      <div
-        class="nav-item"
-        id="drop-casos"
-      >
-
-        <button
-          class="nav-link"
-          onclick="toggleDrop('drop-casos')"
-        >
-
-          <svg
-            width="15"
-            height="15"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-
+      <div class="nav-item" id="drop-casos">
+        <button type="button" class="nav-link" onclick="toggleDrop('drop-casos')">
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-
           Casos
-
-          <svg
-            class="chevron"
-            width="12"
-            height="12"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2.5"
-          >
-
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M19 9l-7 7-7-7"
-            />
-
+          <svg class="chevron" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
-
         </button>
 
-
         <div class="dropdown">
-
-          <div class="dropdown-header">
-            Gestión de Casos
-          </div>
-
-          <a
-            href="{% url 'historial_casos' %}"
-            class="dropdown-item"
-          >
-            Historial de casos
-          </a>
-
-          <a
-            href="{% url 'registrar_caso' %}"
-            class="dropdown-item"
-          >
-            Crear Caso
-          </a>
-
+          <div class="dropdown-header">Gestión de Casos</div>
+          <a href="{% url 'historial_casos' %}" class="dropdown-item">Historial de casos</a>
+          <a href="{% url 'registrar_caso' %}" class="dropdown-item">Crear Caso</a>
           {% if request.session.usuario_rol == 'Administrador' or request.session.usuario_rol == 'PConvivencia' or request.session.usuario_rol == 'Inspector' %}
-          <a
-            href="{% url 'solicitudes_casos_pendientes' %}"
-            class="dropdown-item"
-          >
-            Revisar casos pendientes
-          </a>
+          <a href="{% url 'solicitudes_casos_pendientes' %}" class="dropdown-item">Revisar casos pendientes</a>
           {% endif %}
-
-          <a
-            href="{% url 'estadisticas' %}"
-            class="dropdown-item"
-          >
-            Estadísticas
-          </a>
-
+          <a href="{% url 'estadisticas' %}" class="dropdown-item">Estadísticas</a>
         </div>
-
       </div>
-
       {% endif %}
-
-
-      <!-- MI CURSO -->
 
       {% if request.session.usuario_rol == 'Profesor Jefe' %}
-
       <div class="nav-item">
-
-        <a
-          class="nav-link"
-          href="{% url 'mis_casos_curso' %}"
-        >
-
-          <svg
-            width="15"
-            height="15"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-            />
-
+        <a class="nav-link" href="{% url 'mis_casos_curso' %}">
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
           </svg>
-
           Mi Curso
-
         </a>
-
       </div>
-
       {% endif %}
-
-
-      <!-- ADMIN -->
 
       {% if request.session.usuario_rol|lower == 'administrador' %}
-
-      <div
-        class="nav-item"
-        id="drop-admin"
-      >
-
-        <button
-          class="nav-link"
-          onclick="toggleDrop('drop-admin')"
-        >
-
-          <svg
-            width="15"
-            height="15"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 001.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31-2.37-2.37.996.608 2.296.07 2.572-1.065z"
-            />
-
-            <circle
-              cx="12"
-              cy="12"
-              r="3"
-            />
-
+      <div class="nav-item" id="drop-admin">
+        <button type="button" class="nav-link" onclick="toggleDrop('drop-admin')">
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <circle cx="12" cy="12" r="3" />
           </svg>
-
           Admin
-
-          <svg
-            class="chevron"
-            width="12"
-            height="12"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2.5"
-          >
-
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M19 9l-7 7-7-7"
-            />
-
+          <svg class="chevron" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
           </svg>
-
         </button>
 
-
         <div class="dropdown">
-
-          <div class="dropdown-header">
-            Panel Administrador
-          </div>
-
-          <a
-            href="{% url 'gestion_de_usuarios' %}"
-            class="dropdown-item"
-          >
-            Gestionar usuarios
-          </a>
-
-
-          <a
-            href="{% url 'gestion_de_alumnos' %}"
-            class="dropdown-item"
-          >
-
-            <svg
-              width="14"
-              height="14"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-              />
-
+          <div class="dropdown-header">Panel Administrador</div>
+          <a href="{% url 'gestion_de_usuarios' %}" class="dropdown-item">Gestionar usuarios</a>
+          <a href="{% url 'gestion_de_alumnos' %}" class="dropdown-item">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>
-
             Gestión de alumnos
-
           </a>
-
         </div>
-
       </div>
-
       {% endif %}
-
     </div>
 
-
-    <!-- ==========================================================
-         PARTE DERECHA
-         ========================================================== -->
-
     <div class="nav-right">
-
-
-      <!-- BUSCADOR -->
-
       {% if request.session.usuario_rol != 'Profesor Jefe' %}
-
       <button
         type="button"
         class="btn-search-global"
         onclick="abrirBusquedaGlobal()"
-        title="Buscar alumnos o casos"
+        title="Buscar alumnos o casos (⌘K / Ctrl+K)"
         aria-label="Buscar alumnos o casos"
       >
-
-        <svg
-          width="16"
-          height="16"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          stroke-width="2.5"
-        >
-
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"
-          />
-
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
         </svg>
-
+        <span>Buscar</span>
+        <kbd class="kbd-hint">⌘K</kbd>
       </button>
-
       {% endif %}
 
+      <span class="role-badge" id="role-badge">{{ request.session.usuario_rol }}</span>
 
-      <!-- ROL -->
-
-      <span
-        class="role-badge admin"
-        id="role-badge"
-      >
-        {{ request.session.usuario_rol }}
-      </span>
-
-
-      <!-- PERFIL -->
-
-      <div
-        class="nav-item profile-item"
-        id="drop-perfil"
-      >
-
+      <div class="nav-item profile-item" id="drop-perfil">
         <div
           class="nav-avatar"
           onclick="toggleDrop('drop-perfil')"
@@ -2386,908 +856,346 @@
           {{ request.session.usuario_nombre|slice:":2" }}
         </div>
 
-
         <div class="dropdown profile-drop">
-
           <div class="profile-info">
-
-            <div
-              class="profile-name"
-              id="role-text"
-            >
-              {{ request.session.usuario_nombre }}
-            </div>
-
-            <div class="profile-role">
-              {{ request.session.usuario_correo }}
-            </div>
-
+            <div class="profile-name" id="role-text">{{ request.session.usuario_nombre }}</div>
+            <div class="profile-role">{{ request.session.usuario_correo }}</div>
           </div>
 
-
-          <!-- PERFIL -->
-
-          <a
-            href="{% url 'gestion_datos_publicos' %}"
-            class="dropdown-item"
-          >
-
-            <svg
-              width="14"
-              height="14"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              />
-
+          <a href="{% url 'gestion_datos_publicos' %}" class="dropdown-item">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-
             Perfil
-
           </a>
 
-
-          <!-- CONFIGURACIÓN -->
-
-          <a
-            href="{% url 'gestion_configuracion' %}"
-            class="dropdown-item"
-          >
-
-            <svg
-              width="14"
-              height="14"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 01-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31.826-2.37-2.37a1.724 1.724 0 001.066-2.573c-.94-1.543-.826-1.756 0-3.35a1.724 1.724 0 001.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31-2.37-2.37z"
-              />
-
-              <circle
-                cx="12"
-                cy="12"
-                r="3"
-              />
-
+          <a href="{% url 'gestion_configuracion' %}" class="dropdown-item">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <circle cx="12" cy="12" r="3" />
             </svg>
-
             Configuración
-
           </a>
-
-
-          <!-- NOTIFICACIONES -->
 
           {% if request.session.usuario_rol == 'Administrador' or request.session.usuario_rol == 'PConvivencia' or request.session.usuario_rol == 'Inspector' %}
-          <a
-            href="{% url 'notificaciones' %}"
-            class="dropdown-item"
-          >
-
-            <svg
-              width="14"
-              height="14"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-              />
-
+          <a href="{% url 'notificaciones' %}" class="dropdown-item">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
-
             Notificaciones
-
           </a>
-
           {% endif %}
 
-
-          <!-- DOCUMENTOS -->
-
-          <a
-            href="{% url 'gestion_documentos' %}"
-            class="dropdown-item"
-          >
-
-            <svg
-              width="14"
-              height="14"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-
+          <a href="{% url 'gestion_documentos' %}" class="dropdown-item">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-
             Documentos
-
           </a>
 
-
-          <!-- HISTORIAL -->
-
-          <a
-            href="{% url 'historial_de_usuarios' %}"
-            class="dropdown-item"
-          >
-
-            <svg
-              width="14"
-              height="14"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-
+          <a href="{% url 'historial_de_usuarios' %}" class="dropdown-item">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-
             Historial de usuarios
-
           </a>
 
-
-          <!-- LOGOUT -->
-
-          <a
-            href="{% url 'logout' %}"
-            class="dropdown-item logout"
-            style="text-decoration: none;"
-          >
-
-            <svg
-              width="14"
-              height="14"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-
+          <a href="{% url 'logout' %}" class="dropdown-item logout">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-
             Cerrar sesión
-
           </a>
-
         </div>
-
       </div>
-
     </div>
-
   </nav>
 
-
   <!-- ============================================================
-       BUSCADOR GLOBAL
+       BUSCADOR GLOBAL SPOTLIGHT
        ============================================================ -->
-
   {% if request.session.usuario_rol != 'Profesor Jefe' %}
-
   <div
     class="search-modal-overlay"
     id="searchModalOverlay"
     onclick="if(event.target === this){ cerrarBusquedaGlobal(); }"
   >
-
     <div class="search-modal-box">
-
       <div class="search-modal-input-wrap">
-
-        <svg
-          width="18"
-          height="18"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          stroke-width="2.5"
-        >
-
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"
-          />
-
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
         </svg>
-
-
         <input
           type="text"
           id="searchModalInput"
           class="search-modal-input"
-          placeholder="Buscar alumnos o casos..."
+          placeholder="Buscar alumnos, casos o funcionarios..."
           oninput="buscarGlobal(this.value)"
           autocomplete="off"
         />
-
-
-        <button
-          type="button"
-          class="search-modal-close"
-          onclick="cerrarBusquedaGlobal()"
-          aria-label="Cerrar búsqueda"
-        >
-
-          <svg
-            width="18"
-            height="18"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2.5"
-          >
-
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M6 18L18 6M6 6l12 12"
-            />
-
-          </svg>
-
-        </button>
-
+        <button type="button" class="search-modal-close" onclick="cerrarBusquedaGlobal()">ESC</button>
       </div>
 
-
-      <div
-        class="search-modal-results"
-        id="searchModalResults"
-      >
-
-        <div class="search-empty-state">
-          Escribe al menos 2 letras para buscar un alumno o un caso.
-        </div>
-
+      <div class="search-modal-results" id="searchModalResults">
+        <div class="search-empty-state">Escribe al menos 2 letras para buscar un alumno o un caso.</div>
       </div>
-
     </div>
-
   </div>
-
   {% endif %}
-
 
   <!-- ============================================================
        CONTENIDO
        ============================================================ -->
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
 
-  <div class="main-content">
-
-    {% block content %}
-    {% endblock %}
-
-  </div>
-
-
-  <!-- ============================================================
-       JAVASCRIPT
-       ============================================================ -->
+  <!-- SweetAlert2 diferido: no bloquea el pintado inicial -->
+  <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <script>
+    (() => {
+      'use strict';
 
-    /* ============================================================
-       DROPDOWNS
-       ============================================================ */
+      let searchTimeoutId = null;
+      let searchAbortController = null;
 
-    function toggleDrop(id) {
-
-      document
-        .querySelectorAll('.nav-item')
-        .forEach(el => {
-
-          if (el.id !== id) {
-            el.classList.remove('open');
-          }
-
+      window.toggleDrop = function(id) {
+        document.querySelectorAll('.nav-item').forEach(el => {
+          if (el.id !== id) el.classList.remove('open');
         });
-
-      const item =
-        document.getElementById(id);
-
-      if (item) {
-        item.classList.toggle('open');
-      }
-    }
-
-
-    document.addEventListener('click', e => {
-
-      if (!e.target.closest('.nav-item')) {
-
-        document
-          .querySelectorAll('.nav-item')
-          .forEach(el => {
-            el.classList.remove('open');
-          });
-
-      }
-
-    });
-
-
-    /* ============================================================
-       MENÚ MÓVIL
-       ============================================================ */
-
-    function toggleMobileMenu() {
-
-      const panel =
-        document.getElementById('navLinksPanel');
-
-      if (!panel) return;
-
-      const abierto =
-        panel.classList.toggle('mobile-open');
-
-      const iconOpen =
-        document.getElementById('hamburgerIconOpen');
-
-      const iconClose =
-        document.getElementById('hamburgerIconClose');
-
-      if (iconOpen) {
-        iconOpen.style.display =
-          abierto ? 'none' : 'block';
-      }
-
-      if (iconClose) {
-        iconClose.style.display =
-          abierto ? 'block' : 'none';
-      }
-
-      document.body.style.overflow =
-        abierto ? 'hidden' : '';
-    }
-
-
-    function cerrarMenuMovil() {
-
-      const panel =
-        document.getElementById('navLinksPanel');
-
-      if (!panel) return;
-
-      panel.classList.remove('mobile-open');
-
-      const iconOpen =
-        document.getElementById('hamburgerIconOpen');
-
-      const iconClose =
-        document.getElementById('hamburgerIconClose');
-
-      if (iconOpen) {
-        iconOpen.style.display = 'block';
-      }
-
-      if (iconClose) {
-        iconClose.style.display = 'none';
-      }
-
-      document.body.style.overflow = '';
-    }
-
-
-    window.addEventListener('resize', () => {
-
-      if (window.innerWidth > 900) {
-        cerrarMenuMovil();
-      }
-
-    });
-
-
-    document.addEventListener('keydown', e => {
-
-      if (e.key === 'Escape') {
-        cerrarMenuMovil();
-      }
-
-    });
-
-
-    /* ============================================================
-       BUSCADOR GLOBAL
-       ============================================================ */
-
-    let searchTimeoutId = null;
-
-
-    function abrirBusquedaGlobal() {
-
-      const overlay =
-        document.getElementById('searchModalOverlay');
-
-      if (!overlay) return;
-
-      overlay.classList.add('open');
-
-      const input =
-        document.getElementById('searchModalInput');
-
-      if (input) {
-
-        input.value = '';
-
-        setTimeout(() => {
-          input.focus();
-        }, 50);
-      }
-
-      const results =
-        document.getElementById('searchModalResults');
-
-      if (results) {
-
-        results.innerHTML =
-          '<div class="search-empty-state">' +
-          'Escribe al menos 2 letras para buscar un alumno o un caso.' +
-          '</div>';
-      }
-    }
-
-
-    function cerrarBusquedaGlobal() {
-
-      const overlay =
-        document.getElementById('searchModalOverlay');
-
-      if (overlay) {
-        overlay.classList.remove('open');
-      }
-    }
-
-
-    function buscarGlobal(valor) {
-
-      clearTimeout(searchTimeoutId);
-
-      const contenedor =
-        document.getElementById('searchModalResults');
-
-      if (!contenedor) return;
-
-
-      if (valor.trim().length < 2) {
-
-        contenedor.innerHTML =
-          '<div class="search-empty-state">' +
-          'Escribe al menos 2 letras para buscar un alumno o un caso.' +
-          '</div>';
-
-        return;
-      }
-
-
-      contenedor.innerHTML =
-        '<div class="search-empty-state">' +
-        'Buscando...' +
-        '</div>';
-
-
-      searchTimeoutId =
-        setTimeout(async () => {
-
-          try {
-
-            const respuesta =
-              await fetch(
-                "{% url 'busqueda_global' %}?q=" +
-                encodeURIComponent(valor)
-              );
-
-            if (!respuesta.ok) {
-              throw new Error('Error HTTP');
-            }
-
-            const data =
-              await respuesta.json();
-
-            renderizarResultadosBusqueda(data);
-
-          } catch (e) {
-
-            contenedor.innerHTML =
-              '<div class="search-empty-state">' +
-              'Ocurrió un error al buscar.' +
-              '</div>';
-
-          }
-
-        }, 300);
-    }
-
-
-    function renderizarResultadosBusqueda(data) {
-
-      const contenedor =
-        document.getElementById('searchModalResults');
-
-      if (!contenedor) return;
-
-
-      const hayAlumnos =
-        data.estudiantes &&
-        data.estudiantes.length > 0;
-
-      const hayCasos =
-        data.casos &&
-        data.casos.length > 0;
-
-      const hayUsuarios =
-        data.usuarios &&
-        data.usuarios.length > 0;
-
-
-      if (!hayAlumnos &&
-          !hayCasos &&
-          !hayUsuarios) {
-
-        contenedor.innerHTML =
-          '<div class="search-empty-state">' +
-          'No se encontraron resultados.' +
-          '</div>';
-
-        return;
-      }
-
-
-      let html = '';
-
-
-      /* ----------------------------------------------------------
-         ALUMNOS
-         ---------------------------------------------------------- */
-
-      if (hayAlumnos) {
-
-        html +=
-          '<div class="search-section-title">' +
-          'Alumnos' +
-          '</div>';
-
-        data.estudiantes.forEach(e => {
-
-          html += `
-            <div
-              class="search-result-item"
-              onclick="irAFichaAlumno(${e.id})"
-            >
-
-              <div class="search-result-icon alumno">
-
-                <svg
-                  width="16"
-                  height="16"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-
-                </svg>
-
-              </div>
-
-              <div>
-
-                <div class="search-result-title">
-                  ${e.nombre_completo}
-                </div>
-
-                <div class="search-result-sub">
-                  ${e.curso}
-                </div>
-
-              </div>
-
-            </div>
-          `;
-
-        });
-      }
-
-
-      /* ----------------------------------------------------------
-         CASOS
-         ---------------------------------------------------------- */
-
-      if (hayCasos) {
-
-        html +=
-          '<div class="search-section-title">' +
-          'Casos' +
-          '</div>';
-
-        data.casos.forEach(c => {
-
-          html += `
-            <div
-              class="search-result-item"
-              onclick="irADetalleCaso(${c.id})"
-            >
-
-              <div class="search-result-icon caso">
-
-                <svg
-                  width="16"
-                  height="16"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-
-                </svg>
-
-              </div>
-
-              <div>
-
-                <div class="search-result-title">
-                  ${c.titulo}
-                </div>
-
-                <div class="search-result-sub">
-                  #${c.id} · ${c.fecha} · ${c.lugar}
-                </div>
-
-              </div>
-
-            </div>
-          `;
-
-        });
-      }
-
-
-      /* ----------------------------------------------------------
-         USUARIOS
-         ---------------------------------------------------------- */
-
-      if (hayUsuarios) {
-
-        html +=
-          '<div class="search-section-title">' +
-          'Funcionarios' +
-          '</div>';
-
-        data.usuarios.forEach(u => {
-
-          html += `
-            <div
-              class="search-result-item"
-              onclick="irAGestionUsuarios()"
-            >
-
-              <div class="search-result-icon usuario">
-
-                <svg
-                  width="16"
-                  height="16"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975M15 6.75a3 3 0 11-6 0 3 3 0 016 0zM21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-
-                </svg>
-
-              </div>
-
-              <div>
-
-                <div class="search-result-title">
-                  ${u.nombre_completo}
-                </div>
-
-                <div class="search-result-sub">
-                  ${u.rol} · ${u.correo}
-                </div>
-
-              </div>
-
-            </div>
-          `;
-
-        });
-      }
-
-
-      contenedor.innerHTML = html;
-    }
-
-
-    /* ============================================================
-       NAVEGACIÓN DE RESULTADOS
-       ============================================================ */
-
-    function irAFichaAlumno(id) {
-
-      const urlBase =
-        "{% url 'detalle_estudiante' 0 %}";
-
-      window.location.href =
-        urlBase.replace(
-          '/0/',
-          '/' + id + '/'
-        );
-    }
-
-
-    function irAGestionUsuarios() {
-
-      window.location.href =
-        "{% url 'gestion_de_usuarios' %}";
-    }
-
-
-    function irADetalleCaso(id) {
-
-      const urlBase =
-        "{% url 'detalle_caso' 0 %}";
-
-      window.location.href =
-        urlBase.replace(
-          '/0/',
-          '/' + id + '/'
-        );
-    }
-
-
-    /* ============================================================
-       ATAJOS DE TECLADO
-       ============================================================ */
-
-    document.addEventListener(
-      'keydown',
-      function (e) {
-
-        if (e.key === 'Escape') {
-
-          cerrarBusquedaGlobal();
-
+        const item = document.getElementById(id);
+        if (item) item.classList.toggle('open');
+      };
+
+      document.addEventListener('click', e => {
+        if (!e.target.closest('.nav-item')) {
+          document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('open'));
+        }
+        if (window.innerWidth <= 900 && e.target.closest('.nav-links a')) {
           cerrarMenuMovil();
-
-          document
-            .querySelectorAll('.nav-item')
-            .forEach(el => {
-              el.classList.remove('open');
-            });
-        }
-
-
-        /* Ctrl + K / Cmd + K */
-
-        if (
-          (e.ctrlKey || e.metaKey) &&
-          e.key.toLowerCase() === 'k'
-        ) {
-
-          e.preventDefault();
-
-          abrirBusquedaGlobal();
-        }
-
-      }
-    );
-
-
-    /* ============================================================
-       CERRAR MENÚ MÓVIL AL NAVEGAR
-       ============================================================ */
-
-    document.addEventListener('click', e => {
-
-      if (
-        window.innerWidth <= 900 &&
-        e.target.closest('.nav-links a')
-      ) {
-        cerrarMenuMovil();
-      }
-
-    });
-
-
-    /* ============================================================
-       MODAL DE CONFIRMACIÓN ELEGANTE (SWEETALERT2)
-       ============================================================ */
-    function confirmarAccion(event, elemento, titulo, texto) {
-      event.preventDefault(); // Detiene el clic original
-      
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      
-      Swal.fire({
-        title: titulo || '¿Estás seguro?',
-        text: texto || 'Esta acción no se puede deshacer.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#E05252', // Color danger de tu paleta
-        cancelButtonColor: isDark ? '#31343A' : '#E8E1D7',
-        confirmButtonText: 'Sí, confirmar',
-        cancelButtonText: 'Cancelar',
-        background: isDark ? '#191B1E' : '#FFFFFF',
-        color: isDark ? '#FFFFFF' : '#181313',
-        customClass: {
-            popup: 'glass-card' // Usa tu propia clase de CSS para que combine
-        }
-      }).then((result) => {
-        if (result.isConfirmed) {
-          // Si es un botón dentro de un formulario, envía el formulario
-          if (elemento.closest('form')) {
-              elemento.closest('form').submit();
-          } 
-          // Si es un enlace <a>, navega a la URL
-          else if (elemento.tagName.toLowerCase() === 'a') {
-              window.location.href = elemento.href;
-          }
         }
       });
-    }
 
+      window.toggleMobileMenu = function() {
+        const panel = document.getElementById('navLinksPanel');
+        if (!panel) return;
+        const abierto = panel.classList.toggle('mobile-open');
+        const iconOpen = document.getElementById('hamburgerIconOpen');
+        const iconClose = document.getElementById('hamburgerIconClose');
+        if (iconOpen) iconOpen.style.display = abierto ? 'none' : 'block';
+        if (iconClose) iconClose.style.display = abierto ? 'block' : 'none';
+        document.body.style.overflow = abierto ? 'hidden' : '';
+      };
+
+      window.cerrarMenuMovil = function() {
+        const panel = document.getElementById('navLinksPanel');
+        if (!panel) return;
+        panel.classList.remove('mobile-open');
+        const iconOpen = document.getElementById('hamburgerIconOpen');
+        const iconClose = document.getElementById('hamburgerIconClose');
+        if (iconOpen) iconOpen.style.display = 'block';
+        if (iconClose) iconClose.style.display = 'none';
+        document.body.style.overflow = '';
+      };
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 900) cerrarMenuMovil();
+      });
+
+      window.abrirBusquedaGlobal = function() {
+        const overlay = document.getElementById('searchModalOverlay');
+        if (!overlay) return;
+        overlay.classList.add('open');
+        const input = document.getElementById('searchModalInput');
+        if (input) {
+          input.value = '';
+          requestAnimationFrame(() => input.focus());
+        }
+        const results = document.getElementById('searchModalResults');
+        if (results) {
+          results.innerHTML = '<div class="search-empty-state">Escribe al menos 2 letras para buscar un alumno o un caso.</div>';
+        }
+      };
+
+      window.cerrarBusquedaGlobal = function() {
+        const overlay = document.getElementById('searchModalOverlay');
+        if (overlay) overlay.classList.remove('open');
+        if (searchAbortController) searchAbortController.abort();
+      };
+
+      function crearElementoResultado(tipo, titulo, subtitulo, onClick) {
+        const item = document.createElement('div');
+        item.className = 'search-result-item';
+        item.addEventListener('click', onClick);
+
+        const iconWrap = document.createElement('div');
+        iconWrap.className = `search-result-icon ${tipo}`;
+        const paths = {
+          alumno: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
+          caso: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+          usuario: 'M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975M15 6.75a3 3 0 11-6 0 3 3 0 016 0zM21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+        };
+        iconWrap.innerHTML = `<svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="${paths[tipo]}"/></svg>`;
+
+        const textWrap = document.createElement('div');
+        const titleEl = document.createElement('div');
+        titleEl.className = 'search-result-title';
+        titleEl.textContent = titulo;
+
+        const subEl = document.createElement('div');
+        subEl.className = 'search-result-sub';
+        subEl.textContent = subtitulo;
+
+        textWrap.append(titleEl, subEl);
+        item.append(iconWrap, textWrap);
+        return item;
+      }
+
+      function renderizarResultadosBusqueda(data) {
+        const contenedor = document.getElementById('searchModalResults');
+        if (!contenedor) return;
+
+        const alumnos = Array.isArray(data.estudiantes) ? data.estudiantes : [];
+        const casos = Array.isArray(data.casos) ? data.casos : [];
+        const usuarios = Array.isArray(data.usuarios) ? data.usuarios : [];
+
+        if (!alumnos.length && !casos.length && !usuarios.length) {
+          contenedor.innerHTML = '<div class="search-empty-state">No se encontraron resultados.</div>';
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        const urlAlumnoBase = "{% url 'detalle_estudiante' 0 %}";
+        const urlCasoBase = "{% url 'detalle_caso' 0 %}";
+        const urlUsuarios = "{% url 'gestion_de_usuarios' %}";
+
+        if (alumnos.length) {
+          const sec = document.createElement('div');
+          sec.className = 'search-section-title';
+          sec.textContent = 'Alumnos';
+          fragment.appendChild(sec);
+          alumnos.forEach(e => {
+            fragment.appendChild(crearElementoResultado(
+              'alumno',
+              e.nombre_completo,
+              e.curso,
+              () => { window.location.href = urlAlumnoBase.replace('/0/', `/${e.id}/`); }
+            ));
+          });
+        }
+
+        if (casos.length) {
+          const sec = document.createElement('div');
+          sec.className = 'search-section-title';
+          sec.textContent = 'Casos';
+          fragment.appendChild(sec);
+          casos.forEach(c => {
+            fragment.appendChild(crearElementoResultado(
+              'caso',
+              c.titulo,
+              `#${c.id} · ${c.fecha} · ${c.lugar}`,
+              () => { window.location.href = urlCasoBase.replace('/0/', `/${c.id}/`); }
+            ));
+          });
+        }
+
+        if (usuarios.length) {
+          const sec = document.createElement('div');
+          sec.className = 'search-section-title';
+          sec.textContent = 'Funcionarios';
+          fragment.appendChild(sec);
+          usuarios.forEach(u => {
+            fragment.appendChild(crearElementoResultado(
+              'usuario',
+              u.nombre_completo,
+              `${u.rol} · ${u.correo}`,
+              () => { window.location.href = urlUsuarios; }
+            ));
+          });
+        }
+
+        contenedor.replaceChildren(fragment);
+      }
+
+      window.buscarGlobal = function(valor) {
+        clearTimeout(searchTimeoutId);
+        const contenedor = document.getElementById('searchModalResults');
+        if (!contenedor) return;
+
+        if (valor.trim().length < 2) {
+          contenedor.innerHTML = '<div class="search-empty-state">Escribe al menos 2 letras para buscar un alumno o un caso.</div>';
+          return;
+        }
+
+        contenedor.innerHTML = '<div class="search-empty-state">Buscando...</div>';
+
+        searchTimeoutId = setTimeout(async () => {
+          if (searchAbortController) searchAbortController.abort();
+          searchAbortController = new AbortController();
+
+          try {
+            const respuesta = await fetch(
+              "{% url 'busqueda_global' %}?q=" + encodeURIComponent(valor.trim()),
+              { signal: searchAbortController.signal }
+            );
+            if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+            const data = await respuesta.json();
+            renderizarResultadosBusqueda(data);
+          } catch (e) {
+            if (e.name !== 'AbortError') {
+              contenedor.innerHTML = '<div class="search-empty-state">Ocurrió un error al buscar.</div>';
+            }
+          }
+        }, 220);
+      };
+
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+          cerrarBusquedaGlobal();
+          cerrarMenuMovil();
+          document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('open'));
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          abrirBusquedaGlobal();
+        }
+      });
+
+      window.confirmarAccion = function(event, elemento, titulo, texto) {
+        event.preventDefault();
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+        if (typeof Swal === 'undefined') {
+          if (window.confirm(texto || titulo || '¿Estás seguro?')) {
+            if (elemento.closest('form')) elemento.closest('form').submit();
+            else if (elemento.tagName.toLowerCase() === 'a') window.location.href = elemento.href;
+          }
+          return;
+        }
+
+        Swal.fire({
+          title: titulo || '¿Estás seguro?',
+          text: texto || 'Esta acción no se puede deshacer.',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#D70015',
+          cancelButtonColor: isDark ? '#2C2C2E' : '#E5E5EA',
+          confirmButtonText: 'Sí, confirmar',
+          cancelButtonText: 'Cancelar',
+          background: isDark ? '#1C1C1E' : '#FFFFFF',
+          color: isDark ? '#F5F5F7' : '#1D1D1F',
+          customClass: { popup: 'glass-card' }
+        }).then(result => {
+          if (result.isConfirmed) {
+            if (elemento.closest('form')) elemento.closest('form').submit();
+            else if (elemento.tagName.toLowerCase() === 'a') window.location.href = elemento.href;
+          }
+        });
+      };
+    })();
   </script>
 
-
-  {% block extra_js %}
-  {% endblock %}
-
+  {% block extra_js %}{% endblock %}
 </body>
 </html>

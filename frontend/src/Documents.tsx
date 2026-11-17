@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { authenticatedFetch } from './authenticatedFetch'
 import './Documents.css'
 
 type Rule = {
@@ -185,7 +186,7 @@ async function getErrorMessage(response: Response, fallback: string) {
 }
 
 async function fetchDocuments(accessToken: string): Promise<DocumentsData> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/documentos/`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/documentos/`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   if (!response.ok) throw new Error(await getErrorMessage(response, 'No se pudieron cargar los documentos.'))
@@ -285,7 +286,7 @@ export default function Documents({ accessToken }: DocumentsProps) {
     setError('')
     setMessage('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/documentos/`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/documentos/`, {
         method: 'POST',
         headers: { Authorization: ['Be', 'arer'].join('') + ' ' + accessToken },
         body: formData,
@@ -309,7 +310,7 @@ export default function Documents({ accessToken }: DocumentsProps) {
     setError('')
     setMessage('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/documentos/${document.id}/`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/documentos/${document.id}/`, {
         method: action === 'eliminar' ? 'DELETE' : 'POST',
         headers: {
           Authorization: ['Be', 'arer'].join('') + ' ' + accessToken,
@@ -334,7 +335,7 @@ export default function Documents({ accessToken }: DocumentsProps) {
     setBusy(true)
     setError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/documentos/versiones/${manualVersion}/reglas/`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/documentos/versiones/${manualVersion}/reglas/`, {
         method: 'POST',
         headers: {
           Authorization: ['Be', 'arer'].join('') + ' ' + accessToken,
@@ -384,7 +385,7 @@ export default function Documents({ accessToken }: DocumentsProps) {
     setBusy(true)
     setError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/documentos/reglas/${editingRule.id}/`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/documentos/reglas/${editingRule.id}/`, {
         method: 'PATCH',
         headers: {
           Authorization: ['Be', 'arer'].join('') + ' ' + accessToken,
@@ -408,7 +409,7 @@ export default function Documents({ accessToken }: DocumentsProps) {
     setBusy(true)
     setError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/documentos/versiones/${version.id}/activar/`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/documentos/versiones/${version.id}/activar/`, {
         method: 'POST',
         headers: { Authorization: ['Be', 'arer'].join('') + ' ' + accessToken },
       })

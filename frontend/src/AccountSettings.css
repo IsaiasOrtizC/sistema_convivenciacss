@@ -1,59 +1,102 @@
 .account-settings .dashboard-welcome h1 {
-  margin: 8px 0;
-  font-family: 'Merriweather', serif;
+  margin: 6px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
 .account-settings__success {
   margin-bottom: 18px;
   padding: 12px 16px;
-  border: 1px solid #82c99a;
+  border: 1px solid rgba(40, 167, 69, 0.35);
   border-radius: 10px;
   color: #155d2f;
-  background: #eaf8ee;
+  background: rgba(40, 167, 69, 0.12);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+html[data-theme="dark"] .account-settings__success {
+  border-color: rgba(52, 199, 89, 0.3);
+  color: #6ee794;
+  background: rgba(52, 199, 89, 0.14);
 }
 
 .account-settings__form {
   display: grid;
-  max-width: 720px;
-  gap: 16px;
+  max-width: 680px;
+  gap: 18px;
 }
 
 .account-settings__form label {
   display: grid;
   gap: 6px;
   color: var(--text-mid);
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .account-settings__form input {
-  min-height: 2.6rem;
-  padding: 0.6rem 0.75rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.8rem;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 8px;
   color: var(--text-dark);
   background: var(--input-bg);
   font: inherit;
+  font-size: 0.9rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.account-settings__form input:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--border) 65%, var(--text-mid));
+}
+
+.account-settings__form input:focus-visible {
+  outline: none;
+  border-color: var(--guinda);
+  box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--guinda) 22%, transparent);
 }
 
 .account-settings__hint {
+  margin-top: -2px;
   color: var(--text-lo);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
 .account-settings__submit {
   justify-self: start;
-  min-height: 2.4rem;
-  padding: 0.6rem 1rem;
-  border: 1px solid var(--guinda);
-  border-radius: 9px;
-  color: white;
+  min-height: 2.35rem;
+  padding: 0.5rem 1.15rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  color: #ffffff;
   background: var(--guinda);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.18);
   cursor: pointer;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: filter 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
+}
+
+.account-settings__submit:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.account-settings__submit:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.account-settings__submit:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--guinda) 28%, transparent);
 }
 
 .account-settings__submit:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.5;
+  box-shadow: none;
 }

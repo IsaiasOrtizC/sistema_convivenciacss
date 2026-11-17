@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { authenticatedFetch } from './authenticatedFetch'
 import './AccountSettings.css'
 
 type AccountProfile = {
@@ -53,7 +54,7 @@ export default function AccountSettings({
     setSaving(true)
     try {
       if (section === 'profile') {
-        const response = await fetch(`${API_BASE_URL}/api/v1/me/`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/me/`, {
           method: 'PATCH',
           headers: {
             Authorization: ['Be', 'arer'].join('') + ' ' + accessToken,
@@ -90,7 +91,7 @@ export default function AccountSettings({
         if (newPassword !== confirmPassword) {
           throw new Error('La confirmación no coincide con la nueva contraseña.')
         }
-        const response = await fetch(`${API_BASE_URL}/api/v1/me/`, {
+        const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/me/`, {
           method: 'PUT',
           headers: {
             Authorization: ['Be', 'arer'].join('') + ' ' + accessToken,

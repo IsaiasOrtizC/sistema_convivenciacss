@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { authenticatedFetch } from './authenticatedFetch'
 import './Statistics.css'
 import { downloadAuthenticatedFile } from './download'
 
@@ -131,7 +132,7 @@ async function fetchStatistics(
     if (value) params.set(key, value)
   })
   const query = params.size > 0 ? `?${params}` : ''
-  const response = await fetch(`${API_BASE_URL}/api/v1/estadisticas/${query}`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/estadisticas/${query}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   if (!response.ok) {

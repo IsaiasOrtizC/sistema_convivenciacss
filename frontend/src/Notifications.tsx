@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import FollowUp from './FollowUp.tsx'
+import { authenticatedFetch } from './authenticatedFetch'
 import './FollowUp.css'
 import './Notifications.css'
 
@@ -102,7 +103,7 @@ async function getErrorMessage(response: Response, fallback: string) {
 }
 
 async function loadNotifications(accessToken: string) {
-  const response = await fetch(`${API_BASE_URL}/api/v1/notificaciones/`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/notificaciones/`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   if (!response.ok) {
@@ -182,7 +183,7 @@ export default function Notifications({
     setPendingId(id)
     setError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/notificaciones/${id}/`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/notificaciones/${id}/`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,

@@ -72,3 +72,13 @@ h3,
 #root {
   min-height: 100vh;
 }
+
+
+/* Indicador ligero mientras se descarga una sección bajo demanda. */
+.app-loading {
+  display: grid;
+  min-height: 45vh;
+  place-items: center;
+  color: var(--text-mid);
+  font-size: 0.95rem;
+}

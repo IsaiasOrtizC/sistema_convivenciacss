@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { authenticatedFetch } from './authenticatedFetch'
 import './TeacherCases.css'
 import { downloadAuthenticatedFile } from './download'
 
@@ -67,7 +68,7 @@ function isCourseData(value: unknown): value is CourseData {
 }
 
 async function fetchCourseData(accessToken: string, query: URLSearchParams) {
-  const response = await fetch(`${API_BASE_URL}/api/v1/mi-curso/?${query}`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/mi-curso/?${query}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   if (!response.ok) throw new Error('No se pudo cargar el historial del curso.')

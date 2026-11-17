@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { authenticatedFetch } from './authenticatedFetch'
 import './Administration.css'
 
 type AdminSection = 'users' | 'students' | 'history'
@@ -237,7 +238,7 @@ export default function Administration({
         ? `/api/v1/admin/estudiantes/?${params}`
         : `/api/v1/admin/historial-usuarios/?${params}`
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}${endpoint}`, {
         headers: authHeaders(accessToken),
       })
       if (!response.ok) throw new Error(await getErrorMessage(response, 'No se pudieron cargar los datos.'))
@@ -321,7 +322,7 @@ export default function Administration({
 
   async function sendRequest(path: string, method: string, body?: unknown) {
     const isForm = body instanceof FormData
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}${path}`, {
       method,
       headers: {
         ...authHeaders(accessToken),
@@ -509,7 +510,7 @@ export default function Administration({
     setBusy(true)
     setError('')
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `${API_BASE_URL}/api/v1/admin/estudiantes/${student.id}/`,
         { headers: authHeaders(accessToken) },
       )

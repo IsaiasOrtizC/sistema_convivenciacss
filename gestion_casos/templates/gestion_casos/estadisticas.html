@@ -6,36 +6,33 @@
 {% block extra_css %}
 <style>
   /* =========================================================
-     ESTADÍSTICAS — CONVIDATA
+     ESTADÍSTICAS — CONVIDATA (MACOS ANALYTICS UI)
      ========================================================= */
-
   .breadcrumb {
     display: flex;
     align-items: center;
-    gap: 7px;
-    font-size: .78rem;
+    gap: 6px;
+    font-size: 0.78rem;
     color: var(--text-lo);
-    margin-bottom: 18px;
+    margin-bottom: 14px;
   }
 
   .breadcrumb a {
     color: var(--guinda);
     text-decoration: none;
-    font-weight: 700;
+    font-weight: 600;
+  }
+
+  html[data-theme="dark"] .breadcrumb a {
+    color: var(--gold-bright);
   }
 
   .breadcrumb a:hover {
     text-decoration: underline;
   }
 
-  .breadcrumb-sep {
-    opacity: .4;
-  }
-
-  /* ---------- Encabezado ---------- */
-
   .page-header {
-    margin-bottom: 22px;
+    margin-bottom: 20px;
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
@@ -44,24 +41,22 @@
   }
 
   .page-header h1 {
-    font-family: 'Merriweather', serif;
-    font-size: clamp(1.3rem, 2vw, 1.65rem);
-    font-weight: 900;
-    color: var(--guinda);
-    letter-spacing: -.02em;
+    font-size: clamp(1.35rem, 2vw, 1.7rem);
+    font-weight: 700;
+    color: var(--text-dark);
+    letter-spacing: -0.025em;
   }
 
   .page-header p {
-    font-size: .85rem;
+    font-size: 0.84rem;
     color: var(--text-lo);
-    margin-top: 5px;
+    margin-top: 4px;
   }
 
-  /* ---------- Botones exportación ---------- */
-
+  /* Botones de exportación estilo macOS Toolbar */
   .export-actions {
     display: flex;
-    gap: 9px;
+    gap: 8px;
     flex-wrap: wrap;
   }
 
@@ -69,514 +64,268 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 7px;
-    min-height: 40px;
-    padding: 8px 15px;
-    border-radius: 10px;
-    font-size: .78rem;
-    font-weight: 800;
-    border: 1px solid transparent;
+    gap: 6px;
+    height: 34px;
+    padding: 0 13px;
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
     cursor: pointer;
     text-decoration: none;
-    transition:
-      transform var(--transition),
-      box-shadow var(--transition),
-      background var(--transition),
-      border-color var(--transition);
+    box-shadow: var(--shadow-sm);
+    transition: background var(--transition), transform var(--transition);
   }
 
   .btn-export:hover {
-    transform: translateY(-1px);
+    background: var(--surface-soft);
   }
 
-  .btn-export.pdf {
-    background: rgba(192, 57, 43, .09);
-    color: #C0392B;
-    border-color: rgba(192, 57, 43, .22);
+  .btn-export:active {
+    transform: scale(0.98);
   }
 
-  .btn-export.pdf:hover {
-    background: rgba(192, 57, 43, .16);
-    box-shadow: 0 5px 16px rgba(192, 57, 43, .12);
-  }
+  .btn-export.pdf  { color: var(--danger); }
+  .btn-export.xlsx { color: var(--success); }
 
-  .btn-export.xlsx {
-    background: rgba(30, 132, 73, .09);
-    color: #238B4E;
-    border-color: rgba(30, 132, 73, .22);
-  }
-
-  .btn-export.xlsx:hover {
-    background: rgba(30, 132, 73, .16);
-    box-shadow: 0 5px 16px rgba(30, 132, 73, .12);
-  }
-
-  html[data-theme="dark"] .btn-export.pdf {
-    color: #ff8b7d;
-    background: rgba(255, 105, 90, .10);
-    border-color: rgba(255, 105, 90, .24);
-  }
-
-  html[data-theme="dark"] .btn-export.pdf:hover {
-    background: rgba(255, 105, 90, .17);
-  }
-
-  html[data-theme="dark"] .btn-export.xlsx {
-    color: #67e89a;
-    background: rgba(74, 222, 128, .10);
-    border-color: rgba(74, 222, 128, .24);
-  }
-
-  html[data-theme="dark"] .btn-export.xlsx:hover {
-    background: rgba(74, 222, 128, .17);
-  }
-
-  /* ---------- Tarjetas generales ---------- */
-
+  /* Tarjetas base */
   .filtros-card,
   .kpi-card,
   .chart-card,
   .table-card {
-    background: var(--glass-bg, var(--white));
-    backdrop-filter: blur(16px) saturate(140%);
-    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    background: var(--bg-elevated);
     border: 1px solid var(--border);
-    box-shadow: var(--shadow);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
   }
 
-  .filtros-card,
-  .kpi-card,
-  .chart-card,
-  .table-card {
-    position: relative;
-  }
-
-  /* ---------- Filtros ---------- */
-
+  /* Filtros */
   .filtros-card {
-    border-radius: var(--radius-lg, 18px);
-    padding: 20px 22px;
-    margin-bottom: 22px;
-    overflow: hidden;
-  }
-
-  .filtros-card::before,
-  .kpi-card::before,
-  .chart-card::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(
-      90deg,
-      var(--guinda),
-      var(--gold),
-      transparent 85%
-    );
-    opacity: .85;
+    padding: 18px 20px;
+    margin-bottom: 18px;
   }
 
   .filtros-grid {
     display: grid;
-    grid-template-columns: 1.15fr 1.15fr 1fr 1.25fr auto;
-    gap: 13px;
+    grid-template-columns: 1.1fr 1.1fr 1fr 1.3fr auto;
+    gap: 12px;
     align-items: end;
-  }
-
-  @media (max-width: 1100px) {
-    .filtros-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .btn-limpiar-filtros {
-      width: 100%;
-    }
-  }
-
-  @media (max-width: 560px) {
-    .filtros-grid {
-      grid-template-columns: 1fr;
-    }
   }
 
   .filtro-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
     min-width: 0;
   }
 
   .filtro-label {
-    font-size: .67rem;
-    font-weight: 800;
+    font-size: 0.68rem;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: .045em;
-    color: var(--text-mid);
+    letter-spacing: 0.03em;
+    color: var(--text-lo);
   }
-
-  /* Select + inputs de filtros */
 
   .filtro-control {
-    min-height: 42px;
-    padding: 9px 12px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--white);
+    height: 36px;
+    padding: 0 11px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--bg-elevated);
     color: var(--text-dark);
-    font-size: .82rem;
+    font-size: 0.82rem;
     font-family: inherit;
     width: 100%;
-    box-sizing: border-box;
-    transition:
-      border-color var(--transition),
-      box-shadow var(--transition),
-      background var(--transition);
-  }
-
-  .filtro-control:hover {
-    border-color: rgba(123, 26, 26, .35);
+    transition: border-color var(--transition), box-shadow var(--transition);
   }
 
   .filtro-control:focus {
     outline: none;
     border-color: var(--guinda);
-    box-shadow: 0 0 0 3px rgba(123, 26, 26, .10);
-  }
-
-  .filtro-control::placeholder {
-    color: var(--text-lo);
-  }
-
-  /* Importante: select y option en modo oscuro */
-  select.filtro-control {
-    color-scheme: light;
-  }
-
-  select.filtro-control option {
-    background: #ffffff;
-    color: #1c1c1c;
-  }
-
-  html[data-theme="dark"] .filtro-control {
-    background: #24191c;
-    color: #ffffff;
-    border-color: rgba(255, 255, 255, .12);
-    color-scheme: dark;
-  }
-
-  html[data-theme="dark"] select.filtro-control {
-    background: #24191c;
-    color: #ffffff;
-    color-scheme: dark;
-  }
-
-  html[data-theme="dark"] select.filtro-control option {
-    background: #24191c;
-    color: #ffffff;
-  }
-
-  html[data-theme="dark"] select.filtro-control option:checked {
-    background: #5f2028;
-    color: #ffffff;
-  }
-
-  /* Calendario */
-
-  html[data-theme="dark"] input[type="date"].filtro-control {
-    color-scheme: dark;
-  }
-
-  input[type="date"].filtro-control::-webkit-calendar-picker-indicator {
-    cursor: pointer;
-    opacity: .75;
-  }
-
-  html[data-theme="dark"] input[type="date"].filtro-control::-webkit-calendar-picker-indicator {
-    filter: invert(1);
-    opacity: .8;
+    box-shadow: 0 0 0 3px var(--guinda-soft);
   }
 
   .fecha-range {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 7px;
-  }
-
-  @media (max-width: 560px) {
-    .fecha-range {
-      grid-template-columns: 1fr;
-    }
+    gap: 6px;
   }
 
   .btn-limpiar-filtros {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    min-height: 42px;
-    font-size: .76rem;
-    font-weight: 800;
-    color: #C0392B;
-    padding: 8px 13px;
-    border-radius: 10px;
-    border: 1px solid rgba(192, 57, 43, .25);
-    background: rgba(192, 57, 43, .08);
+    gap: 5px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--danger);
+    border: 1px solid var(--border);
+    background: var(--surface-soft);
     cursor: pointer;
-    transition: all var(--transition);
     white-space: nowrap;
+    transition: background var(--transition);
   }
 
   .btn-limpiar-filtros:hover {
-    background: rgba(192, 57, 43, .15);
-    transform: translateY(-1px);
+    background: var(--danger-bg);
   }
 
-  html[data-theme="dark"] .btn-limpiar-filtros {
-    color: #ff8b7d;
-    border-color: rgba(255, 105, 90, .24);
-    background: rgba(255, 105, 90, .08);
-  }
-
-  /* ---------- Selector gráfico ---------- */
-
+  /* Segmented Control auténtico de macOS */
   .chart-type-toggle {
     display: inline-flex;
     align-items: center;
-    background: var(--glass-bg, var(--white));
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 4px;
-    gap: 3px;
-    margin-bottom: 20px;
-    box-shadow: var(--shadow);
+    background: rgba(118, 118, 128, 0.12);
+    border-radius: 9px;
+    padding: 3px;
+    gap: 2px;
+    margin-bottom: 18px;
+  }
+
+  html[data-theme="dark"] .chart-type-toggle {
+    background: rgba(118, 118, 128, 0.24);
   }
 
   .chart-type-btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 36px;
-    padding: 6px 13px;
-    border-radius: 9px;
-    font-size: .76rem;
-    font-weight: 800;
+    height: 28px;
+    padding: 0 14px;
+    border-radius: 7px;
+    font-size: 0.78rem;
+    font-weight: 600;
     border: none;
     background: transparent;
     color: var(--text-mid);
     cursor: pointer;
-    transition: all var(--transition);
+    transition: background var(--transition), color var(--transition), box-shadow var(--transition);
   }
 
   .chart-type-btn:hover {
     color: var(--text-dark);
-    background: rgba(123, 26, 26, .06);
   }
 
   .chart-type-btn.active {
-    background: linear-gradient(135deg, var(--guinda), var(--guinda-mid));
-    color: #fff;
-    box-shadow: 0 4px 12px rgba(123, 26, 26, .25);
+    background: var(--bg-elevated);
+    color: var(--text-dark);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.08);
   }
 
-  /* ---------- KPIs ---------- */
-
+  /* KPIs */
   .kpi-grid {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 15px;
-    margin-bottom: 24px;
-  }
-
-  @media (max-width: 1150px) {
-    .kpi-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-
-  @media (max-width: 760px) {
-    .kpi-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @media (max-width: 500px) {
-    .kpi-grid {
-      grid-template-columns: 1fr;
-    }
+    gap: 14px;
+    margin-bottom: 20px;
   }
 
   .kpi-card {
-    border-radius: var(--radius-lg, 18px);
-    padding: 18px 19px;
-    min-height: 108px;
-    overflow: hidden;
-    border-top: none;
-  }
-
-  .kpi-card:nth-child(1)::before {
-    background: linear-gradient(90deg, var(--guinda), var(--gold));
-  }
-
-  .kpi-card:nth-child(2)::before {
-    background: linear-gradient(90deg, var(--gold), #e7c55a);
-  }
-
-  .kpi-card:nth-child(3)::before {
-    background: linear-gradient(90deg, #2874A6, #63b4e8);
-  }
-
-  .kpi-card:nth-child(4)::before {
-    background: linear-gradient(90deg, #8E44AD, #c27ce2);
-  }
-
-  .kpi-card:nth-child(5)::before {
-    background: linear-gradient(90deg, #1E8449, #62c58a);
+    padding: 16px 18px;
+    min-height: 98px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
   }
 
   .kpi-label {
-    font-size: .65rem;
-    font-weight: 800;
+    font-size: 0.68rem;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: .05em;
+    letter-spacing: 0.03em;
     color: var(--text-lo);
-    margin-bottom: 8px;
   }
 
   .kpi-value {
     font-size: 1.55rem;
-    font-weight: 900;
+    font-weight: 700;
     color: var(--text-dark);
-    font-family: 'Merriweather', serif;
-    line-height: 1.15;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
     font-variant-numeric: tabular-nums;
     overflow-wrap: anywhere;
   }
 
   .kpi-value.small {
-    font-size: 1rem;
-    line-height: 1.3;
+    font-size: 0.98rem;
   }
 
   .kpi-variacion {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    font-size: .82rem;
-    font-weight: 800;
-    margin-top: 7px;
+    gap: 4px;
+    font-size: 0.88rem;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
 
-  .kpi-variacion.subida {
-    color: #C0392B;
-  }
+  .kpi-variacion.subida { color: var(--danger); }
+  .kpi-variacion.bajada { color: var(--success); }
+  .kpi-variacion.neutra { color: var(--text-lo); }
 
-  .kpi-variacion.bajada {
-    color: #1E8449;
-  }
-
-  .kpi-variacion.neutra {
-    color: var(--text-lo);
-  }
-
-  html[data-theme="dark"] .kpi-variacion.subida {
-    color: #ff8b7d;
-  }
-
-  html[data-theme="dark"] .kpi-variacion.bajada {
-    color: #67e89a;
-  }
-
-  /* ---------- Gráficos ---------- */
-
+  /* Gráficos */
   .charts-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
-    margin-bottom: 24px;
-  }
-
-  @media (max-width: 1000px) {
-    .charts-grid {
-      grid-template-columns: 1fr;
-    }
+    gap: 16px;
+    margin-bottom: 20px;
   }
 
   .chart-card {
     min-width: 0;
-    min-height: 340px;
-    border-radius: var(--radius-lg, 18px);
-    padding: 18px 18px 12px;
+    min-height: 320px;
+    padding: 16px 16px 10px;
     overflow: hidden;
   }
 
-  .chart-card > div {
-    min-width: 0;
-  }
-
-  /* ---------- Tabla ---------- */
-
+  /* Tabla */
   .table-card {
-    border-radius: var(--radius-lg, 18px);
     overflow: hidden;
   }
 
   .table-topbar {
-    padding: 19px 22px 15px;
+    padding: 16px 20px;
     border-bottom: 1px solid var(--border);
-    background: rgba(123, 26, 26, .025);
-  }
-
-  html[data-theme="dark"] .table-topbar {
-    background: rgba(255, 255, 255, .018);
   }
 
   .table-topbar-title {
-    font-family: 'Merriweather', serif;
-    font-size: .96rem;
-    font-weight: 900;
+    font-size: 0.96rem;
+    font-weight: 700;
     color: var(--text-dark);
+    letter-spacing: -0.015em;
   }
 
   .table-wrap {
     overflow-x: auto;
     overflow-y: auto;
     max-height: 440px;
-    scrollbar-width: thin;
   }
 
   table.data-table {
     width: 100%;
-    min-width: 760px;
+    min-width: 720px;
     border-collapse: collapse;
-    font-size: .82rem;
-  }
-
-  table.data-table thead tr {
-    border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
   }
 
   table.data-table thead th {
-    padding: 11px 16px;
+    padding: 10px 16px;
     text-align: left;
     color: var(--text-lo);
-    font-weight: 800;
-    font-size: .65rem;
+    font-weight: 600;
+    font-size: 0.68rem;
     text-transform: uppercase;
-    letter-spacing: .055em;
+    letter-spacing: 0.04em;
     white-space: nowrap;
-    background: var(--white);
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
     z-index: 2;
-  }
-
-  html[data-theme="dark"] table.data-table thead th {
-    background: #211719;
   }
 
   table.data-table tbody tr {
@@ -589,144 +338,73 @@
   }
 
   table.data-table tbody tr:hover {
-    background: rgba(123, 26, 26, .045);
-  }
-
-  html[data-theme="dark"] table.data-table tbody tr:hover {
-    background: rgba(212, 160, 23, .055);
+    background: var(--surface-soft);
   }
 
   table.data-table tbody td {
-    padding: 12px 16px;
+    padding: 11px 16px;
     color: var(--text-dark);
     vertical-align: middle;
   }
 
   .table-id {
-    font-weight: 800;
+    font-weight: 600;
     color: var(--text-lo) !important;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
 
-  .table-title {
-    font-weight: 700;
-  }
+  .table-title { font-weight: 600; }
+  .table-date  { white-space: nowrap; color: var(--text-mid) !important; font-variant-numeric: tabular-nums; }
 
-  .table-date {
-    white-space: nowrap;
-    color: var(--text-mid) !important;
-  }
-
-  /* ---------- Badges de severidad ---------- */
-
+  /* Badges estilo macOS Pill */
   .badge-severidad {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    padding: 4px 9px;
+    padding: 3px 9px;
     border-radius: 999px;
-    font-size: .64rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: .025em;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
     white-space: nowrap;
   }
 
-  .badge-severidad.leve {
-    background: rgba(30, 132, 73, .10);
-    color: #1E8449;
-    border: 1px solid rgba(30, 132, 73, .20);
-  }
-
-  .badge-severidad.grave {
-    background: rgba(212, 160, 23, .12);
-    color: #B7860B;
-    border: 1px solid rgba(212, 160, 23, .25);
-  }
-
-  .badge-severidad.gravisima {
-    background: rgba(192, 57, 43, .10);
-    color: #C0392B;
-    border: 1px solid rgba(192, 57, 43, .20);
-  }
-
-  html[data-theme="dark"] .badge-severidad.leve {
-    background: rgba(74, 222, 128, .10);
-    color: #67e89a;
-    border-color: rgba(74, 222, 128, .22);
-  }
-
-  html[data-theme="dark"] .badge-severidad.grave {
-    background: rgba(245, 196, 70, .10);
-    color: #f4cb61;
-    border-color: rgba(245, 196, 70, .23);
-  }
-
-  html[data-theme="dark"] .badge-severidad.gravisima {
-    background: rgba(255, 105, 90, .10);
-    color: #ff8b7d;
-    border-color: rgba(255, 105, 90, .22);
-  }
+  .badge-severidad.leve      { background: var(--success-bg); color: var(--success); }
+  .badge-severidad.grave     { background: var(--warning-bg); color: var(--warning); }
+  .badge-severidad.gravisima { background: var(--danger-bg);  color: var(--danger); }
 
   .empty-note {
     text-align: center;
-    padding: 48px 20px !important;
+    padding: 44px 20px !important;
     color: var(--text-lo) !important;
-    font-style: italic;
+    font-size: 0.84rem;
   }
 
-  /* ---------- Responsive ---------- */
+  @media (max-width: 1100px) {
+    .filtros-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kpi-grid     { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 1000px) {
+    .charts-grid { grid-template-columns: 1fr; }
+  }
 
   @media (max-width: 700px) {
-    .page-header {
-      align-items: stretch;
-    }
-
-    .export-actions {
-      width: 100%;
-    }
-
-    .btn-export {
-      flex: 1;
-    }
-
-    .chart-type-toggle {
-      width: 100%;
-    }
-
-    .chart-type-btn {
-      flex: 1;
-      justify-content: center;
-    }
-
-    .chart-card {
-      min-height: 320px;
-      padding: 14px 10px 8px;
-    }
-
-    .table-topbar {
-      padding: 17px 16px 14px;
-    }
+    .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .export-actions, .chart-type-toggle { width: 100%; }
+    .btn-export, .chart-type-btn { flex: 1; justify-content: center; }
   }
 
-  @media (max-width: 430px) {
-    .export-actions {
-      flex-direction: column;
-    }
-
-    .btn-export {
-      width: 100%;
-    }
+  @media (max-width: 520px) {
+    .filtros-grid, .kpi-grid, .fecha-range { grid-template-columns: 1fr; }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-
   <div class="breadcrumb">
     <a href="{% url 'dashboard' %}">Inicio</a>
-    <span class="breadcrumb-sep">›</span>
+    <span>›</span>
     <span>Estadísticas</span>
   </div>
 
@@ -738,34 +416,25 @@
 
     <div class="export-actions">
       <a href="#" id="btnDescargarPdf" class="btn-export pdf">
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
-             stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round"
-                d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/>
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
         </svg>
-        Descargar PDF
+        Exportar PDF
       </a>
 
       <a href="#" id="btnDescargarXlsx" class="btn-export xlsx">
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
-             stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round"
-                d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/>
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
         </svg>
-        Descargar Excel
+        Exportar Excel
       </a>
     </div>
   </div>
 
-  <!-- RF-30: Filtros -->
   <div class="filtros-card">
     <div class="filtros-grid">
-
       <div class="filtro-group">
-        <label class="filtro-label" for="filtroGravedad">
-          Tipo de Caso (Gravedad)
-        </label>
-
+        <label class="filtro-label" for="filtroGravedad">Gravedad</label>
         <select id="filtroGravedad" class="filtro-control">
           <option value="">Todos</option>
           <option value="Leve">Leve</option>
@@ -775,170 +444,80 @@
       </div>
 
       <div class="filtro-group">
-        <label class="filtro-label" for="filtroCurso">
-          Curso
-        </label>
-
+        <label class="filtro-label" for="filtroCurso">Curso</label>
         <select id="filtroCurso" class="filtro-control">
           <option value="">Todos los cursos</option>
-
           {% for c in cursos %}
-            <option value="{{ c.curso_id }}">
-              {{ c.curso_grado }} {{ c.curso_letra }}
-            </option>
+            <option value="{{ c.curso_id }}">{{ c.curso_grado }} {{ c.curso_letra }}</option>
           {% endfor %}
         </select>
       </div>
 
       <div class="filtro-group">
-        <label class="filtro-label" for="filtroZona">
-          Zona del Colegio
-        </label>
-
+        <label class="filtro-label" for="filtroZona">Zona del Colegio</label>
         <select id="filtroZona" class="filtro-control">
           <option value="">Todas las zonas</option>
-
           {% for z in zonas %}
-            <option value="{{ z.lugar_id }}">
-              {{ z.lugar_nombre }}
-            </option>
+            <option value="{{ z.lugar_id }}">{{ z.lugar_nombre }}</option>
           {% endfor %}
         </select>
       </div>
 
       <div class="filtro-group">
-        <label class="filtro-label">
-          Desde / Hasta
-        </label>
-
+        <label class="filtro-label">Rango de Fechas</label>
         <div class="fecha-range">
-          <input
-            type="date"
-            id="filtroFechaDesde"
-            class="filtro-control"
-            value="{{ filtros.fecha_desde }}"
-            aria-label="Fecha desde"
-          >
-
-          <input
-            type="date"
-            id="filtroFechaHasta"
-            class="filtro-control"
-            value="{{ filtros.fecha_hasta }}"
-            aria-label="Fecha hasta"
-          >
+          <input type="date" id="filtroFechaDesde" class="filtro-control" value="{{ filtros.fecha_desde }}" aria-label="Fecha desde">
+          <input type="date" id="filtroFechaHasta" class="filtro-control" value="{{ filtros.fecha_hasta }}" aria-label="Fecha hasta">
         </div>
       </div>
 
-      <button
-        type="button"
-        class="btn-limpiar-filtros"
-        onclick="limpiarFiltros()"
-      >
-        <svg width="12" height="12" fill="none" viewBox="0 0 24 24"
-             stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round"
-                d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-        Limpiar
-      </button>
-
+      <button type="button" class="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar</button>
     </div>
   </div>
 
-  <!-- RF-31: Selector de tipo de gráfico -->
-  <div class="chart-type-toggle">
-    <button
-      type="button"
-      class="chart-type-btn active"
-      data-tipo="bar"
-      onclick="cambiarTipoGrafico('bar', this)"
-    >
-      📊 Barras
-    </button>
-
-    <button
-      type="button"
-      class="chart-type-btn"
-      data-tipo="line"
-      onclick="cambiarTipoGrafico('line', this)"
-    >
-      📈 Líneas
-    </button>
-
-    <button
-      type="button"
-      class="chart-type-btn"
-      data-tipo="pie"
-      onclick="cambiarTipoGrafico('pie', this)"
-    >
-      🥧 Torta
-    </button>
+  <div class="chart-type-toggle" role="tablist" aria-label="Tipo de visualización">
+    <button type="button" class="chart-type-btn active" data-tipo="bar" onclick="cambiarTipoGrafico('bar', this)">Barras</button>
+    <button type="button" class="chart-type-btn" data-tipo="line" onclick="cambiarTipoGrafico('line', this)">Líneas</button>
+    <button type="button" class="chart-type-btn" data-tipo="pie" onclick="cambiarTipoGrafico('pie', this)">Circular</button>
   </div>
 
-  <!-- RF-32: Panel de resumen -->
   <div class="kpi-grid">
-
     <div class="kpi-card">
       <div class="kpi-label">Total de Casos</div>
       <div class="kpi-value" id="kpiTotal">–</div>
     </div>
-
     <div class="kpi-card">
       <div class="kpi-label">Curso con Más Incidentes</div>
       <div class="kpi-value small" id="kpiCurso">–</div>
     </div>
-
     <div class="kpi-card">
       <div class="kpi-label">Tipo Más Frecuente</div>
       <div class="kpi-value small" id="kpiTipo">–</div>
     </div>
-
     <div class="kpi-card">
       <div class="kpi-label">Zona con Más Incidentes</div>
       <div class="kpi-value small" id="kpiZona">–</div>
     </div>
-
     <div class="kpi-card">
       <div class="kpi-label">Vs. Año Anterior</div>
       <div class="kpi-variacion neutra" id="kpiVariacion">–</div>
     </div>
-
   </div>
 
-  <!-- RF-29: Gráficos -->
   <div class="charts-grid">
-
-    <div class="chart-card">
-      <div id="chartGravedad"></div>
-    </div>
-
-    <div class="chart-card">
-      <div id="chartCursos"></div>
-    </div>
-
-    <div class="chart-card">
-      <div id="chartZonas"></div>
-    </div>
-
-    <div class="chart-card">
-      <div id="chartMensual"></div>
-    </div>
-
+    <div class="chart-card"><div id="chartGravedad"></div></div>
+    <div class="chart-card"><div id="chartCursos"></div></div>
+    <div class="chart-card"><div id="chartZonas"></div></div>
+    <div class="chart-card"><div id="chartMensual"></div></div>
   </div>
 
-  <!-- RF-35: Tabla de datos asociada -->
   <div class="table-card">
-
     <div class="table-topbar">
-      <div class="table-topbar-title">
-        Detalle de Casos (según filtros aplicados)
-      </div>
+      <div class="table-topbar-title">Detalle de Casos (según filtros aplicados)</div>
     </div>
 
     <div class="table-wrap">
       <table class="data-table">
-
         <thead>
           <tr>
             <th>ID</th>
@@ -949,612 +528,266 @@
             <th>Gravedad</th>
           </tr>
         </thead>
-
         <tbody id="tablaDatosBody"></tbody>
-
       </table>
     </div>
-
   </div>
-
 {% endblock %}
 
 {% block extra_js %}
+<script defer src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
-  const datosIniciales = JSON.parse('{{ datos_json|escapejs }}');
+document.addEventListener('DOMContentLoaded', () => {
+  'use strict';
 
+  const datosIniciales = JSON.parse('{{ datos_json|escapejs }}');
   let datosActuales = datosIniciales;
   let tipoGraficoActual = 'bar';
-  let instanciasGraficos = {};
+  const instanciasGraficos = Object.create(null);
+
+  let temporizadorFiltros = null;
+  let solicitudActual = null;
 
   const coloresPaleta = [
-    '#7B1A1A',
-    '#D4A017',
-    '#1E8449',
-    '#2874A6',
-    '#B7860B',
-    '#8E44AD',
-    '#C0392B',
-    '#16A085'
+    '#7B1A1A', '#D4A017', '#248A3D', '#0066CC',
+    '#B25000', '#8E44AD', '#D70015', '#16A085'
   ];
 
-  /*
-   * Determina si actualmente estamos en modo oscuro.
-   * Se consulta cada vez que se renderizan los gráficos para
-   * mantenerlos sincronizados con la preferencia del sistema.
-   */
-  function esModoOscuro() {
-    return document.documentElement.getAttribute('data-theme') === 'dark';
-  }
+  const $ = id => document.getElementById(id);
+  const esModoOscuro = () => document.documentElement.getAttribute('data-theme') === 'dark';
 
   function obtenerColoresGrafico() {
-    if (esModoOscuro()) {
-      return {
-        texto: '#F5F5F5',
-        textoSecundario: '#B9AEB1',
-        grid: 'rgba(255,255,255,.09)',
-        fondoTooltip: '#24191C',
-        bordeTooltip: 'rgba(255,255,255,.12)'
-      };
-    }
+    return esModoOscuro()
+      ? { texto: '#F5F5F7', textoSecundario: '#8E8E93', grid: 'rgba(255,255,255,0.08)' }
+      : { texto: '#1D1D1F', textoSecundario: '#86868B', grid: 'rgba(0,0,0,0.06)' };
+  }
 
-    return {
-      texto: '#1C0A0A',
-      textoSecundario: '#777174',
-      grid: 'rgba(28,10,10,.09)',
-      fondoTooltip: '#FFFFFF',
-      bordeTooltip: 'rgba(28,10,10,.10)'
-    };
+  function destruirGrafico(containerId) {
+    if (instanciasGraficos[containerId]) {
+      instanciasGraficos[containerId].destroy();
+      delete instanciasGraficos[containerId];
+    }
   }
 
   function renderChart(containerId, tipo, labels, data, titulo) {
+    const contenedor = $(containerId);
+    if (!contenedor || typeof ApexCharts === 'undefined') return;
 
-    if (instanciasGraficos[containerId]) {
-      instanciasGraficos[containerId].destroy();
-    }
+    const sinDatos = !Array.isArray(labels) || !labels.length ||
+      !Array.isArray(data) || !data.length ||
+      data.every(v => Number(v) === 0);
 
-    const contenedor = document.querySelector('#' + containerId);
-
-    if (
-      !labels ||
-      labels.length === 0 ||
-      !data ||
-      data.length === 0 ||
-      data.every(v => v === 0)
-    ) {
-      contenedor.innerHTML = `
-        <p style="
-          text-align:center;
-          color:var(--text-lo);
-          font-style:italic;
-          padding:60px 0;
-          margin:0;
-        ">
-          Sin datos para los filtros seleccionados.
-        </p>
-      `;
+    if (sinDatos) {
+      destruirGrafico(containerId);
+      contenedor.innerHTML = '<p class="empty-note" style="padding:90px 0!important">Sin datos para los filtros seleccionados.</p>';
       return;
     }
 
-    contenedor.innerHTML = '';
-
-    const coloresTema = obtenerColoresGrafico();
-
+    const c = obtenerColoresGrafico();
     let opciones;
 
     if (tipo === 'pie') {
-
-      // Una torta solo muestra categorías con casos: los valores en 0
-      // no se dibujan y solo ensucian la leyenda (p. ej. meses sin casos).
-      const paresTorta = labels
-        .map((etiqueta, i) => [etiqueta, data[i]])
-        .filter(par => par[1] > 0);
-
-      const etiquetasTorta = paresTorta.map(par => par[0]);
-      const serieTorta = paresTorta.map(par => par[1]);
-
+      const pares = labels.map((l, i) => [l, Number(data[i]) || 0]).filter(p => p[1] > 0);
       opciones = {
         chart: {
           type: 'pie',
-          height: 300,
-          fontFamily: 'Inter, sans-serif',
+          height: 290,
+          fontFamily: 'inherit',
           background: 'transparent',
-          toolbar: {
-            show: false
-          }
+          toolbar: { show: false },
+          animations: { enabled: false }
         },
-
-        series: serieTorta,
-
-        labels: etiquetasTorta,
-
+        series: pares.map(p => p[1]),
+        labels: pares.map(p => p[0]),
         colors: coloresPaleta,
-
-        legend: {
-          position: 'bottom',
-          fontSize: '11px',
-          labels: {
-            colors: coloresTema.texto
-          }
-        },
-
-        title: {
-          text: titulo,
-          style: {
-            fontFamily: 'Merriweather, serif',
-            fontWeight: 900,
-            color: coloresTema.texto,
-            fontSize: '13px'
-          }
-        },
-
-        dataLabels: {
-          enabled: true,
-          style: {
-            fontSize: '10px',
-            fontWeight: 700
-          }
-        },
-
-        tooltip: {
-          theme: esModoOscuro() ? 'dark' : 'light'
-        }
+        legend: { position: 'bottom', fontSize: '11px', labels: { colors: c.texto } },
+        title: { text: titulo, style: { fontWeight: 700, color: c.texto, fontSize: '13px' } },
+        dataLabels: { enabled: true, style: { fontSize: '10px', fontWeight: 600 } },
+        tooltip: { theme: esModoOscuro() ? 'dark' : 'light' }
       };
-
     } else {
-
       opciones = {
         chart: {
           type: tipo === 'line' ? 'line' : 'bar',
-          height: 300,
-          toolbar: {
-            show: false
-          },
-          fontFamily: 'Inter, sans-serif',
-          background: 'transparent'
+          height: 290,
+          toolbar: { show: false },
+          fontFamily: 'inherit',
+          background: 'transparent',
+          animations: { enabled: false }
         },
-
-        series: [
-          {
-            name: 'Casos',
-            data: data
-          }
-        ],
-
+        series: [{ name: 'Casos', data: data.map(v => Number(v) || 0) }],
+        plotOptions: { bar: { borderRadius: 5, columnWidth: '52%' } },
         xaxis: {
           categories: labels,
-
-          labels: {
-            style: {
-              colors: coloresTema.textoSecundario,
-              fontSize: '10px'
-            },
-            rotate: -35
-          },
-
-          axisBorder: {
-            color: coloresTema.grid
-          },
-
-          axisTicks: {
-            color: coloresTema.grid
-          }
+          labels: { style: { colors: c.textoSecundario, fontSize: '10px' }, rotate: -35 },
+          axisBorder: { color: c.grid },
+          axisTicks: { color: c.grid }
         },
-
         yaxis: {
-          labels: {
-            style: {
-              colors: coloresTema.textoSecundario,
-              fontSize: '10px'
-            }
-          }
+          labels: { style: { colors: c.textoSecundario, fontSize: '10px' } }
         },
-
-        grid: {
-          borderColor: coloresTema.grid,
-          strokeDashArray: 4
-        },
-
-        colors: [
-          esModoOscuro()
-            ? '#D94A4A'
-            : '#7B1A1A'
-        ],
-
-        dataLabels: {
-          enabled: tipo !== 'line',
-          style: {
-            colors: [
-              esModoOscuro()
-                ? '#FFFFFF'
-                : '#FFFFFF'
-            ]
-          }
-        },
-
-        stroke: {
-          curve: 'smooth',
-          width: tipo === 'line' ? 3 : 0
-        },
-
+        grid: { borderColor: c.grid, strokeDashArray: 3 },
+        colors: [esModoOscuro() ? '#B83A3A' : '#7B1A1A'],
+        dataLabels: { enabled: tipo !== 'line', style: { colors: ['#FFFFFF'] } },
+        stroke: { curve: 'smooth', width: tipo === 'line' ? 2.5 : 0 },
         markers: {
           size: tipo === 'line' ? 4 : 0,
           strokeWidth: 2,
-          strokeColors: esModoOscuro() ? '#24191C' : '#FFFFFF'
+          strokeColors: esModoOscuro() ? '#1C1C1E' : '#FFFFFF'
         },
-
-        title: {
-          text: titulo,
-          style: {
-            fontFamily: 'Merriweather, serif',
-            fontWeight: 900,
-            color: coloresTema.texto,
-            fontSize: '13px'
-          }
-        },
-
-        tooltip: {
-          theme: esModoOscuro() ? 'dark' : 'light'
-        }
+        title: { text: titulo, style: { fontWeight: 700, color: c.texto, fontSize: '13px' } },
+        tooltip: { theme: esModoOscuro() ? 'dark' : 'light' }
       };
     }
 
-    instanciasGraficos[containerId] =
-      new ApexCharts(contenedor, opciones);
-
-    instanciasGraficos[containerId].render();
+    if (instanciasGraficos[containerId]) {
+      instanciasGraficos[containerId].updateOptions(opciones, false, false, false);
+    } else {
+      contenedor.innerHTML = '';
+      instanciasGraficos[containerId] = new ApexCharts(contenedor, opciones);
+      instanciasGraficos[containerId].render();
+    }
   }
 
   function renderAllCharts(data) {
-
-    renderChart(
-      'chartGravedad',
-      tipoGraficoActual,
-      data.gravedad_labels,
-      data.gravedad_data,
-      'Casos por Gravedad (Tipo de Caso)'
-    );
-
-    renderChart(
-      'chartCursos',
-      tipoGraficoActual,
-      data.cursos_labels,
-      data.cursos_data,
-      'Casos por Curso'
-    );
-
-    renderChart(
-      'chartZonas',
-      tipoGraficoActual,
-      data.zonas_labels,
-      data.zonas_data,
-      'Casos por Zona del Colegio'
-    );
-
-    /*
-     * En torta se muestra la distribución de casos por mes
-     * (solo los meses con casos); en barras o líneas, la tendencia anual.
-     */
-    renderChart(
-      'chartMensual',
-      tipoGraficoActual,
-      data.meses_labels,
-      data.mensual_data,
-      tipoGraficoActual === 'pie'
-        ? 'Casos por Mes'
-        : 'Evolución Mensual (Tendencia Anual)'
-    );
+    renderChart('chartGravedad', tipoGraficoActual, data.gravedad_labels, data.gravedad_data, 'Casos por Gravedad');
+    renderChart('chartCursos', tipoGraficoActual, data.cursos_labels, data.cursos_data, 'Casos por Curso');
+    renderChart('chartZonas', tipoGraficoActual, data.zonas_labels, data.zonas_data, 'Casos por Zona');
+    renderChart('chartMensual', tipoGraficoActual, data.meses_labels, data.mensual_data, tipoGraficoActual === 'pie' ? 'Casos por Mes' : 'Evolución Mensual');
   }
 
   function updateKpis(data) {
+    $('kpiTotal').textContent = data.total_casos ?? 0;
+    $('kpiCurso').textContent = data.curso_top || '–';
+    $('kpiTipo').textContent = data.tipo_caso_top || '–';
+    $('kpiZona').textContent = data.zona_top || '–';
 
-    document.getElementById('kpiTotal').textContent =
-      data.total_casos;
-
-    document.getElementById('kpiCurso').textContent =
-      data.curso_top;
-
-    document.getElementById('kpiTipo').textContent =
-      data.tipo_caso_top;
-
-    document.getElementById('kpiZona').textContent =
-      data.zona_top;
-
-    const kpiVar =
-      document.getElementById('kpiVariacion');
-
-    const val = data.variacion_pct;
-
-    let icono = '→';
-    let clase = 'neutra';
-
-    if (val > 0) {
-      icono = '▲';
-      clase = 'subida';
-    }
-    else if (val < 0) {
-      icono = '▼';
-      clase = 'bajada';
-    }
-
-    kpiVar.className =
-      'kpi-variacion ' + clase;
-
-    kpiVar.innerHTML =
-      `${icono} ${Math.abs(val)}%`;
+    const variacion = Number(data.variacion_pct) || 0;
+    const el = $('kpiVariacion');
+    el.className = `kpi-variacion ${variacion > 0 ? 'subida' : variacion < 0 ? 'bajada' : 'neutra'}`;
+    el.textContent = `${variacion > 0 ? '▲' : variacion < 0 ? '▼' : '→'} ${Math.abs(variacion)}%`;
   }
 
   function updateTabla(data) {
+    const tbody = $('tablaDatosBody');
+    const fragmento = document.createDocumentFragment();
+    const filas = Array.isArray(data.tabla_datos) ? data.tabla_datos : [];
 
-    const tbody =
-      document.getElementById('tablaDatosBody');
-
-    tbody.innerHTML = '';
-
-    if (
-      !data.tabla_datos ||
-      data.tabla_datos.length === 0
-    ) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="6" class="empty-note">
-            No hay casos que coincidan con los filtros aplicados.
-          </td>
-        </tr>
-      `;
-
+    if (!filas.length) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 6;
+      td.className = 'empty-note';
+      td.textContent = 'No hay casos que coincidan con los filtros aplicados.';
+      tr.appendChild(td);
+      tbody.replaceChildren(tr);
       return;
     }
 
-    data.tabla_datos.forEach(c => {
+    filas.forEach(caso => {
+      const tr = document.createElement('tr');
+      const fecha = caso.fecha ? new Date(`${caso.fecha}T00:00:00`).toLocaleDateString('es-CL') : '';
+      const gravedad = caso.gravedad || '';
+      const clase = gravedad === 'Gravísima' ? 'gravisima' : gravedad === 'Grave' ? 'grave' : 'leve';
 
-      const fecha = c.fecha
-        ? new Date(
-            c.fecha + 'T00:00:00'
-          ).toLocaleDateString('es-CL')
-        : '';
+      [`#${caso.caso_id ?? ''}`, caso.titulo ?? '', fecha, caso.cursos ?? '', caso.zona ?? ''].forEach((val, idx) => {
+        const td = document.createElement('td');
+        td.textContent = val;
+        if (idx === 0) td.className = 'table-id';
+        if (idx === 1) td.className = 'table-title';
+        if (idx === 2) td.className = 'table-date';
+        tr.appendChild(td);
+      });
 
-      let claseBadge = 'leve';
-
-      if (c.gravedad === 'Grave') {
-        claseBadge = 'grave';
-      }
-
-      if (c.gravedad === 'Gravísima') {
-        claseBadge = 'gravisima';
-      }
-
-      const fila =
-        document.createElement('tr');
-
-      fila.innerHTML = `
-        <td class="table-id">
-          #${c.caso_id}
-        </td>
-
-        <td class="table-title">
-          ${c.titulo}
-        </td>
-
-        <td class="table-date">
-          ${fecha}
-        </td>
-
-        <td>
-          ${c.cursos}
-        </td>
-
-        <td>
-          ${c.zona}
-        </td>
-
-        <td>
-          <span class="badge-severidad ${claseBadge}">
-            ${c.gravedad}
-          </span>
-        </td>
-      `;
-
-      tbody.appendChild(fila);
+      const tdGrav = document.createElement('td');
+      const badge = document.createElement('span');
+      badge.className = `badge-severidad ${clase}`;
+      badge.textContent = gravedad;
+      tdGrav.appendChild(badge);
+      tr.appendChild(tdGrav);
+      fragmento.appendChild(tr);
     });
+
+    tbody.replaceChildren(fragmento);
   }
 
   function construirQueryParams() {
-
-    const params =
-      new URLSearchParams();
-
-    const gravedad =
-      document.getElementById('filtroGravedad').value;
-
-    const curso =
-      document.getElementById('filtroCurso').value;
-
-    const zona =
-      document.getElementById('filtroZona').value;
-
-    const fechaDesde =
-      document.getElementById('filtroFechaDesde').value;
-
-    const fechaHasta =
-      document.getElementById('filtroFechaHasta').value;
-
-    if (gravedad) {
-      params.set('gravedad', gravedad);
-    }
-
-    if (curso) {
-      params.set('curso', curso);
-    }
-
-    if (zona) {
-      params.set('zona', zona);
-    }
-
-    if (fechaDesde) {
-      params.set('fecha_desde', fechaDesde);
-    }
-
-    if (fechaHasta) {
-      params.set('fecha_hasta', fechaHasta);
-    }
-
+    const params = new URLSearchParams();
+    [
+      ['gravedad', 'filtroGravedad'],
+      ['curso', 'filtroCurso'],
+      ['zona', 'filtroZona'],
+      ['fecha_desde', 'filtroFechaDesde'],
+      ['fecha_hasta', 'filtroFechaHasta']
+    ].forEach(([param, id]) => {
+      const val = $(id).value;
+      if (val) params.set(param, val);
+    });
     return params;
   }
 
   function actualizarBotonesDescarga() {
-
-    const params =
-      construirQueryParams();
-
-    document.getElementById(
-      'btnDescargarPdf'
-    ).href =
-      "{% url 'estadisticas_pdf' %}?" +
-      params.toString();
-
-    document.getElementById(
-      'btnDescargarXlsx'
-    ).href =
-      "{% url 'estadisticas_xlsx' %}?" +
-      params.toString();
+    const query = construirQueryParams().toString();
+    $('btnDescargarPdf').href = "{% url 'estadisticas_pdf' %}" + (query ? `?${query}` : '');
+    $('btnDescargarXlsx').href = "{% url 'estadisticas_xlsx' %}" + (query ? `?${query}` : '');
   }
 
   async function actualizarEstadisticas() {
-
-    const params =
-      construirQueryParams();
-
+    const params = construirQueryParams();
     actualizarBotonesDescarga();
 
+    if (solicitudActual) solicitudActual.abort();
+    solicitudActual = new AbortController();
+
     try {
-
-      const respuesta =
-        await fetch(
-          "{% url 'estadisticas_datos' %}?" +
-          params.toString()
-        );
-
-      const data =
-        await respuesta.json();
-
-      if (data.error) {
-        return;
-      }
+      const res = await fetch("{% url 'estadisticas_datos' %}?" + params.toString(), {
+        signal: solicitudActual.signal,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
 
       datosActuales = data;
-
       renderAllCharts(data);
       updateKpis(data);
       updateTabla(data);
-
-    } catch (e) {
-
-      console.error(
-        'Error al actualizar estadísticas:',
-        e
-      );
+    } catch (err) {
+      if (err.name !== 'AbortError') console.error('Error al actualizar estadísticas:', err);
     }
   }
 
-  function cambiarTipoGrafico(tipo, btnEl) {
+  function programarActualizacion() {
+    clearTimeout(temporizadorFiltros);
+    temporizadorFiltros = setTimeout(actualizarEstadisticas, 180);
+  }
 
+  window.cambiarTipoGrafico = function(tipo, btnEl) {
     tipoGraficoActual = tipo;
-
-    document
-      .querySelectorAll('.chart-type-btn')
-      .forEach(b => {
-        b.classList.remove('active');
-      });
-
-    btnEl.classList.add('active');
-
+    document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.toggle('active', b === btnEl));
     renderAllCharts(datosActuales);
-  }
+  };
 
-  function limpiarFiltros() {
-
-    document.getElementById(
-      'filtroGravedad'
-    ).value = '';
-
-    document.getElementById(
-      'filtroCurso'
-    ).value = '';
-
-    document.getElementById(
-      'filtroZona'
-    ).value = '';
-
-    document.getElementById(
-      'filtroFechaDesde'
-    ).value = '';
-
-    document.getElementById(
-      'filtroFechaHasta'
-    ).value = '';
-
+  window.limpiarFiltros = function() {
+    ['filtroGravedad', 'filtroCurso', 'filtroZona', 'filtroFechaDesde', 'filtroFechaHasta'].forEach(id => {
+      $(id).value = '';
+    });
     actualizarEstadisticas();
-  }
+  };
 
-  /* RF-30: actualización automática */
+  ['filtroGravedad', 'filtroCurso', 'filtroZona', 'filtroFechaDesde', 'filtroFechaHasta'].forEach(id => {
+    $(id).addEventListener('change', programarActualizacion);
+  });
 
-  document
-    .getElementById('filtroGravedad')
-    .addEventListener(
-      'change',
-      actualizarEstadisticas
-    );
-
-  document
-    .getElementById('filtroCurso')
-    .addEventListener(
-      'change',
-      actualizarEstadisticas
-    );
-
-  document
-    .getElementById('filtroZona')
-    .addEventListener(
-      'change',
-      actualizarEstadisticas
-    );
-
-  document
-    .getElementById('filtroFechaDesde')
-    .addEventListener(
-      'change',
-      actualizarEstadisticas
-    );
-
-  document
-    .getElementById('filtroFechaHasta')
-    .addEventListener(
-      'change',
-      actualizarEstadisticas
-    );
-
-  /*
-   * Carga inicial.
-   */
   renderAllCharts(datosIniciales);
   updateKpis(datosIniciales);
   updateTabla(datosIniciales);
   actualizarBotonesDescarga();
 
-  /*
-   * Si el sistema cambia entre modo claro y oscuro mientras
-   * la página está abierta, se vuelven a renderizar los gráficos.
-   */
-  const mediaQuery =
-    window.matchMedia('(prefers-color-scheme: dark)');
-
-  mediaQuery.addEventListener('change', () => {
-
-    setTimeout(() => {
-      renderAllCharts(datosActuales);
-    }, 50);
-
+  new MutationObserver(() => renderAllCharts(datosActuales)).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme']
   });
+});
 </script>
 {% endblock %}

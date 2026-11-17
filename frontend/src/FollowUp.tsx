@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { authenticatedFetch } from './authenticatedFetch'
 
 type FollowUpAction = {
   id: number
@@ -90,7 +91,7 @@ async function errorMessage(response: Response, fallback: string) {
 
 async function fetchFollowUps(accessToken: string, state: string) {
   const query = state ? `?estado=${encodeURIComponent(state)}` : ''
-  const response = await fetch(`${API_BASE_URL}/api/v1/seguimiento/${query}`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/seguimiento/${query}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   if (!response.ok) {
@@ -168,7 +169,7 @@ export default function FollowUp({ accessToken }: FollowUpProps) {
     setPendingId(Number(key.split(':')[0]))
     setError('')
     try {
-      const response = await fetch(`${API_BASE_URL}${url}`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}${url}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,

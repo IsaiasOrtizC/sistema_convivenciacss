@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { authenticatedFetch } from './authenticatedFetch'
 import './PendingCases.css'
 
 type PendingRequest = {
@@ -65,7 +66,7 @@ async function getErrorMessage(response: Response, fallback: string) {
 }
 
 async function loadPendingCases(accessToken: string) {
-  const response = await fetch(`${API_BASE_URL}/api/v1/casos/pendientes/`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/casos/pendientes/`, {
     headers: { Authorization: ['Be', 'arer'].join('') + ' ' + accessToken },
   })
   if (!response.ok) {
@@ -132,7 +133,7 @@ export default function PendingCases({ accessToken }: PendingCasesProps) {
     setError('')
     setMessage('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/casos/pendientes/${request.id}/`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/casos/pendientes/${request.id}/`, {
         method: 'POST',
         headers: {
           Authorization: ['Be', 'arer'].join('') + ' ' + accessToken,

@@ -1,3 +1,4 @@
+import { authenticatedFetch } from './authenticatedFetch'
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
@@ -7,7 +8,7 @@ export async function downloadAuthenticatedFile(
   accessToken: string,
   fallbackMessage: string,
 ) {
-  const response = await fetch(url, {
+  const response = await authenticatedFetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   if (!response.ok) {

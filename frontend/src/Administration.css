@@ -1,15 +1,25 @@
 .administration .dashboard-welcome h1 {
-  margin: 8px 0;
-  font-family: 'Merriweather', serif;
+  margin: 6px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
 .administration__success {
   margin-bottom: 18px;
   padding: 12px 16px;
-  border: 1px solid #82c99a;
+  border: 1px solid rgba(40, 167, 69, 0.35);
   border-radius: 10px;
   color: #155d2f;
-  background: #eaf8ee;
+  background: rgba(40, 167, 69, 0.12);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+html[data-theme="dark"] .administration__success {
+  border-color: rgba(52, 199, 89, 0.3);
+  color: #6ee794;
+  background: rgba(52, 199, 89, 0.14);
 }
 
 .administration__filters {
@@ -26,8 +36,9 @@
   flex: 1 1 190px;
   gap: 6px;
   color: var(--text-mid);
-  font-size: 0.78rem;
-  font-weight: 700;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .administration__filters input,
@@ -36,12 +47,56 @@
 .administration__form select,
 .administration__import input[type="file"] {
   min-height: 2.45rem;
-  padding: 0.5rem 0.7rem;
+  padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 8px;
   color: var(--text-dark);
   background: var(--input-bg);
   font: inherit;
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.administration__filters input:hover:not(:disabled),
+.administration__filters select:hover:not(:disabled),
+.administration__form input:hover:not(:disabled),
+.administration__form select:hover:not(:disabled),
+.administration__import input[type="file"]:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--border) 65%, var(--text-mid));
+}
+
+.administration__filters input:focus-visible,
+.administration__filters select:focus-visible,
+.administration__form input:focus-visible,
+.administration__form select:focus-visible,
+.administration__import input[type="file"]:focus-visible {
+  outline: none;
+  border-color: var(--guinda);
+  box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--guinda) 22%, transparent);
+}
+
+/* Botón nativo estilizado para carga de archivos (CSV/Excel) */
+.administration__import input[type="file"] {
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+}
+
+.administration__import input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dark);
+  background: color-mix(in srgb, var(--input-bg) 85%, var(--text-mid) 15%);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.administration__import input[type="file"]::file-selector-button:hover {
+  background: color-mix(in srgb, var(--input-bg) 75%, var(--text-mid) 25%);
 }
 
 .administration__form,
@@ -54,12 +109,14 @@
 .administration__form h2,
 .administration__import h2 {
   font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
 }
 
 .administration__form-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .administration__actions,
@@ -72,35 +129,59 @@
 
 .administration__primary,
 .administration__danger {
-  min-height: 2.35rem;
-  padding: 0.55rem 0.85rem;
-  border: 1px solid #28643a;
-  border-radius: 9px;
-  color: #fff;
-  background: #28643a;
+  min-height: 2.3rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  color: #ffffff;
+  background: #288844;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.18);
   cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: filter 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
 }
 
 .administration__danger {
-  border-color: #a52929;
-  background: #a52929;
+  background: #c92a2a;
+}
+
+.administration__primary:hover:not(:disabled),
+.administration__danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.administration__primary:active:not(:disabled),
+.administration__danger:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.administration__primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3.5px rgba(40, 136, 68, 0.3);
+}
+
+.administration__danger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3.5px rgba(201, 42, 42, 0.3);
 }
 
 .administration__primary:disabled,
 .administration__danger:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.5;
+  box-shadow: none;
 }
 
 .administration__row-actions {
-  min-width: 250px;
+  min-width: 240px;
 }
 
 .administration__import p {
   color: var(--text-lo);
   font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .administration__student-history {
@@ -116,6 +197,7 @@
   display: block;
   margin-top: 3px;
   color: var(--text-lo);
+  font-size: 0.76rem;
 }
 
 @media (max-width: 760px) {

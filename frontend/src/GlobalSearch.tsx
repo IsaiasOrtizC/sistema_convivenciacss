@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { authenticatedFetch } from './authenticatedFetch'
 import './GlobalSearch.css'
 
 type SearchResults = {
@@ -58,7 +59,7 @@ export default function GlobalSearch({
     setError('')
     try {
       const params = new URLSearchParams({ q: query.trim() })
-      const response = await fetch(`${API_BASE_URL}/api/v1/busqueda/?${params}`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/busqueda/?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
       if (!response.ok) throw new Error('No se pudo completar la búsqueda.')

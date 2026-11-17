@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { authenticatedFetch } from './authenticatedFetch'
 import './CaseDetail.css'
 import { downloadAuthenticatedFile } from './download'
 
@@ -118,7 +119,7 @@ export default function CaseDetail({
 
   useEffect(() => {
     let active = true
-    fetch(`${API_BASE_URL}/api/v1/casos/${caseId}/`, {
+    authenticatedFetch(`${API_BASE_URL}/api/v1/casos/${caseId}/`, {
       headers: { Authorization: ['Be', 'arer'].join('') + ' ' + accessToken },
     })
       .then(async (response) => {
@@ -165,7 +166,7 @@ export default function CaseDetail({
     setError('')
     setMessage('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/casos/${caseId}/`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/casos/${caseId}/`, {
         method: 'PUT',
         headers: {
           Authorization: ['Be', 'arer'].join('') + ' ' + accessToken,
@@ -188,7 +189,7 @@ export default function CaseDetail({
       if (!response.ok) {
         throw new Error(await getErrorMessage(response, 'No se pudo guardar el caso.'))
       }
-      const updatedResponse = await fetch(`${API_BASE_URL}/api/v1/casos/${caseId}/`, {
+      const updatedResponse = await authenticatedFetch(`${API_BASE_URL}/api/v1/casos/${caseId}/`, {
         headers: { Authorization: ['Be', 'arer'].join('') + ' ' + accessToken },
       })
       if (!updatedResponse.ok) {
@@ -224,7 +225,7 @@ export default function CaseDetail({
     setSaving(true)
     setError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/casos/${caseId}/`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/casos/${caseId}/`, {
         method: 'DELETE',
         headers: { Authorization: ['Be', 'arer'].join('') + ' ' + accessToken },
       })

@@ -6,346 +6,136 @@
 {% block extra_css %}
 <style>
   /* =========================================================
-     DASHBOARD — CONVIDATA
-     Refinamiento visual inspirado en FM / FC
+     DASHBOARD — CONVIDATA (MACOS CLEAN UI)
      ========================================================= */
-
   .dashboard-page {
-    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
   }
 
-
-  /* =========================================================
-     ENCABEZADO
-     ========================================================= */
-
+  /* Encabezado limpio estilo macOS Window Header */
   .welcome-box {
-    position: relative;
-
-    margin-bottom: 26px;
-    padding: 28px 30px;
-
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 22px 24px;
+    background: var(--bg-elevated);
     border: 1px solid var(--border);
-    border-radius: 18px;
-
-    background:
-      linear-gradient(
-        135deg,
-        rgba(123, 26, 26, .12),
-        transparent 58%
-      ),
-      var(--surface);
-
-    box-shadow: var(--shadow);
-
-    overflow: hidden;
-  }
-
-  .welcome-box::before {
-    content: "";
-
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-
-    width: 4px;
-
-    background:
-      linear-gradient(
-        180deg,
-        var(--gold),
-        var(--guinda)
-      );
-  }
-
-  .welcome-box::after {
-    content: "";
-
-    position: absolute;
-
-    width: 220px;
-    height: 220px;
-
-    right: -90px;
-    top: -125px;
-
-    border-radius: 50%;
-
-    background: rgba(212, 160, 23, .11);
-
-    filter: blur(24px);
-
-    pointer-events: none;
-  }
-
-  .welcome-content {
-    position: relative;
-    z-index: 1;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
   }
 
   .welcome-eyebrow {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
-
-    margin-bottom: 8px;
-
-    color: var(--gold);
-
-    font-size: .67rem;
-    font-weight: 800;
-
-    letter-spacing: .13em;
+    gap: 6px;
+    margin-bottom: 4px;
+    color: var(--guinda);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
   }
 
-  .welcome-eyebrow::before {
-    content: "";
-
-    width: 24px;
-    height: 2px;
-
-    border-radius: 99px;
-
-    background: var(--gold);
+  html[data-theme="dark"] .welcome-eyebrow {
+    color: var(--gold-bright);
   }
 
   .welcome-box h1 {
     margin: 0;
-
     color: var(--text-dark);
-
-    font-family: 'Merriweather', serif;
-
-    font-size: clamp(1.35rem, 2vw, 1.8rem);
-    font-weight: 900;
-
-    line-height: 1.25;
-    letter-spacing: -.02em;
+    font-size: clamp(1.3rem, 2vw, 1.65rem);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
   }
 
   .welcome-box p {
-    margin: 8px 0 0;
-
+    margin: 4px 0 0;
     color: var(--text-lo);
-
-    font-size: .84rem;
-    line-height: 1.6;
+    font-size: 0.84rem;
   }
 
   .welcome-box strong {
     color: var(--text-dark);
-    font-weight: 750;
+    font-weight: 600;
   }
 
-
-  /* =========================================================
-     MÉTRICAS
-     ========================================================= */
-
+  /* Métricas tipo macOS Widget Cards */
   .metrics-grid {
     display: grid;
-
-    grid-template-columns:
-      repeat(4, minmax(0, 1fr));
-
-    gap: 15px;
-
-    margin-bottom: 24px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
   }
 
   .metric-card {
-    position: relative;
-
-    min-height: 145px;
-
-    padding: 19px 20px 18px;
-
+    padding: 18px 20px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-
-    background:
-      linear-gradient(
-        145deg,
-        rgba(255,255,255,.045),
-        transparent 68%
-      ),
-      var(--surface);
-
+    min-height: 124px;
+    background: var(--bg-elevated);
     border: 1px solid var(--border);
-    border-radius: 16px;
-
-    box-shadow: var(--shadow);
-
-    overflow: hidden;
-
-    transition:
-      transform var(--transition),
-      border-color var(--transition),
-      box-shadow var(--transition);
-  }
-
-  .metric-card::before {
-    content: "";
-
-    position: absolute;
-
-    left: 0;
-    top: 0;
-    bottom: 0;
-
-    width: 4px;
-
-    background: var(
-      --metric-color,
-      var(--gold)
-    );
-  }
-
-  .metric-card::after {
-    content: "";
-
-    position: absolute;
-
-    width: 110px;
-    height: 110px;
-
-    right: -55px;
-    bottom: -60px;
-
-    border-radius: 50%;
-
-    background: var(
-      --metric-color,
-      var(--gold)
-    );
-
-    opacity: .08;
-
-    filter: blur(12px);
-
-    pointer-events: none;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--transition), box-shadow var(--transition);
   }
 
   .metric-card:hover {
-    transform: translateY(-3px);
-
-    border-color:
-      rgba(212,160,23,.28);
-
-    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
   }
 
   .metric-top {
-    position: relative;
-    z-index: 1;
-
     display: flex;
     align-items: center;
     justify-content: space-between;
-
-    gap: 12px;
+    gap: 10px;
   }
 
   .metric-label {
-    color: var(--text-mid);
-
-    font-size: .66rem;
-    font-weight: 800;
-
-    letter-spacing: .075em;
-
-    line-height: 1.4;
-
+    color: var(--text-lo);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
   }
 
   .metric-icon {
-    width: 34px;
-    height: 34px;
-
-    flex: 0 0 34px;
-
+    width: 30px;
+    height: 30px;
     display: grid;
     place-items: center;
-
-    border-radius: 9px;
-
-    color:
-      var(--metric-color, var(--gold));
-
-    background:
-      color-mix(
-        in srgb,
-        var(--metric-color, var(--gold)) 11%,
-        transparent
-      );
-
-    border: 1px solid
-      color-mix(
-        in srgb,
-        var(--metric-color, var(--gold)) 16%,
-        transparent
-      );
+    border-radius: 8px;
+    color: var(--metric-color, var(--guinda));
+    background: color-mix(in srgb, var(--metric-color, var(--guinda)) 12%, transparent);
   }
 
   .metric-num {
-    position: relative;
-    z-index: 1;
-
-    margin-top: 12px;
-
+    margin-top: 10px;
     color: var(--text-dark);
-
-    font-family: 'Inter', sans-serif;
-
-    font-size:
-      clamp(2rem, 3vw, 2.55rem);
-
-    font-weight: 900;
-
-    line-height: 1;
-
-    letter-spacing: -.045em;
-
+    font-size: clamp(1.85rem, 2.8vw, 2.3rem);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.035em;
     font-variant-numeric: tabular-nums;
   }
 
   .metric-sub {
-    position: relative;
-    z-index: 1;
-
-    margin-top: 8px;
-
+    margin-top: 6px;
     color: var(--text-lo);
-
-    font-size: .67rem;
-
-    line-height: 1.4;
+    font-size: 0.72rem;
   }
 
+  .card-total     { --metric-color: var(--guinda); }
+  .card-leve      { --metric-color: var(--success); }
+  .card-grave     { --metric-color: var(--warning); }
+  .card-gravisima { --metric-color: var(--danger); }
 
-  /* =========================================================
-     COLORES DE MÉTRICAS
-     ========================================================= */
-
-  .card-total {
-    --metric-color: var(--gold);
-  }
-
-  .card-leve {
-    --metric-color: #65d391;
-  }
-
-  .card-grave {
-    --metric-color: #e3b84c;
-  }
-
-  .card-gravisima {
-    --metric-color: #d45b5b;
-  }
+  html[data-theme="dark"] .card-total { --metric-color: var(--gold-bright); }
 
   .card-leve .metric-num,
   .card-grave .metric-num,
@@ -353,396 +143,251 @@
     color: var(--metric-color);
   }
 
-
-  /* =========================================================
-     PANELES
-     ========================================================= */
-
+  /* Paneles */
   .dashboard-panel {
-    position: relative;
-
-    margin-bottom: 22px;
-    padding: 23px 24px;
-
+    padding: 20px 22px;
+    background: var(--bg-elevated);
     border: 1px solid var(--border);
-    border-radius: 18px;
-
-    background:
-      linear-gradient(
-        145deg,
-        rgba(255,255,255,.035),
-        transparent 62%
-      ),
-      var(--surface);
-
-    box-shadow: var(--shadow);
-
-    overflow: hidden;
-  }
-
-  .dashboard-panel::before {
-    content: "";
-
-    position: absolute;
-
-    inset: 0;
-
-    pointer-events: none;
-
-    background:
-      radial-gradient(
-        circle at 100% 0%,
-        rgba(212,160,23,.055),
-        transparent 28%
-      );
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
   }
 
   .pane-header {
-    position: relative;
-    z-index: 1;
-
     display: flex;
     align-items: center;
     justify-content: space-between;
-
-    gap: 16px;
-
-    margin-bottom: 18px;
+    gap: 14px;
+    margin-bottom: 16px;
   }
 
   .pane-title {
-    display: flex;
-    align-items: center;
-
-    gap: 10px;
-
     margin: 0;
-
     color: var(--text-dark);
-
-    font-family: 'Merriweather', serif;
-
     font-size: 1rem;
-    font-weight: 900;
-
-    line-height: 1.35;
-  }
-
-  .pane-title-mark {
-    width: 7px;
-    height: 7px;
-
-    flex: 0 0 7px;
-
-    border-radius: 50%;
-
-    background: var(--gold);
-
-    box-shadow:
-      0 0 12px
-      rgba(212,160,23,.45);
+    font-weight: 700;
+    letter-spacing: -0.015em;
   }
 
   .pane-meta {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
     color: var(--text-lo);
-
-    font-size: .7rem;
-    font-weight: 650;
-
+    font-size: 0.71rem;
+    font-weight: 600;
     white-space: nowrap;
   }
 
   .pane-meta::before {
     content: "";
-
     width: 6px;
     height: 6px;
-
     border-radius: 50%;
-
-    background: #65d391;
-
-    box-shadow:
-      0 0 7px
-      rgba(101,211,145,.4);
+    background: var(--success);
   }
 
-
-  /* =========================================================
-     BOTÓN PRINCIPAL
-     ========================================================= */
-
+  /* Botón primario estilo macOS Accent Button */
   .btn-action {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-
-    gap: 7px;
-
-    min-height: 40px;
-
-    padding: 9px 15px;
-
-    border:
-      1px solid
-      rgba(212,160,23,.35);
-
-    border-radius: 10px;
-
-    background:
-      linear-gradient(
-        135deg,
-        var(--guinda),
-        var(--guinda-mid)
-      );
-
-    color: #fff;
-
-    font-size: .77rem;
-    font-weight: 750;
-
+    gap: 6px;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: var(--radius-sm);
+    background: var(--guinda);
+    color: #FFFFFF;
+    font-size: 0.8rem;
+    font-weight: 600;
     text-decoration: none;
-
-    box-shadow:
-      0 5px 16px
-      rgba(123,26,26,.18);
-
-    transition:
-      transform var(--transition),
-      box-shadow var(--transition),
-      filter var(--transition);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14);
+    transition: background var(--transition), transform var(--transition);
   }
 
   .btn-action:hover {
-    color: #fff;
-
-    transform:
-      translateY(-1px);
-
-    filter: brightness(1.08);
-
-    box-shadow:
-      0 8px 22px
-      rgba(123,26,26,.25);
+    background: var(--guinda-mid);
+    color: #FFFFFF;
   }
 
   .btn-action:active {
-    transform: translateY(0);
-  }
-
-
-  /* =========================================================
-     GRÁFICO
-     ========================================================= */
-
-  .chart-wrapper {
-    position: relative;
-    z-index: 1;
-
-    width: 100%;
-
-    padding-top: 2px;
+    transform: scale(0.98);
   }
 
   #apexBarrasZonas {
-    position: relative;
-    z-index: 1;
-
     width: 100%;
-    min-height: 280px;
+    min-height: 260px;
   }
 
-  .apexcharts-canvas {
-    margin: 0 auto;
-  }
-
-  .apexcharts-tooltip {
-    border:
-      1px solid
-      var(--border) !important;
-
-    border-radius:
-      10px !important;
-
-    background:
-      var(--surface) !important;
-
-    box-shadow:
-      var(--shadow-lg) !important;
-  }
-
-  .apexcharts-tooltip-title {
-    border-bottom:
-      1px solid
-      var(--border) !important;
-
-    background:
-      var(--surface-soft) !important;
-  }
-
+  /* Resumen de 30 días */
   .period-summary-grid {
-    position: relative;
-    z-index: 1;
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px;
   }
 
   .period-summary-card {
-    min-width: 0;
-    padding: 15px;
+    padding: 14px 16px;
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius);
     background: var(--surface-soft);
   }
 
   .period-summary-label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     color: var(--text-lo);
-    font-size: .66rem;
-    font-weight: 800;
-    letter-spacing: .045em;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
   }
 
   .period-summary-value {
     display: block;
     color: var(--text-dark);
-    font-size: .95rem;
-    font-weight: 800;
-    line-height: 1.4;
+    font-size: 0.96rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
     overflow-wrap: anywhere;
   }
 
   .period-summary-note {
     display: block;
-    margin-top: 4px;
+    margin-top: 3px;
     color: var(--text-lo);
-    font-size: .68rem;
-    line-height: 1.4;
+    font-size: 0.7rem;
   }
 
-
-  /* =========================================================
-     TABLA
-     ========================================================= */
-
+  /* Tabla limpia estilo macOS Finder / TableView */
   .table-scroll {
-    position: relative;
-    z-index: 1;
-
     width: 100%;
-
     overflow-x: auto;
-
-    scrollbar-width: thin;
   }
 
   .recent-table {
     width: 100%;
-
-    min-width: 680px;
-
-    border-collapse:
-      separate;
-
-    border-spacing: 0;
-
+    min-width: 640px;
+    border-collapse: collapse;
     text-align: left;
-
-    font-size: .81rem;
+    font-size: 0.83rem;
   }
 
   .recent-table th {
-    padding:
-      10px 13px;
-
-    color:
-      var(--text-lo);
-
-    background:
-      rgba(123,26,26,.035);
-
-    border-bottom:
-      1px solid
-      var(--border);
-
-    font-size: .62rem;
-
-    font-weight: 800;
-
-    letter-spacing: .075em;
-
-    text-transform:
-      uppercase;
-
-    white-space:
-      nowrap;
-  }
-
-  .recent-table th:first-child {
-    border-top-left-radius: 8px;
-  }
-
-  .recent-table th:last-child {
-    border-top-right-radius: 8px;
+    padding: 9px 12px;
+    color: var(--text-lo);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
   }
 
   .recent-table td {
-    padding:
-      14px 13px;
-
-    color:
-      var(--text-dark);
-
-    border-bottom:
-      1px solid
-      var(--border);
-
-    vertical-align:
-      middle;
+    padding: 12px;
+    color: var(--text-dark);
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
   }
 
   .recent-table tbody tr {
-    transition:
-      background var(--transition);
+    transition: background var(--transition);
   }
 
   .recent-table tbody tr:hover {
-    background:
-      linear-gradient(
-        90deg,
-        rgba(123,26,26,.045),
-        rgba(212,160,23,.025)
-      );
+    background: var(--surface-soft);
   }
 
   .recent-table tbody tr:last-child td {
-    border-bottom:
-      none;
+    border-bottom: none;
   }
 
+  .case-id {
+    display: inline-flex;
+    padding: 2px 7px;
+    border-radius: 6px;
+    color: var(--text-mid);
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    font-size: 0.72rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .case-title {
+    display: block;
+    max-width: 360px;
+    overflow: hidden;
+    color: var(--text-dark);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .case-date {
+    color: var(--text-mid);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .case-place {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-mid);
+    font-size: 0.78rem;
+  }
+
+  .case-place::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+  }
+
+  .lnk-detalles {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--guinda);
+    font-size: 0.79rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  html[data-theme="dark"] .lnk-detalles {
+    color: var(--gold-bright);
+  }
+
+  .lnk-detalles:hover {
+    text-decoration: underline;
+  }
+
+  /* Paginación */
   .dashboard-pagination {
-    position: relative;
-    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-top: 16px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
     color: var(--text-lo);
-    font-size: .76rem;
+    font-size: 0.76rem;
   }
 
   .dashboard-pagination-controls {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
   }
 
   .dashboard-pagination-link,
@@ -750,808 +395,133 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 36px;
-    padding: 7px 11px;
+    height: 30px;
+    padding: 0 11px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 7px;
     color: var(--text-dark);
-    background: var(--surface-soft);
-    font-size: .74rem;
-    font-weight: 750;
+    background: var(--bg-elevated);
+    font-size: 0.76rem;
+    font-weight: 600;
     text-decoration: none;
   }
 
   .dashboard-pagination-link:hover {
-    border-color: var(--guinda);
-    color: var(--guinda);
+    background: var(--surface-soft);
   }
 
   .dashboard-pagination-disabled {
-    opacity: .45;
+    opacity: 0.4;
   }
-
-
-  /* ---------------------------------------------------------
-     ID
-     --------------------------------------------------------- */
-
-  .case-id {
-    display: inline-flex;
-    align-items: center;
-
-    padding:
-      4px 7px;
-
-    border-radius:
-      6px;
-
-    color:
-      var(--text-lo);
-
-    background:
-      var(--surface-soft);
-
-    border:
-      1px solid
-      var(--border);
-
-    font-size: .69rem;
-
-    font-weight: 800;
-
-    font-variant-numeric:
-      tabular-nums;
-
-    white-space:
-      nowrap;
-  }
-
-
-  /* ---------------------------------------------------------
-     TÍTULO
-     --------------------------------------------------------- */
-
-  .case-title {
-    display: block;
-
-    max-width: 360px;
-
-    overflow: hidden;
-
-    color:
-      var(--text-dark);
-
-    font-weight: 750;
-
-    line-height: 1.45;
-
-    text-overflow:
-      ellipsis;
-
-    white-space:
-      nowrap;
-  }
-
-
-  /* ---------------------------------------------------------
-     FECHA
-     --------------------------------------------------------- */
-
-  .case-date {
-    color:
-      var(--text-mid);
-
-    font-size:
-      .76rem;
-
-    font-variant-numeric:
-      tabular-nums;
-
-    white-space:
-      nowrap;
-  }
-
-
-  /* ---------------------------------------------------------
-     LUGAR
-     --------------------------------------------------------- */
-
-  .case-place {
-    display: inline-flex;
-    align-items: center;
-
-    gap: 6px;
-
-    color:
-      var(--text-mid);
-
-    font-size:
-      .76rem;
-  }
-
-  .case-place::before {
-    content: "";
-
-    width: 5px;
-    height: 5px;
-
-    flex: 0 0 5px;
-
-    border-radius: 50%;
-
-    background:
-      var(--gold);
-  }
-
-
-  /* ---------------------------------------------------------
-     ENLACE
-     --------------------------------------------------------- */
-
-  .lnk-detalles {
-    display: inline-flex;
-    align-items: center;
-
-    gap: 5px;
-
-    color:
-      var(--guinda);
-
-    font-size:
-      .76rem;
-
-    font-weight:
-      750;
-
-    text-decoration:
-      none;
-
-    white-space:
-      nowrap;
-
-    transition:
-      color var(--transition),
-      transform var(--transition);
-  }
-
-  .lnk-detalles span {
-    transition:
-      transform var(--transition);
-  }
-
-  .lnk-detalles:hover {
-    color:
-      var(--gold);
-
-    text-decoration:
-      none;
-
-    transform:
-      translateX(2px);
-  }
-
-  .lnk-detalles:hover span {
-    transform:
-      translateX(2px);
-  }
-
-
-  /* =========================================================
-     ESTADO VACÍO
-     ========================================================= */
 
   .empty-state {
-    position: relative;
-    z-index: 1;
-
     display: flex;
     flex-direction: column;
-
     align-items: center;
     justify-content: center;
-
-    min-height: 150px;
-
-    padding:
-      30px 20px;
-
-    color:
-      var(--text-lo);
-
-    text-align:
-      center;
+    min-height: 140px;
+    padding: 24px;
+    color: var(--text-lo);
+    text-align: center;
+    font-size: 0.84rem;
   }
-
-  .empty-state-icon {
-    width: 42px;
-    height: 42px;
-
-    display: grid;
-    place-items: center;
-
-    margin-bottom:
-      12px;
-
-    border:
-      1px solid
-      var(--border);
-
-    border-radius:
-      12px;
-
-    color:
-      var(--text-lo);
-
-    background:
-      var(--surface-soft);
-  }
-
-  .empty-state p {
-    margin: 0;
-
-    font-size:
-      .82rem;
-
-    font-style:
-      italic;
-  }
-
-
-  /* =========================================================
-     MODO OSCURO
-     ========================================================= */
-
-  html[data-theme="dark"]
-  .welcome-box,
-
-  html[data-theme="dark"]
-  .metric-card,
-
-  html[data-theme="dark"]
-  .dashboard-panel {
-    background:
-      linear-gradient(
-        145deg,
-        rgba(255,255,255,.025),
-        transparent 60%
-      ),
-      var(--surface);
-  }
-
-  html[data-theme="dark"]
-  .welcome-box h1,
-
-  html[data-theme="dark"]
-  .metric-num,
-
-  html[data-theme="dark"]
-  .pane-title,
-
-  html[data-theme="dark"]
-  .case-title,
-
-  html[data-theme="dark"]
-  .recent-table td {
-    color:
-      #ffffff;
-  }
-
-  html[data-theme="dark"]
-  .metric-label,
-
-  html[data-theme="dark"]
-  .case-date,
-
-  html[data-theme="dark"]
-  .case-place {
-    color:
-      #d8dee8;
-  }
-
-  html[data-theme="dark"]
-  .recent-table th,
-
-  html[data-theme="dark"]
-  .case-id,
-
-  html[data-theme="dark"]
-  .pane-meta,
-
-  html[data-theme="dark"]
-  .welcome-box p {
-    color:
-      #aeb7c5;
-  }
-
-  html[data-theme="dark"]
-  .recent-table th {
-    background:
-      rgba(255,255,255,.025);
-  }
-
-  html[data-theme="dark"]
-  .recent-table tbody tr:hover {
-    background:
-      linear-gradient(
-        90deg,
-        rgba(123,26,26,.12),
-        rgba(212,160,23,.045)
-      );
-  }
-
-  html[data-theme="dark"]
-  .btn-action {
-    color:
-      #ffffff;
-  }
-
-  html[data-theme="dark"]
-  .lnk-detalles {
-    color:
-      #f0c030;
-  }
-
-  html[data-theme="dark"]
-  .lnk-detalles:hover {
-    color:
-      #ffffff;
-  }
-
-
-  /* =========================================================
-     RESPONSIVE
-     ========================================================= */
 
   @media (max-width: 1050px) {
-
-    .metrics-grid {
-      grid-template-columns:
-        repeat(2, minmax(0, 1fr));
-    }
-
-    .period-summary-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
+    .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .period-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
-
 
   @media (max-width: 700px) {
-
-    .welcome-box {
-      padding:
-        21px 20px;
-
-      margin-bottom:
-        20px;
-
-      border-radius:
-        15px;
-    }
-
-    .metrics-grid {
-      grid-template-columns:
-        1fr 1fr;
-
-      gap:
-        11px;
-
-      margin-bottom:
-        20px;
-    }
-
-    .period-summary-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 9px;
-    }
-
-    .period-summary-card {
-      padding: 12px;
-    }
-
-    .dashboard-pagination {
-      align-items: flex-start;
-      flex-direction: column;
-    }
-
-    .metric-card {
-      min-height:
-        125px;
-
-      padding:
-        16px;
-
-      border-radius:
-        14px;
-    }
-
-    .metric-icon {
-      width:
-        29px;
-
-      height:
-        29px;
-
-      flex-basis:
-        29px;
-    }
-
-    .metric-num {
-      font-size:
-        1.85rem;
-    }
-
-    .dashboard-panel {
-      padding:
-        18px 15px;
-
-      margin-bottom:
-        18px;
-
-      border-radius:
-        15px;
-    }
-
-    .pane-header {
-      align-items:
-        flex-start;
-
-      flex-direction:
-        column;
-
-      gap:
-        12px;
-    }
-
-    .pane-header .btn-action {
-      width:
-        100%;
-    }
-
-    .pane-meta {
-      white-space:
-        normal;
-    }
-
-    .case-title {
-      max-width:
-        250px;
-    }
-
-    #apexBarrasZonas {
-      min-height:
-        250px;
-    }
-
+    .metrics-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .period-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pane-header { flex-direction: column; align-items: flex-start; }
+    .pane-header .btn-action { width: 100%; }
+    .dashboard-pagination { flex-direction: column; align-items: flex-start; }
   }
-
 
   @media (max-width: 430px) {
-
-    .metrics-grid {
-      grid-template-columns:
-        1fr;
-    }
-
-    .metric-card {
-      min-height:
-        112px;
-    }
-
-    .welcome-box h1 {
-      font-size:
-        1.25rem;
-    }
-
-    .welcome-box p {
-      font-size:
-        .78rem;
-    }
-
-    .pane-title {
-      font-size:
-        .94rem;
-    }
-
-    .case-title {
-      max-width:
-        200px;
-    }
-
+    .metrics-grid, .period-summary-grid { grid-template-columns: 1fr; }
   }
-
-
-  /* =========================================================
-     REDUCCIÓN DE MOVIMIENTO
-     ========================================================= */
-
-  @media (prefers-reduced-motion: reduce) {
-
-    .metric-card,
-    .btn-action,
-    .lnk-detalles,
-    .lnk-detalles span {
-      transition:
-        none !important;
-    }
-
-  }
-
 </style>
 {% endblock %}
 
-
 {% block content %}
-
 <div class="dashboard-page">
-
-  <!-- =======================================================
-       ENCABEZADO
-       ======================================================= -->
-
   <section class="welcome-box">
-
-    <div class="welcome-content">
-
-      <div class="welcome-eyebrow">
-        ConviData
-      </div>
-
-      <h1>
-        Panel de Convivencia Escolar
-      </h1>
-
+    <div>
+      <div class="welcome-eyebrow">ConviData</div>
+      <h1>Panel de Convivencia Escolar</h1>
       <p>
-        Bienvenido(a),
-        <strong>
-          {{ request.session.username|default:request.session.usuario_nombre }}
-        </strong>
-        · Bitácora oficial digitalizada
+        Bienvenido(a), <strong>{{ request.session.username|default:request.session.usuario_nombre }}</strong> · Bitácora oficial digitalizada
       </p>
-
     </div>
-
   </section>
 
-
-  <!-- =======================================================
-       MÉTRICAS
-       ======================================================= -->
-
   <div class="metrics-grid">
-
-    <!-- TOTAL -->
-
     <div class="metric-card card-total">
-
       <div class="metric-top">
-
-        <span class="metric-label">
-          Total Casos
-        </span>
-
-        <span
-          class="metric-icon"
-          aria-hidden="true"
-        >
-
-          <svg
-            width="16"
-            height="16"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M9 5h6M9 9h6M9 13h4M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
-            />
-
+        <span class="metric-label">Total Casos</span>
+        <span class="metric-icon" aria-hidden="true">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5h6M9 9h6M9 13h4M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
           </svg>
-
         </span>
-
       </div>
-
-      <span class="metric-num">
-        {{ total_casos }}
-      </span>
-
-      <span class="metric-sub">
-        Registros acumulados
-      </span>
-
+      <span class="metric-num">{{ total_casos }}</span>
+      <span class="metric-sub">Registros acumulados</span>
     </div>
-
-
-    <!-- LEVES -->
 
     <div class="metric-card card-leve">
-
       <div class="metric-top">
-
-        <span class="metric-label">
-          Faltas Leves
-        </span>
-
-        <span
-          class="metric-icon"
-          aria-hidden="true"
-        >
-
-          <svg
-            width="16"
-            height="16"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M12 9v4m0 4h.01M10.3 3.8 2.7 17a2 2 0 0 0 1.73 3h15.14a2 2 0 0 0 1.73-3L13.7 3.8a2 2 0 0 0-3.4 0Z"
-            />
-
+        <span class="metric-label">Faltas Leves</span>
+        <span class="metric-icon" aria-hidden="true">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.3 3.8 2.7 17a2 2 0 0 0 1.73 3h15.14a2 2 0 0 0 1.73-3L13.7 3.8a2 2 0 0 0-3.4 0Z" />
           </svg>
-
         </span>
-
       </div>
-
-      <span class="metric-num">
-        {{ casos_leves }}
-      </span>
-
-      <span class="metric-sub">
-        Clasificación leve
-      </span>
-
+      <span class="metric-num">{{ casos_leves }}</span>
+      <span class="metric-sub">Clasificación leve</span>
     </div>
-
-
-    <!-- GRAVES -->
 
     <div class="metric-card card-grave">
-
       <div class="metric-top">
-
-        <span class="metric-label">
-          Faltas Graves
-        </span>
-
-        <span
-          class="metric-icon"
-          aria-hidden="true"
-        >
-
-          <svg
-            width="16"
-            height="16"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M12 3v12m0 4v.01M4.93 19h14.14a2 2 0 0 0 1.73-3L13.73 4a2 2 0 0 0-3.46 0L3.2 16a2 2 0 0 0 1.73 3Z"
-            />
-
+        <span class="metric-label">Faltas Graves</span>
+        <span class="metric-icon" aria-hidden="true">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 4v.01M4.93 19h14.14a2 2 0 0 0 1.73-3L13.73 4a2 2 0 0 0-3.46 0L3.2 16a2 2 0 0 0 1.73 3Z" />
           </svg>
-
         </span>
-
       </div>
-
-      <span class="metric-num">
-        {{ casos_graves }}
-      </span>
-
-      <span class="metric-sub">
-        Clasificación grave
-      </span>
-
+      <span class="metric-num">{{ casos_graves }}</span>
+      <span class="metric-sub">Clasificación grave</span>
     </div>
-
-
-    <!-- GRAVÍSIMAS -->
 
     <div class="metric-card card-gravisima">
-
       <div class="metric-top">
-
-        <span class="metric-label">
-          Faltas Gravísimas
-        </span>
-
-        <span
-          class="metric-icon"
-          aria-hidden="true"
-        >
-
-          <svg
-            width="16"
-            height="16"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M12 9v4m0 4h.01M10.29 3.86 2.82 17a2 2 0 0 0 1.74 3h14.88a2 2 0 0 0 1.74-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
-            />
-
+        <span class="metric-label">Faltas Gravísimas</span>
+        <span class="metric-icon" aria-hidden="true">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 2.82 17a2 2 0 0 0 1.74 3h14.88a2 2 0 0 0 1.74-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
           </svg>
-
         </span>
-
       </div>
-
-      <span class="metric-num">
-        {{ casos_gravisimas }}
-      </span>
-
-      <span class="metric-sub">
-        Clasificación gravísima
-      </span>
-
+      <span class="metric-num">{{ casos_gravisimas }}</span>
+      <span class="metric-sub">Clasificación gravísima</span>
     </div>
-
   </div>
 
-
-  <!-- =======================================================
-       GRÁFICO POR ZONA
-       ======================================================= -->
-
   <section class="dashboard-panel">
-
     <div class="pane-header">
-
-      <h2 class="pane-title">
-
-        <span
-          class="pane-title-mark"
-          aria-hidden="true"
-        ></span>
-
-        <span>
-          Incidentes por Zona del Establecimiento
-        </span>
-
-      </h2>
-
-      <span class="pane-meta">
-        Últimos 30 días
-      </span>
-
+      <h2 class="pane-title">Incidentes por Zona del Establecimiento</h2>
+      <span class="pane-meta">Últimos 30 días</span>
     </div>
-
-    <div class="chart-wrapper">
-
-      <div id="apexBarrasZonas"></div>
-
-    </div>
-
+    <div id="apexBarrasZonas"></div>
   </section>
 
   <section class="dashboard-panel" aria-labelledby="resumen-periodo-title">
-
     <div class="pane-header">
-      <h2 class="pane-title" id="resumen-periodo-title">
-        <span class="pane-title-mark" aria-hidden="true"></span>
-        Resumen de los últimos 30 días
-      </h2>
+      <h2 class="pane-title" id="resumen-periodo-title">Resumen de los últimos 30 días</h2>
       <span class="pane-meta">Comparado con los 30 días anteriores</span>
     </div>
 
@@ -1578,682 +548,158 @@
         <span class="period-summary-note">Respecto a los 30 días anteriores</span>
       </div>
     </div>
-
   </section>
 
-
-  <!-- =======================================================
-       LISTADO DE CASOS
-       ======================================================= -->
-
   <section class="dashboard-panel">
-
     <div class="pane-header">
-
-      <h2 class="pane-title">
-
-        <span
-          class="pane-title-mark"
-          aria-hidden="true"
-        ></span>
-
-        <span>
-          Listado de casos
-        </span>
-
-      </h2>
-
-
-      <a
-        href="{% url 'registrar_caso' %}"
-        class="btn-action"
-      >
-
-        <svg
-          width="15"
-          height="15"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          stroke-width="2.5"
-        >
-
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M12 4v16m8-8H4"
-          />
-
+      <h2 class="pane-title">Listado de casos</h2>
+      <a href="{% url 'registrar_caso' %}" class="btn-action">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
         </svg>
-
         Nuevo Caso
-
       </a>
-
     </div>
 
-
     {% if casos_recientes %}
-
       <div class="table-scroll">
-
         <table class="recent-table">
-
           <thead>
-
             <tr>
-
-              <th>
-                ID
-              </th>
-
-              <th>
-                Caso / Título
-              </th>
-
-              <th>
-                Fecha
-              </th>
-
-              <th>
-                Lugar
-              </th>
-
-              <th style="text-align:right;">
-                Acción
-              </th>
-
+              <th>ID</th>
+              <th>Caso / Título</th>
+              <th>Fecha</th>
+              <th>Lugar</th>
+              <th style="text-align:right;">Acción</th>
             </tr>
-
           </thead>
-
-
           <tbody>
-
             {% for caso in casos_recientes %}
-
               <tr>
-
-                <td>
-
-                  <span class="case-id">
-                    #{{ caso.id }}
-                  </span>
-
-                </td>
-
-
-                <td>
-
-                  <span class="case-title">
-                    {{ caso.titulo }}
-                  </span>
-
-                </td>
-
-
-                <td>
-
-                  <span class="case-date">
-                    {{ caso.fecha|date:"d M, Y" }}
-                  </span>
-
-                </td>
-
-
-                <td>
-
-                  <span class="case-place">
-                    {{ caso.lugar }}
-                  </span>
-
-                </td>
-
-
+                <td><span class="case-id">#{{ caso.id }}</span></td>
+                <td><span class="case-title">{{ caso.titulo }}</span></td>
+                <td><span class="case-date">{{ caso.fecha|date:"d M, Y" }}</span></td>
+                <td><span class="case-place">{{ caso.lugar }}</span></td>
                 <td style="text-align:right;">
-
-                  <a
-                    href="{% url 'detalle_caso' caso.id %}"
-                    class="lnk-detalles"
-                  >
-
-                    Ver ficha
-
-                    <span aria-hidden="true">
-                      →
-                    </span>
-
-                  </a>
-
+                  <a href="{% url 'detalle_caso' caso.id %}" class="lnk-detalles">Ver ficha →</a>
                 </td>
-
               </tr>
-
             {% endfor %}
-
           </tbody>
-
         </table>
-
       </div>
-
     {% else %}
-
-      <div class="empty-state">
-
-        <div class="empty-state-icon">
-
-          <svg
-            width="19"
-            height="19"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="1.8"
-          >
-
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M9 5h6M9 9h6M9 13h4M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
-            />
-
-          </svg>
-
-        </div>
-
-        <p>
-          No existen casos registrados en el sistema actualmente.
-        </p>
-
-      </div>
-
+      <div class="empty-state">No existen casos registrados en el sistema actualmente.</div>
     {% endif %}
 
     <div class="dashboard-pagination" aria-label="Paginación del listado de casos">
       <span>
-        Página {{ pagina_casos.number }} de {{ pagina_casos.paginator.num_pages }}
-        · {{ pagina_casos.paginator.count }} casos
+        Página {{ pagina_casos.number }} de {{ pagina_casos.paginator.num_pages }} · {{ pagina_casos.paginator.count }} casos
       </span>
       <div class="dashboard-pagination-controls">
         {% if pagina_casos.has_previous %}
-          <a class="dashboard-pagination-link" href="?pagina={{ pagina_casos.previous_page_number }}" aria-label="Página anterior">
-            Anterior
-          </a>
+          <a class="dashboard-pagination-link" href="?pagina={{ pagina_casos.previous_page_number }}">Anterior</a>
         {% else %}
           <span class="dashboard-pagination-disabled" aria-disabled="true">Anterior</span>
         {% endif %}
         {% if pagina_casos.has_next %}
-          <a class="dashboard-pagination-link" href="?pagina={{ pagina_casos.next_page_number }}" aria-label="Página siguiente">
-            Siguiente
-          </a>
+          <a class="dashboard-pagination-link" href="?pagina={{ pagina_casos.next_page_number }}">Siguiente</a>
         {% else %}
           <span class="dashboard-pagination-disabled" aria-disabled="true">Siguiente</span>
         {% endif %}
       </div>
     </div>
-
   </section>
-
 </div>
-
 {% endblock %}
 
-
 {% block extra_js %}
-
+<script defer src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+  'use strict';
 
-  /* =========================================================
-     DATOS DEL GRÁFICO
-     ========================================================= */
+  const labelsZonas = JSON.parse('{{ zonas_labels_json|escapejs }}');
+  const dataZonas = JSON.parse('{{ zonas_data_json|escapejs }}');
+  const categoriasX = labelsZonas.length ? labelsZonas : ['Sin reportes recientes'];
+  const serieData = dataZonas.length ? dataZonas : [0];
+  let chartZonas = null;
 
-  const labelsZonas = JSON.parse(
-    '{{ zonas_labels_json|safe }}'
-  );
-
-  const dataZonas = JSON.parse(
-    '{{ zonas_data_json|safe }}'
-  );
-
-
-  const categoriasX =
-    labelsZonas.length
-      ? labelsZonas
-      : ['Sin reportes recientes'];
-
-
-  const serieData =
-    dataZonas.length
-      ? dataZonas
-      : [0];
-
-
-  /* =========================================================
-     COLORES DINÁMICOS SEGÚN TEMA
-     ========================================================= */
-
-  function obtenerColoresDashboard() {
-
-    const oscuro =
-      document.documentElement.getAttribute(
-        'data-theme'
-      ) === 'dark';
-
-
+  function obtenerColores() {
+    const oscuro = document.documentElement.getAttribute('data-theme') === 'dark';
     return {
-
-      guinda:
-        oscuro
-          ? '#a93636'
-          : '#7B1A1A',
-
-      gold:
-        oscuro
-          ? '#F0C030'
-          : '#D4A017',
-
-      texto:
-        oscuro
-          ? '#FFFFFF'
-          : '#1C0A0A',
-
-      textoSecundario:
-        oscuro
-          ? '#D8DEE8'
-          : '#5C3A2A',
-
-      textoSuave:
-        oscuro
-          ? '#AEB7C5'
-          : '#9B7060',
-
-      grid:
-        oscuro
-          ? 'rgba(255,255,255,.08)'
-          : 'rgba(123,26,26,.08)',
-
-      tooltipTheme:
-        oscuro
-          ? 'dark'
-          : 'light'
+      guinda: oscuro ? '#B83A3A' : '#7B1A1A',
+      textoSecundario: oscuro ? '#D1D1D6' : '#424245',
+      textoSuave: oscuro ? '#8E8E93' : '#86868B',
+      grid: oscuro ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+      tooltipTheme: oscuro ? 'dark' : 'light'
     };
   }
-
-
-  /* =========================================================
-     CONSTRUCCIÓN DEL GRÁFICO
-     ========================================================= */
 
   function renderizarGraficoZonas() {
+    const elemento = document.getElementById('apexBarrasZonas');
+    if (!elemento || typeof ApexCharts === 'undefined') return;
 
-    const elemento =
-      document.querySelector(
-        '#apexBarrasZonas'
-      );
-
-
-    if (
-      !elemento ||
-      typeof ApexCharts === 'undefined'
-    ) {
-      return;
-    }
-
-
-    const colores =
-      obtenerColoresDashboard();
-
-
-    elemento.innerHTML = '';
-
-
-    const opcionesZonas = {
-
-      series: [
-        {
-          name:
-            'Casos Registrados',
-
-          data:
-            serieData
-        }
-      ],
-
-
+    const c = obtenerColores();
+    const opciones = {
+      series: [{ name: 'Casos Registrados', data: serieData }],
       chart: {
-
-        type:
-          'bar',
-
-        height:
-          280,
-
-        fontFamily:
-          "'Inter', sans-serif",
-
-        background:
-          'transparent',
-
-        toolbar: {
-          show:
-            false
-        },
-
-        animations: {
-
-          enabled:
-            true,
-
-          easing:
-            'easeinout',
-
-          speed:
-            450
-        }
+        type: 'bar',
+        height: 260,
+        fontFamily: 'inherit',
+        background: 'transparent',
+        toolbar: { show: false },
+        animations: { enabled: false }
       },
-
-
-      colors: [
-        colores.guinda
-      ],
-
-
+      colors: [c.guinda],
       plotOptions: {
-
         bar: {
-
-          horizontal:
-            true,
-
-          borderRadius:
-            6,
-
-          borderRadiusApplication:
-            'end',
-
-          barHeight:
-            '48%'
+          horizontal: true,
+          borderRadius: 6,
+          borderRadiusApplication: 'end',
+          barHeight: '46%'
         }
       },
-
-
       dataLabels: {
-
-        enabled:
-          true,
-
-        style: {
-
-          colors: [
-            '#FFFFFF'
-          ],
-
-          fontSize:
-            '11px',
-
-          fontWeight:
-            700
-        },
-
-        formatter:
-          function (val) {
-
-            return val > 0
-              ? val
-              : '';
-
-          }
+        enabled: true,
+        style: { colors: ['#FFFFFF'], fontSize: '11px', fontWeight: 600 },
+        formatter: val => (val > 0 ? val : '')
       },
-
-
       xaxis: {
-
-        categories:
-          categoriasX,
-
-        labels: {
-
-          style: {
-
-            colors:
-              colores.textoSuave,
-
-            fontSize:
-              '11px'
-          }
-        },
-
-        axisBorder: {
-          show:
-            false
-        },
-
-        axisTicks: {
-          show:
-            false
-        },
-
-        tickAmount:
-          5
+        categories: categoriasX,
+        labels: { style: { colors: c.textoSuave, fontSize: '11px' } },
+        axisBorder: { show: false },
+        axisTicks: { show: false }
       },
-
-
       yaxis: {
-
-        labels: {
-
-          style: {
-
-            colors:
-              colores.textoSecundario,
-
-            fontSize:
-              '11px',
-
-            fontWeight:
-              600
-          }
-        }
+        labels: { style: { colors: c.textoSecundario, fontSize: '11px', fontWeight: 500 } }
       },
-
-
       grid: {
-
-        borderColor:
-          colores.grid,
-
-        strokeDashArray:
-          3,
-
-        xaxis: {
-
-          lines: {
-
-            show:
-              true
-          }
-        },
-
-        yaxis: {
-
-          lines: {
-
-            show:
-              false
-          }
-        }
+        borderColor: c.grid,
+        strokeDashArray: 3,
+        xaxis: { lines: { show: true } },
+        yaxis: { lines: { show: false } }
       },
-
-
-      states: {
-
-        hover: {
-
-          filter: {
-
-            type:
-              'lighten',
-
-            value:
-              .08
-          }
-        },
-
-        active: {
-
-          filter: {
-
-            type:
-              'none'
-          }
-        }
-      },
-
-
       tooltip: {
-
-        theme:
-          colores.tooltipTheme,
-
-        y: {
-
-          title: {
-
-            formatter:
-              function () {
-
-                return 'Total: ';
-
-              }
-          }
-        }
-      },
-
-
-      responsive: [
-
-        {
-
-          breakpoint:
-            700,
-
-          options: {
-
-            chart: {
-
-              height:
-                250
-            },
-
-            plotOptions: {
-
-              bar: {
-
-                barHeight:
-                  '52%'
-              }
-            },
-
-            yaxis: {
-
-              labels: {
-
-                style: {
-
-                  fontSize:
-                    '10px'
-                }
-              }
-            },
-
-            xaxis: {
-
-              labels: {
-
-                style: {
-
-                  fontSize:
-                    '10px'
-                }
-              }
-            }
-          }
-        }
-
-      ]
-
+        theme: c.tooltipTheme,
+        y: { title: { formatter: () => 'Total: ' } }
+      }
     };
 
-
-    const chart =
-      new ApexCharts(
-        elemento,
-        opcionesZonas
-      );
-
-
-    chart.render();
-
+    if (chartZonas) {
+      chartZonas.updateOptions(opciones, false, false, false);
+    } else {
+      chartZonas = new ApexCharts(elemento, opciones);
+      chartZonas.render();
+    }
   }
 
+  renderizarGraficoZonas();
 
-  /* =========================================================
-     INICIALIZACIÓN
-     ========================================================= */
-
-  document.addEventListener(
-    'DOMContentLoaded',
-    function () {
-
-      renderizarGraficoZonas();
-
-    }
-  );
-
-
-  /* =========================================================
-     ACTUALIZACIÓN AUTOMÁTICA DEL TEMA
-     ========================================================= */
-
-  const mediaQuery =
-    window.matchMedia(
-      '(prefers-color-scheme: dark)'
-    );
-
-
-  mediaQuery.addEventListener(
-    'change',
-    function () {
-
-      const aplicarTema =
-        () => {
-
-          document.documentElement.setAttribute(
-            'data-theme',
-            mediaQuery.matches
-              ? 'dark'
-              : 'light'
-          );
-
-        };
-
-
-      aplicarTema();
-
-
-      setTimeout(
-        function () {
-
-          renderizarGraficoZonas();
-
-        },
-        50
-      );
-
-    }
-  );
-
+  new MutationObserver(renderizarGraficoZonas).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme']
+  });
+});
 </script>
-
 {% endblock %}
