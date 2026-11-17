@@ -3,6 +3,7 @@
 import logging
 import os
 from datetime import timedelta
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -32,8 +33,8 @@ from ..permissions import ROLES_APROBACION_CASOS
 from ..reglamento import evaluar_reglas_para_caso
 from ..services.caso_service import crear_caso_persistido, filtrar_casos_del_curso
 from .auth_casos_controller import (
-    caso_visible_para_curso,
     bloquear_si_profesor_jefe,
+    caso_visible_para_curso,
     puede_editar_caso,
     validar_profesor_jefe,
 )
@@ -46,18 +47,22 @@ def historial_casos_view(request):
     if 'usuario_id' not in request.session:
         return redirect('login')
 
-    redireccion = bloquear_si_profesor_jefe(request, "Acceso denegado: como Profesor Jefe, solo puedes ver los casos de tu curso.")
+    redireccion = bloquear_si_profesor_jefe(
+        request,
+        "Acceso denegado: como Profesor Jefe, solo puedes ver los casos de tu curso.",
+    )
     if redireccion:
         return redireccion
 
-    # RF-13: parámetros de búsqueda y filtros (vienen por GET, así se puede compartir/recargar la URL filtrada)
+    # RF-13: parámetros de búsqueda y filtros
     busqueda = request.GET.get('q', '').strip()
     filtro_curso_id = request.GET.get('curso', '').strip()
     filtro_gravedad = request.GET.get('gravedad', '').strip()
     filtro_fecha_desde = request.GET.get('fecha_desde', '').strip()
     filtro_fecha_hasta = request.GET.get('fecha_hasta', '').strip()
 
-    casos_query = Caso.objects.all().select_related('lugar').order_by('-caso_fecha', '-caso_id')
+    # Ordenar estrictamente del más reciente al más antiguo por ID de creación
+    casos_query = Caso.objects.all().select_related('lugar').order_by('-caso_id')
 
     if busqueda:
         casos_query = casos_query.filter(caso_descripcion__icontains=busqueda)
@@ -72,22 +77,24 @@ def historial_casos_view(request):
         casos_query = casos_query.filter(caso_fecha__lte=filtro_fecha_hasta)
 
     if filtro_gravedad:
-        # 'tipo_falta' vive en la tabla 'involucran', que no tiene columna 'id',
-        # por eso se consulta con SQL directo (igual que en el resto del sistema).
         with connection.cursor() as cursor:
             cursor.execute("SELECT DISTINCT caso_id FROM involucran WHERE tipo_falta = %s", [filtro_gravedad])
             ids_con_gravedad = [fila[0] for fila in cursor.fetchall()]
         casos_query = casos_query.filter(caso_id__in=ids_con_gravedad)
 
-    lista_casos_formateada = []
+    # Paginación en base de datos: 10 casos por página (evita cargar toda la tabla en memoria)
+    paginador = Paginator(casos_query, 10)
+    numero_pagina = request.GET.get('pagina')
+    pagina_casos = paginador.get_page(numero_pagina)
 
+    lista_casos_formateada = []
     rol_usuario = request.session.get('usuario_rol', '')
     ahora = timezone.now()
 
-    for caso in casos_query:
+    for caso in pagina_casos.object_list:
         titulo = "Sin título"
         descripcion_limpia = caso.caso_descripcion if caso.caso_descripcion else ""
-        
+
         if descripcion_limpia.startswith('['):
             try:
                 partes = descripcion_limpia.split('] - ', 1)
@@ -99,13 +106,15 @@ def historial_casos_view(request):
         else:
             titulo = descripcion_limpia[:40] + "..." if len(descripcion_limpia) > 40 else descripcion_limpia
 
-        # RF-52 / RF-53: ¿este usuario puede eliminar este caso?
-        puede_eliminar = False
-        if rol_usuario == 'Administrador':
-            puede_eliminar = True
-        elif rol_usuario == 'Inspector':
-            if caso.caso_creado_en and (ahora - caso.caso_creado_en) <= timedelta(hours=12):
-                puede_eliminar = True
+        # RF-52 / RF-53: permisos de eliminación
+        puede_eliminar = (
+            rol_usuario == 'Administrador'
+            or (
+                rol_usuario == 'Inspector'
+                and caso.caso_creado_en
+                and (ahora - caso.caso_creado_en) <= timedelta(hours=12)
+            )
+        )
 
         lista_casos_formateada.append({
             'caso_id': caso.caso_id,
@@ -118,16 +127,11 @@ def historial_casos_view(request):
             'puede_editar': puede_editar_caso(rol_usuario, caso, ahora),
         })
 
-    total_casos_filtrados = len(lista_casos_formateada)
-
-    # Paginación: 10 casos por página, con indicador y flechas Anterior/Siguiente
-    paginador = Paginator(lista_casos_formateada, 10)
-    numero_pagina = request.GET.get('pagina')
-    pagina_casos = paginador.get_page(numero_pagina)
+    pagina_casos.object_list = lista_casos_formateada
 
     context = {
-        'casos': pagina_casos,  # Page object: iterable + .has_next, .has_previous, .number, etc.
-        'total_casos': total_casos_filtrados,  # RF-46 (cuenta TODOS los resultados, no solo los de esta página)
+        'casos': pagina_casos,
+        'total_casos': paginador.count,
         'mostrar_contador': rol_usuario in ('Administrador', 'Inspector', 'PConvivencia'),
         'cursos': Curso.objects.all().order_by('curso_grado', 'curso_letra'),
         'filtros': {
@@ -137,7 +141,9 @@ def historial_casos_view(request):
             'fecha_desde': filtro_fecha_desde,
             'fecha_hasta': filtro_fecha_hasta,
         },
-        'hay_filtros_activos': bool(busqueda or filtro_curso_id or filtro_gravedad or filtro_fecha_desde or filtro_fecha_hasta),
+        'hay_filtros_activos': bool(
+            busqueda or filtro_curso_id or filtro_gravedad or filtro_fecha_desde or filtro_fecha_hasta
+        ),
     }
     return render(request, 'gestion_casos/historial_casos.html', context)
 
@@ -162,7 +168,6 @@ def registrar_caso_view(request):
         if redireccion:
             return redireccion
 
-    # ZONA HORARIA LOCAL
     fecha_hoy = timezone.localdate().strftime('%Y-%m-%d')
 
     if request.method == 'POST':
@@ -171,15 +176,12 @@ def registrar_caso_view(request):
         lugar_id = request.POST.get('lugar')
         descripcion_cuerpo = request.POST.get('descripcion')
         tipo_falta = request.POST.get('tipo_falta')
-        
-        # CAPTURA DE ARREGLOS PARA MÚLTIPLES ESTUDIANTES Y NÚMERO DE LISTA
+
         nombres = request.POST.getlist('alumno_nombre[]')
         apaternos = request.POST.getlist('alumno_apaterno[]')
         amaternos = request.POST.getlist('alumno_amaterno[]')
         num_listas = request.POST.getlist('alumno_num_lista[]')
         cursos_ids = request.POST.getlist('curso[]')
-        # Si el usuario eligió un alumno ya existente desde el buscador, viene su ID aquí.
-        # Si está vacío, significa que se debe crear un alumno nuevo con los datos tipeados.
         estudiantes_ids = request.POST.getlist('estudiante_id[]')
 
         fecha_validada = parse_date(fecha) if fecha else None
@@ -327,7 +329,7 @@ def registrar_caso_view(request):
                 lugar_instancia = Lugar.objects.get(pk=lugar_id)
                 usuario_id_sesion = request.session.get('usuario_id')
                 usuario_instancia = Usuario.objects.get(pk=usuario_id_sesion)
-                nuevo_caso = crear_caso_persistido(
+                crear_caso_persistido(
                     request,
                     usuario_instancia,
                     fecha,
@@ -341,7 +343,7 @@ def registrar_caso_view(request):
 
             messages.success(request, f"Caso registrado exitosamente por {usuario_instancia.usuario_nombre}.")
             return redirect('historial_casos')
-            
+
         except Exception as e:
             messages.error(request, f"Hubo un problema al registrar en PostgreSQL: {str(e)}")
             return redirect('registrar_caso')
@@ -356,7 +358,7 @@ def registrar_caso_view(request):
     )
     if curso_profesor:
         estudiantes_existentes = estudiantes_existentes.filter(curso=curso_profesor)
-    
+
     context = {
         'lugares': lugares,
         'cursos': cursos,
@@ -519,7 +521,6 @@ def detalle_caso_view(request, caso_id):
 
     caso = get_object_or_404(Caso.objects.select_related('lugar', 'usuario'), pk=caso_id)
 
-    # El Profesor Jefe solo puede ver el detalle si el caso pertenece a un alumno de SU curso
     if request.session.get('usuario_rol') == 'Profesor Jefe':
         try:
             profesor = ProfesorJefe.objects.select_related('curso').get(usuario_id=request.session['usuario_id'])
@@ -547,7 +548,6 @@ def detalle_caso_view(request, caso_id):
     else:
         titulo = descripcion_limpia[:40] + "..." if len(descripcion_limpia) > 40 else descripcion_limpia
 
-    # 🌟 DEFINIMOS LAS VARIABLES ANTES DEL BUCLE/SQL PARA EVITAR EL ERROR DE PYLANCE
     relaciones = []
     tipo_falta = "No especificado"
 
@@ -559,13 +559,13 @@ def detalle_caso_view(request, caso_id):
         INNER JOIN curso cu ON e.curso_id = cu.curso_id
         WHERE i.caso_id = %s
     """
-    
+
     with connection.cursor() as cursor:
         cursor.execute(query_sql, [caso_id])
         rows = cursor.fetchall()
-        
+
         for row in rows:
-            tipo_falta = row[6]  # 🌟 Se actualiza con el valor real traído desde la BD
+            tipo_falta = row[6]
             relaciones.append({
                 'estudiante': {
                     'estudiante_nombre': row[0],
@@ -609,16 +609,15 @@ def detalle_caso_view(request, caso_id):
             request.session.get('usuario_rol', ''),
             caso,
         ),
-        'nombre_foto': caso.evidencia, 
+        'nombre_foto': caso.evidencia,
         'evidencia_url': evidencia_url,
         'evidencia_es_imagen': evidencia_es_imagen,
     }
     return render(request, 'gestion_casos/detalle_caso.html', context)
 
 
-# editar un caso
+# EDITAR UN CASO
 def editar_caso_view(request, caso_id):
-    # 1. Seguridad: Validar sesión activa
     if 'usuario_id' not in request.session:
         return redirect('login')
 
@@ -629,10 +628,8 @@ def editar_caso_view(request, caso_id):
     usuario_id_sesion = request.session.get('usuario_id')
     usuario_instancia = Usuario.objects.get(pk=usuario_id_sesion)
 
-    # 2. Rescatar el caso o lanzar error 404 si no existe
     caso = get_object_or_404(Caso, pk=caso_id)
     creador_caso = caso.usuario
-    usuario_id_sesion = request.session['usuario_id']
     rol_usuario = request.session.get('usuario_rol', '')
 
     if not puede_editar_caso(rol_usuario, caso):
@@ -647,7 +644,6 @@ def editar_caso_view(request, caso_id):
             messages.error(request, "Acceso denegado: no tienes permisos para editar este caso.")
         return redirect('historial_casos')
 
-    # 4. Obtener TODOS los estudiantes involucrados en el caso (antes traía solo 1 con LIMIT 1)
     query_estudiantes = """
         SELECT estudiante_id, tipo_falta FROM involucran WHERE caso_id = %s
     """
@@ -658,20 +654,18 @@ def editar_caso_view(request, caso_id):
         filas = cursor.fetchall()
         for fila in filas:
             lista_ids_involucrados.append(fila[0])
-            tipo_falta_actual = fila[1]  # la severidad es a nivel de caso, igual para todos
+            tipo_falta_actual = fila[1]
 
     estudiantes_qs = Estudiante.objects.filter(estudiante_id__in=lista_ids_involucrados).select_related('curso')
     estudiantes_dict = {e.estudiante_id: e for e in estudiantes_qs}
     estudiantes_involucrados = [estudiantes_dict[eid] for eid in lista_ids_involucrados if eid in estudiantes_dict]
 
-    # 5. Procesar el envío del formulario (POST)
     if request.method == 'POST':
         titulo = request.POST.get('titulo')
         descripcion_cuerpo = request.POST.get('descripcion')
         lugar_id = request.POST.get('lugar')
         tipo_falta = request.POST.get('tipo_falta')
 
-        # Ahora vienen como listas, un valor por cada alumno del formulario
         estudiante_ids = request.POST.getlist('estudiante_id[]')
         nombres = request.POST.getlist('alumno_nombre[]')
         apaternos = request.POST.getlist('alumno_apaterno[]')
@@ -680,12 +674,10 @@ def editar_caso_view(request, caso_id):
 
         try:
             with transaction.atomic():
-                # Actualizar datos del Caso
                 caso.caso_descripcion = f"[{titulo}] - {descripcion_cuerpo}"
                 caso.lugar = Lugar.objects.get(pk=lugar_id)
                 caso.save()
 
-                # Actualizar datos de cada alumno involucrado
                 for est_id, nom, apat, amat, c_id in zip(estudiante_ids, nombres, apaternos, amaternos, cursos_ids):
                     estudiante_obj = Estudiante.objects.get(pk=est_id)
                     estudiante_obj.estudiante_nombre = nom.strip()
@@ -694,7 +686,6 @@ def editar_caso_view(request, caso_id):
                     estudiante_obj.curso = Curso.objects.get(pk=c_id)
                     estudiante_obj.save()
 
-                    # Actualizar el tipo de falta en la tabla intermedia nativa
                     query_update_intermedia = """
                         UPDATE involucran SET tipo_falta = %s WHERE caso_id = %s AND estudiante_id = %s
                     """
@@ -709,7 +700,6 @@ def editar_caso_view(request, caso_id):
                     fecha_evento=timezone.now(),
                 )
 
-                # Notificar al creador si otro usuario modificó el caso
                 if creador_caso and creador_caso.usuario_id != usuario_instancia.usuario_id:
                     notificacion_modificacion = Notificacion.objects.create(
                         usuario=creador_caso,
@@ -752,8 +742,6 @@ def editar_caso_view(request, caso_id):
         except Exception as e:
             messages.error(request, f"Error al procesar la edición: {str(e)}")
 
-    # 6. Preparar los datos pre-cargados para el formulario (GET)
-    # Separamos el título de la descripción para rellenar los inputs limpios
     texto_completo = caso.caso_descripcion if caso.caso_descripcion else ""
     titulo_preparado = ""
     descripcion_preparada = texto_completo
@@ -767,7 +755,7 @@ def editar_caso_view(request, caso_id):
         'titulo_actual': titulo_preparado,
         'descripcion_actual': descripcion_preparada,
         'tipo_falta_actual': tipo_falta_actual,
-        'estudiantes': estudiantes_involucrados,   # <-- ahora es una lista, no un solo objeto
+        'estudiantes': estudiantes_involucrados,
         'lugares': Lugar.objects.all().order_by('lugar_nombre'),
         'cursos': Curso.objects.all().order_by('curso_grado', 'curso_letra')
     }
@@ -788,7 +776,10 @@ def eliminar_caso_view(request, caso_id):
         if caso.caso_creado_en and (timezone.now() - caso.caso_creado_en) <= timedelta(hours=12):
             puede_eliminar = True
         else:
-            messages.error(request, "Como Inspector, solo puedes eliminar un caso dentro de las primeras 12 horas desde su creación.")
+            messages.error(
+                request,
+                "Como Inspector, solo puedes eliminar un caso dentro de las primeras 12 horas desde su creación.",
+            )
             return redirect('historial_casos')
 
     if not puede_eliminar:
@@ -804,6 +795,7 @@ def eliminar_caso_view(request, caso_id):
             creador = caso.usuario
             if (
                 creador
+                and usuario_instancia
                 and creador.usuario_id != usuario_instancia.usuario_id
             ):
                 clave = (
@@ -829,7 +821,7 @@ def eliminar_caso_view(request, caso_id):
                         cambiado_por=usuario_instancia,
                         motivo='Notificación creada al eliminar un caso de otro usuario.',
                     )
-            caso.delete()  # El CASCADE elimina también sus filas en 'involucran'
+            caso.delete()
 
             if usuario_instancia:
                 HistorialUsuario.objects.create(
@@ -845,7 +837,7 @@ def eliminar_caso_view(request, caso_id):
     return redirect('historial_casos')
 
 
-# ELIMINAR UN ALUMNO DE UN CASO (botón "✕" en la pantalla de edición)
+# ELIMINAR UN ALUMNO DE UN CASO
 def eliminar_estudiante_caso_view(request, caso_id, estudiante_id):
     if 'usuario_id' not in request.session:
         return redirect('login')
@@ -867,7 +859,6 @@ def eliminar_estudiante_caso_view(request, caso_id, estudiante_id):
             )
         return redirect('historial_casos')
 
-    # No permitir dejar un caso sin ningún alumno involucrado
     total_involucrados = Involucran.objects.filter(caso_id=caso_id).count()
     if total_involucrados <= 1:
         messages.error(request, "No puedes eliminar al único alumno involucrado en este caso.")
@@ -897,7 +888,6 @@ def mis_casos_curso_view(request):
         return redirect('dashboard')
 
     casos_del_curso, filtros = filtrar_casos_del_curso(request, profesor.curso)
-    from urllib.parse import urlencode
     filtros_query = urlencode({key: value for key, value in filtros.items() if value})
 
     context = {
