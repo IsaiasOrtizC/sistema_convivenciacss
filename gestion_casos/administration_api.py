@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
@@ -33,6 +34,19 @@ from .models import (
 )
 
 logger = logging.getLogger(__name__)
+
+_VALORES_NULOS_API = {"", "-", "--", "n/a", "na", "null", "none", "undefined", "nan"}
+_CURSO_COMPACTO_API_RE = re.compile(r"^\s*(\d+)\s*(?:[°ºo.]*\s*)?([A-Za-zÁÉÍÓÚáéíóú]+)?\s*$")
+_ALIASES_COLUMNAS_API = {
+    "nombre_completo": {"nombre completo", "alumno", "estudiante", "nombre alumno", "nombre estudiante"},
+    "nombre": {"nombres", "nombre", "primer nombre"},
+    "apaterno": {"apellido paterno", "ap. paterno", "ap paterno", "apaterno", "paterno"},
+    "amaterno": {"apellido materno", "ap. materno", "ap materno", "amaterno", "materno"},
+    "curso": {"curso", "codigo curso", "código curso"},
+    "grado": {"grado", "nivel", "enseñanza", "ensenanza"},
+    "paralelo": {"paralelo", "letra", "seccion", "sección"},
+    "lista": {"número de lista", "numero de lista", "n° lista", "no. lista", "nro lista", "lista", "n lista"},
+}
 
 
 def _es_administrador(request):
@@ -93,6 +107,117 @@ def _datos_usuario(usuario, curso_por_usuario=None):
             if usuario.usuario_ultimo_acceso else None
         ),
     }
+
+
+def _limpiar_celda_api(valor):
+    """Anula celdas vacías o con valores basura devolviendo None; si sirve, retorna texto limpio."""
+    if valor is None:
+        return None
+    texto = " ".join(str(valor).strip().split())
+    if texto.lower() in _VALORES_NULOS_API:
+        return None
+    return texto
+
+
+def _normalizar_col_api(texto: str) -> str:
+    """Normaliza tildes, espacios y mayúsculas para comparar encabezados."""
+    return " ".join(_quitar_tildes(texto).strip().lower().split())
+
+
+def _detectar_columnas_api(filas_crudas):
+    """Busca la fila de encabezados y devuelve (indice_fila, {campo: indice_col}, aliases_norm_global)."""
+    aliases_norm_global = {
+        _normalizar_col_api(alias)
+        for aliases in _ALIASES_COLUMNAS_API.values()
+        for alias in aliases
+    }
+    for idx, fila in enumerate(filas_crudas):
+        limpias = [_limpiar_celda_api(c) for c in fila]
+        if not any(limpias):
+            continue
+
+        mapa_col = {}
+        for col_idx, celda in enumerate(limpias):
+            if not celda:
+                continue
+            clave_norm = _normalizar_col_api(celda)
+            for campo, aliases in _ALIASES_COLUMNAS_API.items():
+                if clave_norm in {_normalizar_col_api(a) for a in aliases} and campo not in mapa_col:
+                    mapa_col[campo] = col_idx
+                    break
+
+        tiene_nombre = "nombre_completo" in mapa_col or "nombre" in mapa_col
+        tiene_contexto = any(k in mapa_col for k in ("apaterno", "curso", "grado"))
+        if tiene_nombre and tiene_contexto:
+            return idx, mapa_col, aliases_norm_global
+
+    return None, {}, aliases_norm_global
+
+
+def _separar_nombre_completo_api(nombre_completo: str):
+    """Separa un nombre completo en (nombre, apaterno, amaterno)."""
+    partes = [p for p in nombre_completo.split() if p]
+    if len(partes) >= 3:
+        return " ".join(partes[2:]), partes[0], partes[1]
+    if len(partes) == 2:
+        return partes[1], partes[0], ""
+    return (partes[0] if partes else ""), "", ""
+
+
+def _parsear_curso_api(curso_val, grado_val, paralelo_val):
+    """Extrae (grado_formateado, letra_paralelo) desde columnas separadas o combinadas."""
+    curso_limpio = _limpiar_celda_api(curso_val)
+    grado_limpio = _limpiar_celda_api(grado_val)
+    paralelo_limpio = _limpiar_celda_api(paralelo_val)
+
+    if grado_limpio:
+        match_g = _CURSO_COMPACTO_API_RE.match(grado_limpio)
+        grado_fmt = f"{int(match_g.group(1))}° Medio" if match_g else grado_limpio
+        letra_fmt = (
+            paralelo_limpio
+            or (match_g.group(2) if match_g and match_g.group(2) else "")
+        ).strip().upper()
+        return grado_fmt, letra_fmt
+
+    if curso_limpio:
+        match_c = _CURSO_COMPACTO_API_RE.match(curso_limpio)
+        if match_c:
+            num = int(match_c.group(1))
+            resto = (match_c.group(2) or "").strip()
+            if paralelo_limpio:
+                return f"{num}° Medio", paralelo_limpio.upper()
+            if len(resto) > 1 and resto[-1].isalpha():
+                return f"{num}° Medio", resto[-1].upper()
+            if resto.isalpha():
+                return f"{num}° Medio", resto.upper()
+            return f"{num}° Medio", ""
+        return curso_limpio, (paralelo_limpio or "").upper()
+
+    return "", (paralelo_limpio or "").upper()
+
+
+def _es_fila_ruido_api(valores_utiles: list[str], aliases_norm_global: set[str]) -> bool:
+    """Descarta filas de encabezado institucional, totales o repeticiones de cabecera."""
+    if not valores_utiles:
+        return True
+    union = " ".join(v.lower() for v in valores_utiles)
+    ruidos = (
+        "colegio particular",
+        "listado simple de alumnos",
+        "fono ",
+        "contacto@",
+        "total alumnos",
+        "subtotal",
+        "registros válidos",
+        "registros validos",
+    )
+    if any(r in union for r in ruidos):
+        return True
+
+    coincidencias_header = sum(
+        1 for v in valores_utiles if _normalizar_col_api(v) in aliases_norm_global
+    )
+    return coincidencias_header >= 2
 
 
 class UsuariosAdminAPIView(APIView):
@@ -646,49 +771,90 @@ class EstudiantesAdminAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            hoja = load_workbook(archivo, data_only=True).active
+            libro = load_workbook(archivo, data_only=True)
+            hoja = libro.active
+            filas_crudas = list(hoja.iter_rows(values_only=True))
+            libro.close()
         except Exception:
             return Response(
                 {'detail': 'No se pudo leer el archivo Excel.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        idx_header, mapa_col, aliases_norm_global = _detectar_columnas_api(filas_crudas)
+        if idx_header is None:
+            return Response(
+                {
+                    'detail': (
+                        'No se encontraron columnas reconocibles de estudiante '
+                        '(nombre/nombre completo, apellido o curso/grado) en el Excel.'
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        def _celda_campo(fila_limpia, campo):
+            col_idx = mapa_col.get(campo)
+            if col_idx is not None and col_idx < len(fila_limpia):
+                return fila_limpia[col_idx]
+            return None
+
         agregados, duplicados, errores = [], [], []
         omitidos = 0
-        for numero_fila, fila in enumerate(
-            hoja.iter_rows(min_row=2, max_col=6, values_only=True),
-            start=2,
-        ):
-            if not fila or all(valor is None or not str(valor).strip() for valor in fila):
+
+        for offset, fila in enumerate(filas_crudas[idx_header + 1:], start=idx_header + 2):
+            fila_limpia = [_limpiar_celda_api(valor) for valor in fila]
+            valores_utiles = [v for v in fila_limpia if v is not None]
+
+            if _es_fila_ruido_api(valores_utiles, aliases_norm_global):
                 continue
+
             try:
-                nombre, apaterno, amaterno = (
-                    str(fila[indice]).strip() if fila[indice] is not None else ''
-                    for indice in range(3)
+                nombre_completo = _celda_campo(fila_limpia, "nombre_completo")
+                if nombre_completo:
+                    nombre, apaterno, amaterno = _separar_nombre_completo_api(nombre_completo)
+                    nombre = _celda_campo(fila_limpia, "nombre") or nombre
+                    apaterno = _celda_campo(fila_limpia, "apaterno") or apaterno
+                    amaterno = _celda_campo(fila_limpia, "amaterno") or amaterno
+                else:
+                    nombre = _celda_campo(fila_limpia, "nombre") or ""
+                    apaterno = _celda_campo(fila_limpia, "apaterno") or ""
+                    amaterno = _celda_campo(fila_limpia, "amaterno") or ""
+
+                grado, letra = _parsear_curso_api(
+                    _celda_campo(fila_limpia, "curso"),
+                    _celda_campo(fila_limpia, "grado"),
+                    _celda_campo(fila_limpia, "paralelo"),
                 )
-                grado_valor, letra_valor = fila[3], fila[4]
-                if not all((nombre, apaterno, amaterno, grado_valor is not None, letra_valor)):
-                    raise ValueError('faltan datos obligatorios')
-                grado = (
-                    f'{int(grado_valor)}° Medio'
-                    if isinstance(grado_valor, (int, float))
-                    else str(grado_valor).strip()
-                )
-                if grado.isdigit():
-                    grado = f'{grado}° Medio'
+
+                if not all((nombre, apaterno, grado, letra)):
+                    raise ValueError('faltan datos obligatorios (nombre, apellido o curso)')
+
+                amaterno = amaterno or ""
                 curso = Curso.objects.filter(
                     curso_grado__iexact=grado,
-                    curso_letra__iexact=str(letra_valor).strip(),
+                    curso_letra__iexact=letra,
                 ).first()
                 if curso is None:
-                    raise ValueError(f'el curso {grado} {letra_valor} no existe')
-                raw_lista = fila[5]
-                lista = int(raw_lista) if raw_lista not in (None, '') and str(raw_lista).strip().isdigit() else None
+                    raise ValueError(f'el curso {grado} {letra} no existe')
+
+                raw_lista = _limpiar_celda_api(_celda_campo(fila_limpia, "lista"))
+                lista = None
+                if raw_lista:
+                    if raw_lista.endswith('.0') and raw_lista[:-2].isdigit():
+                        raw_lista = raw_lista[:-2]
+                    if raw_lista.isdigit():
+                        cand = int(raw_lista)
+                        if 1 <= cand <= 99:
+                            lista = cand
+
                 if lista is not None and Estudiante.objects.filter(
                     curso=curso,
                     estudiante_numero_lista=lista,
                 ).exists():
                     lista = None
-                    errores.append(f'Fila {numero_fila}: número de lista duplicado; se omitió ese número.')
+                    errores.append(f'Fila {offset}: número de lista duplicado; se omitió ese número.')
+
                 estudiante, creado = Estudiante.objects.get_or_create(
                     estudiante_nombre=nombre,
                     estudiante_apaterno=apaterno,
@@ -698,15 +864,18 @@ class EstudiantesAdminAPIView(APIView):
                 )
                 if creado:
                     agregados.append(
-                        f'{nombre} {apaterno} {amaterno} ({grado} {curso.curso_letra})'
+                        f'{nombre} {apaterno} {amaterno} ({grado} {curso.curso_letra})'.strip()
                     )
                 else:
-                    duplicados.append(f'{nombre} {apaterno} {amaterno} ({grado} {curso.curso_letra})')
+                    duplicados.append(
+                        f'{nombre} {apaterno} {amaterno} ({grado} {curso.curso_letra})'.strip()
+                    )
                     omitidos += 1
             except Exception as error:
-                logger.info('Fila %s del Excel no importada: %s', numero_fila, error)
-                errores.append(f'Fila {numero_fila}: {error}')
+                logger.info('Fila %s del Excel no importada: %s', offset, error)
+                errores.append(f'Fila {offset}: {error}')
                 omitidos += 1
+
         HistorialImportacionEstudiantes.objects.create(
             archivo=os.path.basename(archivo.name)[:255],
             usuario_id_importo=request.user.pk,

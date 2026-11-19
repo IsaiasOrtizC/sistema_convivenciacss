@@ -1,37 +1,58 @@
-Este módulo de tareas de Celery (`tasks.py`) presenta un error de sintaxis, problemas de seguridad en el renderizado HTML y falta de tolerancia a fallos en la cola de correos:
+"""Tareas asíncronas de notificación por correo para ConviData."""
 
-1. **Error de sintaxis y asunto mal formateado en `enviar_alerta_caso_gravisimo`:**
-Hay un guion `-` suelto al inicio de la línea del `subject` (que rompe la compilación de Python) y el texto dice `#{caso_id}ConviData` sin separador (`#{caso_id} - ConviData`).
-2. **Inyección de HTML (`XSS` en correo):**
-Variables como `nombre`, `apaterno`, `contrasena`, `zona` o `tipo_falta` se interpolan directamente en el f-string sin escapar (`html.escape()`). Si un nombre o zona contiene `<` o `&`, rompe la estructura del correo.
-3. **Resiliencia en Celery (`autoretry_for`) y consistencia en el remitente (`from`):**
-* Las llamadas a APIs externas como Resend pueden fallar temporalmente por límites de tasa (`429`) o cortes de red. Agregar `autoretry_for=(Exception,)` con `retry_backoff=True` evita perder correos importantes.
-* Las dos primeras tareas tenían hardcodeado `"onboarding@resend.dev"` mientras que la tercera usaba `settings.RESEND_FROM_EMAIL`. Unificarlo en una función auxiliar `_remitente()` facilita pasar a producción con dominio propio.
-
-
-4. **Privacidad en múltiples destinatarios:**
-En `enviar_alerta_caso_gravisimo`, si `destinatarios` tiene varios encargados, pasar todos en `"to"` expone sus correos entre sí y puede disparar filtros antispam; enviar cada correo individualmente (o usar `"bcc"` cuando haya más de un destinatario) es más limpio y seguro.
-
-### Código optimizado
-
-```python
 from html import escape
+import os
 
 import resend
 from celery import shared_task
 from django.conf import settings
 
-
-def _configurar_resend():
-    resend.api_key = settings.RESEND_API_KEY
-    return getattr(
-        settings,
-        "RESEND_FROM_EMAIL",
-        "ConviData <onboarding@resend.dev>",
-    )
+CORREO_PRUEBA_RESEND = "matstreaming0752@gmail.com"
 
 
-def _plantilla_correo(subtitulo_header, contenido_html):
+def _obtener_api_key() -> str:
+    """Obtiene la API key vigente de Resend desde el entorno o settings."""
+    return (
+        os.getenv("RESEND_API_KEY")
+        or getattr(settings, "RESEND_API_KEY", "")
+    ).strip()
+
+
+def _configurar_resend() -> str:
+    """Configura la API key de Resend y devuelve el remitente institucional."""
+    api_key = _obtener_api_key()
+    if api_key:
+        resend.api_key = api_key
+
+    remitente = (
+        os.getenv("RESEND_FROM_EMAIL")
+        or getattr(settings, "RESEND_FROM_EMAIL", "ConviData <onboarding@resend.dev>")
+    ).strip()
+    return remitente
+
+
+def _resolver_destinatarios_prueba(destinatarios, remitente: str) -> list[str]:
+    """Redirige a la casilla de pruebas cuando se envía desde @resend.dev sin dominio propio."""
+    limpios = [d.strip() for d in destinatarios if d and d.strip()]
+    if not limpios:
+        return []
+
+    # Sin dominio propio verificado en Resend, las pruebas con @resend.dev solo pueden
+    # entregarse a la cuenta autorizada de pruebas.
+    if remitente.lower().endswith("@resend.dev>"):
+        return [CORREO_PRUEBA_RESEND]
+
+    return limpios
+
+
+def _es_caso_gravisimo(tipo_falta) -> bool:
+    """Valida si la clasificación corresponde estrictamente a un caso gravísimo."""
+    clasificacion = (str(tipo_falta or "")).strip().lower()
+    return clasificacion in {"gravísima", "gravisima"}
+
+
+def _plantilla_correo(subtitulo_header: str, contenido_html: str) -> str:
+    """Envuelve el cuerpo del correo en la plantilla HTML institucional."""
     return f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Arial, sans-serif;
                 max-width: 560px; margin: 0 auto; border: 1px solid rgba(123, 26, 26, 0.16);
@@ -54,8 +75,13 @@ def _plantilla_correo(subtitulo_header, contenido_html):
 
 
 @shared_task(autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
-def enviar_correo_prueba(destinatario):
+def enviar_correo_prueba(destinatario: str):
+    """Envía un correo de prueba para verificar la conexión entre Celery y Resend."""
     remitente = _configurar_resend()
+    destinos = _resolver_destinatarios_prueba([destinatario], remitente)
+    if not destinos:
+        return None
+
     cuerpo = """
         <h2 style="font-size: 1.15rem; margin-top: 0; color: #7B1A1A;">Prueba de conexión</h2>
         <p style="font-size: 0.9rem;">Este correo fue enviado mediante Celery y Resend.</p>
@@ -63,7 +89,7 @@ def enviar_correo_prueba(destinatario):
     """
     params = {
         "from": remitente,
-        "to": [destinatario],
+        "to": destinos,
         "subject": "Prueba Celery + Resend - ConviData",
         "html": _plantilla_correo("Colegio San Sebastián de Melipilla", cuerpo),
     }
@@ -71,11 +97,16 @@ def enviar_correo_prueba(destinatario):
 
 
 @shared_task(autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
-def enviar_credenciales_usuario(destinatario, nombre, apaterno, contrasena):
+def enviar_credenciales_usuario(destinatario: str, nombre: str, apaterno: str, contrasena: str):
+    """Envía las credenciales temporales a un funcionario recién creado."""
     remitente = _configurar_resend()
+    destinos = _resolver_destinatarios_prueba([destinatario], remitente)
+    if not destinos:
+        return None
 
+    # Se escapan los datos dinámicos para prevenir inyección HTML (XSS) en el correo.
     nombre_seguro = escape(f"{nombre} {apaterno}".strip())
-    destinatario_seguro = escape(destinatario)
+    destinatario_seguro = escape(destinos[0])
     contrasena_segura = escape(contrasena)
 
     cuerpo = f"""
@@ -109,7 +140,7 @@ def enviar_credenciales_usuario(destinatario, nombre, apaterno, contrasena):
 
     params = {
         "from": remitente,
-        "to": [destinatario],
+        "to": destinos,
         "subject": "Tu cuenta de acceso a ConviData",
         "html": _plantilla_correo("Colegio San Sebastián de Melipilla", cuerpo),
     }
@@ -118,11 +149,17 @@ def enviar_credenciales_usuario(destinatario, nombre, apaterno, contrasena):
 
 @shared_task(autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
 def enviar_alerta_caso_gravisimo(destinatarios, caso_id, fecha, zona, tipo_falta):
-    if not destinatarios:
+    """Notifica por correo a los responsables únicamente cuando el caso es gravísimo."""
+    if not destinatarios or not _es_caso_gravisimo(tipo_falta):
+        # Si no es gravísimo (por ejemplo, es grave), no se envía correo por Resend.
         return None
 
     remitente = _configurar_resend()
-    nivel = "gravísimo" if tipo_falta == "Gravísima" else "grave"
+    lista_destinatarios = _resolver_destinatarios_prueba(destinatarios, remitente)
+    if not lista_destinatarios:
+        return None
+
+    nivel = "gravísimo"
 
     cuerpo = f"""
         <h2 style="font-size: 1.2rem; margin-top: 0; color: #7B1A1A;">
@@ -140,7 +177,7 @@ def enviar_alerta_caso_gravisimo(destinatarios, caso_id, fecha, zona, tipo_falta
         </p>
     """
 
-    lista_destinatarios = list(destinatarios)
+    # Se envía al primer destinatario en `to` y al resto en `bcc` para no exponer correos entre sí.
     params = {
         "from": remitente,
         "to": [lista_destinatarios[0]],
@@ -151,5 +188,3 @@ def enviar_alerta_caso_gravisimo(destinatarios, caso_id, fecha, zona, tipo_falta
         params["bcc"] = lista_destinatarios[1:]
 
     return resend.Emails.send(params)
-
-```

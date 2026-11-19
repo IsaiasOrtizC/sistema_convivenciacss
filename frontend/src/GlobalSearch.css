@@ -35,8 +35,8 @@
 }
 
 .global-search__autocomplete:focus-within {
-  border-color: #7B1A1A;
-  box-shadow: 0 0 0 3px rgba(123, 26, 26, 0.16);
+  border-color: var(--guinda, #7b1a1a);
+  box-shadow: 0 0 0 3px rgb(123 26 26 / 18%);
 }
 
 .global-search__form .global-search__input,
@@ -45,10 +45,11 @@
   width: 100%;
   min-width: 0;
   min-height: 2.6rem;
-  padding: 0.6rem 2.2rem 0.6rem 0.75rem;
+  padding: 0.6rem 2.2rem 0.6rem 0.78rem;
   border: 0;
   border-radius: 9px;
   font: inherit;
+  font-size: 0.9rem;
   outline: none;
 }
 
@@ -75,22 +76,23 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border: 0;
   border-radius: 50%;
-  background: rgba(120, 120, 128, 0.2);
+  background: rgba(120, 120, 128, 0.22);
   color: var(--text-mid);
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .global-search__clear:hover {
-  background: rgba(123, 26, 26, 0.18);
+  background: rgb(123 26 26 / 22%);
   color: var(--text-dark);
 }
 
+/* Desplegable predictivo */
 .global-search__dropdown {
   position: absolute;
   top: calc(100% + 6px);
@@ -99,13 +101,15 @@
   z-index: 100;
   max-height: 360px;
   overflow-y: auto;
+  margin: 0;
   padding: 6px;
+  list-style: none;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--input-bg);
+  background: var(--panel-bg);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
 }
 
 .global-search__dropdown-section {
@@ -123,7 +127,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 10px;
+  padding: 9px 11px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -131,42 +135,51 @@
   text-align: left;
   font: inherit;
   cursor: pointer;
+  transition: background-color 0.12s ease;
 }
 
 .global-search__dropdown-item:hover,
 .global-search__dropdown-item.is-active {
-  background: rgba(123, 26, 26, 0.12);
+  background: rgb(123 26 26 / 18%);
 }
 
-.global-search__dropdown-main {
+.global-search__dropdown-main,
+.global-search__dropdown-text {
   display: flex;
   flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
-.global-search__dropdown-main strong {
-  font-size: 0.86rem;
+.global-search__dropdown-main strong,
+.global-search__dropdown-text strong {
+  color: var(--text-dark);
+  font-size: 0.88rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.global-search__dropdown-main small {
+.global-search__dropdown-main small,
+.global-search__dropdown-text small {
   color: var(--text-mid);
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.global-search__badge,
 .global-search__dropdown-badge {
   flex-shrink: 0;
-  padding: 2px 8px;
+  padding: 3px 8px;
+  border: 1px solid rgb(212 160 23 / 35%);
   border-radius: 6px;
-  background: rgba(212, 160, 23, 0.18);
-  color: #8c5a00;
-  font-size: 0.68rem;
+  background: rgb(212 160 23 / 16%);
+  color: var(--gold, #d4a017);
+  font-size: 0.7rem;
   font-weight: 700;
 }
 
@@ -177,45 +190,115 @@
   text-align: center;
 }
 
-.global-search__form .button--primary {
+/* Botón principal de búsqueda */
+.global-search__form .button--primary,
+.global-search__controls .primary-button {
+  flex: 0 0 auto;
   min-height: 2.6rem;
-  padding: 0.6rem 1rem;
+  padding: 0.6rem 1.2rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 9px;
+  background: var(--guinda, #7b1a1a);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease, opacity 0.15s ease;
 }
 
+.global-search__form .button--primary:hover:not(:disabled),
+.global-search__controls .primary-button:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.global-search__form .button--primary:disabled,
+.global-search__controls .primary-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Resultados agrupados */
 .global-search__results {
+  margin-top: 18px;
+}
+
+.global-search__grid {
   display: grid;
-  gap: 10px;
+  gap: 16px;
+}
+
+.global-search__grid h2 {
+  margin: 0 0 12px;
+  color: var(--text-dark);
+  font-size: 1.02rem;
+}
+
+.global-search__list,
+ul.global-search__results {
+  display: grid;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.global-search__results li {
+.global-search__result-button {
+  width: 100%;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+  gap: 14px;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--input-bg);
+  color: var(--text-dark);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.global-search__results li:last-child {
-  border-bottom: 0;
+.global-search__result-button:hover {
+  border-color: var(--guinda, #7b1a1a);
+  background: rgb(123 26 26 / 14%);
 }
 
+.global-search__result-button strong {
+  color: var(--text-dark);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.global-search__result-button span,
 .global-search__results span {
+  flex: 0 0 auto;
   color: var(--text-lo);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   text-align: right;
+}
+
+.global-search__error {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-left: 4px solid #c62828;
+  border-radius: 8px;
+  background: rgb(198 40 40 / 12%);
+  color: #ff8787;
+  font-size: 0.86rem;
 }
 
 @media (max-width: 640px) {
   .global-search__form > div,
   .global-search__controls,
+  .global-search__result-button,
   .global-search__results li {
     flex-direction: column;
+    align-items: stretch;
   }
 
+  .global-search__result-button span,
   .global-search__results span {
     text-align: left;
   }

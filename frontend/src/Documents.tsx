@@ -91,6 +91,10 @@ type RuleForm = {
   requiere_citacion_apoderado: boolean
 }
 
+type ConfirmModalState =
+  | { kind: 'delete-document'; document: DocumentItem }
+  | { kind: 'activate-version'; version: VersionItem }
+
 type DocumentsProps = { accessToken: string }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
@@ -230,10 +234,22 @@ export default function Documents({ accessToken }: DocumentsProps) {
   const [manualPage, setManualPage] = useState('')
   const [editingRule, setEditingRule] = useState<Rule | null>(null)
   const [ruleForm, setRuleForm] = useState<RuleForm>(emptyRuleForm())
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+
+  // Cerrar modal de confirmación con Escape
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !busy && confirmModal) {
+        setConfirmModal(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [confirmModal, busy])
 
   const loadDocuments = useCallback(async () => {
     setData(await fetchDocuments(accessToken))
@@ -304,8 +320,7 @@ export default function Documents({ accessToken }: DocumentsProps) {
     }
   }
 
-  async function documentAction(document: DocumentItem, action: 'reprocesar' | 'eliminar') {
-    if (action === 'eliminar' && !window.confirm(`¿Eliminar «${document.titulo}» y sus versiones?`)) return
+  async function executeDocumentAction(document: DocumentItem, action: 'reprocesar' | 'eliminar') {
     setBusy(true)
     setError('')
     setMessage('')
@@ -326,6 +341,7 @@ export default function Documents({ accessToken }: DocumentsProps) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo completar la acción.')
     } finally {
       setBusy(false)
+      setConfirmModal(null)
     }
   }
 
@@ -404,8 +420,7 @@ export default function Documents({ accessToken }: DocumentsProps) {
     }
   }
 
-  async function activateVersion(version: VersionItem) {
-    if (!window.confirm(`¿Activar la versión ${version.numero} del reglamento?`)) return
+  async function executeActivateVersion(version: VersionItem) {
     setBusy(true)
     setError('')
     try {
@@ -420,6 +435,7 @@ export default function Documents({ accessToken }: DocumentsProps) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo activar la versión.')
     } finally {
       setBusy(false)
+      setConfirmModal(null)
     }
   }
 
@@ -460,8 +476,26 @@ export default function Documents({ accessToken }: DocumentsProps) {
               <td>{document.estado_procesamiento}{document.numero_paginas && <small>{document.numero_paginas} páginas</small>}</td>
               <td>{formatDate(document.fecha_subida)}<small>{document.subido_por}</small></td>
               <td className="documents__actions">
-                {data.puede_administrar && document.estado_procesamiento === 'error' && <button className="button--quiet" disabled={busy} onClick={() => void documentAction(document, 'reprocesar')} type="button">Reprocesar</button>}
-                {data.puede_administrar && <button className="documents__danger" disabled={busy} onClick={() => void documentAction(document, 'eliminar')} type="button">Eliminar</button>}
+                {data.puede_administrar && document.estado_procesamiento === 'error' && (
+                  <button
+                    className="button--quiet"
+                    disabled={busy}
+                    onClick={() => void executeDocumentAction(document, 'reprocesar')}
+                    type="button"
+                  >
+                    Reprocesar
+                  </button>
+                )}
+                {data.puede_administrar && (
+                  <button
+                    className="documents__danger"
+                    disabled={busy}
+                    onClick={() => setConfirmModal({ kind: 'delete-document', document })}
+                    type="button"
+                  >
+                    Eliminar
+                  </button>
+                )}
               </td>
             </tr>)}</tbody>
           </table></div>
@@ -479,7 +513,16 @@ export default function Documents({ accessToken }: DocumentsProps) {
                 setManualEvidence('')
                 setManualPage('')
               }} type="button">Nueva propuesta</button>}
-              {data.puede_administrar && version.puede_activar && version.estado !== 'vigente' && <button className="documents__primary" disabled={busy} onClick={() => void activateVersion(version)} type="button">Activar versión</button>}
+              {data.puede_administrar && version.puede_activar && version.estado !== 'vigente' && (
+                <button
+                  className="documents__primary"
+                  disabled={busy}
+                  onClick={() => setConfirmModal({ kind: 'activate-version', version })}
+                  type="button"
+                >
+                  Activar versión
+                </button>
+              )}
             </div>
           </div>
           {manualVersion === version.id && (
@@ -534,6 +577,83 @@ export default function Documents({ accessToken }: DocumentsProps) {
           {!version.reglas.length && <p className="dashboard-empty">Esta versión aún no tiene propuestas de reglas.</p>}
         </section>
       ))}
+
+      {/* VENTANA EMERGENTE DE CONFIRMACIÓN */}
+      {confirmModal && (
+        <div
+          aria-labelledby="documents-confirm-title"
+          aria-modal="true"
+          className="documents-modal__backdrop"
+          onClick={() => {
+            if (!busy) setConfirmModal(null)
+          }}
+          role="dialog"
+        >
+          <div
+            className="dashboard-panel documents-modal__dialog"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="documents-modal__header">
+              <h2 id="documents-confirm-title">
+                {confirmModal.kind === 'delete-document'
+                  ? 'Eliminar documento'
+                  : 'Activar versión'}
+              </h2>
+              <button
+                aria-label="Cerrar ventana"
+                className="button--quiet"
+                disabled={busy}
+                onClick={() => setConfirmModal(null)}
+                type="button"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="documents-modal__body">
+              {confirmModal.kind === 'delete-document' ? (
+                <>
+                  ¿Estás seguro de que deseas eliminar <strong>«{confirmModal.document.titulo}»</strong> y todas sus versiones? Esta acción no se puede deshacer.
+                </>
+              ) : (
+                <>
+                  ¿Activar la <strong>versión {confirmModal.version.numero}</strong> de <strong>«{confirmModal.version.documento_titulo}»</strong> como reglamento vigente?
+                </>
+              )}
+            </p>
+
+            <div className="documents__actions documents-modal__footer">
+              {confirmModal.kind === 'delete-document' ? (
+                <button
+                  className="documents__danger"
+                  disabled={busy}
+                  onClick={() => void executeDocumentAction(confirmModal.document, 'eliminar')}
+                  type="button"
+                >
+                  {busy ? 'Eliminando…' : 'Eliminar documento'}
+                </button>
+              ) : (
+                <button
+                  className="documents__primary"
+                  disabled={busy}
+                  onClick={() => void executeActivateVersion(confirmModal.version)}
+                  type="button"
+                >
+                  {busy ? 'Activando…' : 'Confirmar activación'}
+                </button>
+              )}
+              <button
+                className="button--quiet"
+                disabled={busy}
+                onClick={() => setConfirmModal(null)}
+                type="button"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

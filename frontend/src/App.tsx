@@ -1,6 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import Administration from './Administration.tsx'
 import AccountSettings from './AccountSettings.tsx'
+import {
+  ACCESS_TOKEN_KEY,
+  REFRESH_TOKEN_KEY,
+  authenticatedFetch,
+} from './authenticatedFetch.ts'
 import CaseDetail from './CaseDetail.tsx'
 import CaseRegistration from './CaseRegistration.tsx'
 import Documents from './Documents.tsx'
@@ -13,6 +18,7 @@ import './App.css'
 
 type TokenResponse = {
   access: string
+  refresh?: string
 }
 
 type UserProfile = {
@@ -228,7 +234,7 @@ function isDashboardData(value: unknown): value is DashboardData {
 }
 
 async function fetchDashboard(accessToken: string, page = 1): Promise<DashboardData> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/dashboard/?pagina=${page}`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/dashboard/?pagina=${page}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
 
@@ -288,7 +294,7 @@ async function fetchCaseHistory(
     if (value) params.set(key, value)
   })
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/casos/?${params}`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/casos/?${params}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
 
@@ -337,7 +343,7 @@ function isUserProfile(value: unknown): value is UserProfile {
 type PrimaryNavigationProps = {
   role: string
   activeSection: AppSection
-  onNavigate: (section: AppSection | 'logout') => void
+  onNavigate: (section: AppSection) => void
 }
 
 function PrimaryNavigation({ role, activeSection, onNavigate }: PrimaryNavigationProps) {
@@ -423,16 +429,6 @@ function PrimaryNavigation({ role, activeSection, onNavigate }: PrimaryNavigatio
           {navigateButton('settings', 'Configuración')}
           {canViewNotifications && navigateButton('notifications', 'Notificaciones')}
           {navigateButton('admin-history', 'Historial de usuario')}
-          <button
-            className="button--quiet"
-            onClick={(event) => {
-              closeOpenMenus(event.currentTarget.closest('nav'))
-              onNavigate('logout')
-            }}
-            type="button"
-          >
-            Cerrar sesión
-          </button>
         </div>
       </details>
       {role === 'Administrador' && (
@@ -462,7 +458,15 @@ function App() {
   const [correo, setCorreo] = useState('')
   const [contrasena, setContrasena] = useState('')
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [accessToken, setAccessToken] = useState<string | null>(null)
+  const [accessToken, setAccessToken] = useState<string | null>(() =>
+    window.localStorage.getItem(ACCESS_TOKEN_KEY),
+  )
+  const [isRestoringSession, setIsRestoringSession] = useState<boolean>(() =>
+    Boolean(
+      window.localStorage.getItem(ACCESS_TOKEN_KEY) ||
+      window.localStorage.getItem(REFRESH_TOKEN_KEY),
+    ),
+  )
   const [dashboard, setDashboard] = useState<DashboardData | null>(null)
   const [dashboardError, setDashboardError] = useState('')
   const [isDashboardLoading, setIsDashboardLoading] = useState(false)
@@ -517,6 +521,88 @@ function App() {
     return () => window.removeEventListener('popstate', syncRoute)
   }, [])
 
+  // Restaurar sesión automáticamente al refrescar (F5) y renovar token si expiró
+  useEffect(() => {
+    const savedAccess = window.localStorage.getItem(ACCESS_TOKEN_KEY)
+    const savedRefresh = window.localStorage.getItem(REFRESH_TOKEN_KEY)
+
+    if (!savedAccess && !savedRefresh) {
+      setIsRestoringSession(false)
+      return
+    }
+
+    let cancelled = false
+
+    async function restoreSession(initialToken: string) {
+      try {
+        const profileResponse = await authenticatedFetch(`${API_BASE_URL}/api/v1/me/`, {
+          headers: { Authorization: `Bearer ${initialToken}` },
+        })
+
+        if (!profileResponse.ok) {
+          throw new Error('Sesión expirada')
+        }
+
+        const latestToken =
+          window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? initialToken
+
+        const profileBody: unknown = await profileResponse.json()
+        if (!isUserProfile(profileBody)) {
+          throw new Error('Perfil inválido')
+        }
+
+        const dashboardBody = profileBody.rol === 'Profesor Jefe'
+          ? null
+          : await fetchDashboard(latestToken)
+
+        const teacherSections: AppSection[] = [
+          'teacher-cases',
+          'case-detail',
+          'register',
+          'documents',
+          'profile',
+          'settings',
+          'notifications',
+        ]
+        const currentRoute = sectionForPath(window.location.pathname)
+        const targetSection = profileBody.rol === 'Profesor Jefe'
+          ? teacherSections.includes(currentRoute.section)
+            ? currentRoute.section
+            : 'teacher-cases'
+          : currentRoute.section
+
+        if (targetSection === 'cases') {
+          const historyData = await fetchCaseHistory(latestToken, 1, EMPTY_CASE_FILTERS)
+          if (!cancelled) setCaseHistory(historyData)
+        }
+
+        if (!cancelled) {
+          setAccessToken(latestToken)
+          setProfile(profileBody)
+          setDashboard(dashboardBody)
+          setActiveSectionState(targetSection)
+        }
+      } catch {
+        window.localStorage.removeItem(ACCESS_TOKEN_KEY)
+        window.localStorage.removeItem(REFRESH_TOKEN_KEY)
+        if (!cancelled) {
+          setAccessToken(null)
+          setProfile(null)
+          setDashboard(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setIsRestoringSession(false)
+        }
+      }
+    }
+
+    void restoreSession(savedAccess ?? '')
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
@@ -549,7 +635,12 @@ function App() {
         throw new Error('El servidor devolvió una respuesta de autenticación inválida.')
       }
 
-      const profileResponse = await fetch(`${API_BASE_URL}/api/v1/me/`, {
+      window.localStorage.setItem(ACCESS_TOKEN_KEY, tokenBody.access)
+      if (typeof tokenBody.refresh === 'string') {
+        window.localStorage.setItem(REFRESH_TOKEN_KEY, tokenBody.refresh)
+      }
+
+      const profileResponse = await authenticatedFetch(`${API_BASE_URL}/api/v1/me/`, {
         headers: { Authorization: `Bearer ${tokenBody.access}` },
       })
 
@@ -591,6 +682,8 @@ function App() {
       setActiveSection(landingSection)
       setContrasena('')
     } catch (requestError) {
+      window.localStorage.removeItem(ACCESS_TOKEN_KEY)
+      window.localStorage.removeItem(REFRESH_TOKEN_KEY)
       setError(
         requestError instanceof TypeError
           ? 'No fue posible conectar con el servidor. Verifica que Django esté ejecutándose.'
@@ -694,6 +787,8 @@ function App() {
   }
 
   function handleLogout() {
+    window.localStorage.removeItem(ACCESS_TOKEN_KEY)
+    window.localStorage.removeItem(REFRESH_TOKEN_KEY)
     setAccessToken(null)
     setProfile(null)
     setDashboard(null)
@@ -711,12 +806,13 @@ function App() {
   }
 
   async function handleDashboardPage(page: number) {
-    if (!accessToken) return
+    const activeAccess = window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? accessToken
+    if (!activeAccess) return
 
     setIsDashboardLoading(true)
     setDashboardError('')
     try {
-      setDashboard(await fetchDashboard(accessToken, page))
+      setDashboard(await fetchDashboard(activeAccess, page))
     } catch (requestError) {
       setDashboardError(
         requestError instanceof TypeError
@@ -734,12 +830,13 @@ function App() {
     page: number,
     filters: CaseHistoryFilters = caseFilters,
   ) {
-    if (!accessToken) return
+    const activeAccess = window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? accessToken
+    if (!activeAccess) return
 
     setIsCaseHistoryLoading(true)
     setCaseHistoryError('')
     try {
-      setCaseHistory(await fetchCaseHistory(accessToken, page, filters))
+      setCaseHistory(await fetchCaseHistory(activeAccess, page, filters))
     } catch (requestError) {
       setCaseHistoryError(
         requestError instanceof TypeError
@@ -754,15 +851,16 @@ function App() {
   }
 
   async function deleteCaseFromHistory(caseId: number) {
-    if (!accessToken || !window.confirm(`¿Eliminar definitivamente el caso #${caseId}?`)) return
+    const activeAccess = window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? accessToken
+    if (!activeAccess || !window.confirm(`¿Eliminar definitivamente el caso #${caseId}?`)) return
 
     setDeletingCaseId(caseId)
     setCaseHistoryError('')
     setCaseHistoryMessage('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/casos/${caseId}/`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/api/v1/casos/${caseId}/`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${activeAccess}` },
       })
       if (!response.ok) {
         throw new Error(await getErrorMessage(response, 'No se pudo eliminar el caso.'))
@@ -783,11 +881,7 @@ function App() {
     }
   }
 
-  function navigateFromMenu(section: AppSection | 'logout') {
-    if (section === 'logout') {
-      handleLogout()
-      return
-    }
+  function navigateFromMenu(section: AppSection) {
     setActiveSection(section)
     if (section === 'cases') {
       void handleCaseHistoryPage(1)
@@ -808,7 +902,9 @@ function App() {
     void handleCaseHistoryPage(1, filters)
   }
 
-  if (profile && accessToken && profile.rol === 'Profesor Jefe') {
+  const currentAccessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? accessToken
+
+  if (profile && currentAccessToken && profile.rol === 'Profesor Jefe') {
     const accountSection = activeSection === 'profile' || activeSection === 'settings'
     return (
       <main className="dashboard-page">
@@ -835,36 +931,36 @@ function App() {
         </header>
         {activeSection === 'teacher-cases' ? (
           <TeacherCases
-            accessToken={accessToken}
+            accessToken={currentAccessToken}
             onOpenCase={(caseId) => {
               openCase(caseId)
             }}
           />
         ) : activeSection === 'case-detail' && selectedCaseId !== null ? (
           <CaseDetail
-            accessToken={accessToken}
+            accessToken={currentAccessToken}
             caseId={selectedCaseId}
             onBack={() => setActiveSection('teacher-cases')}
           />
         ) : activeSection === 'documents' ? (
-          <Documents accessToken={accessToken} />
+          <Documents accessToken={currentAccessToken} />
         ) : activeSection === 'admin-history' ? (
-          <Administration accessToken={accessToken} section="history" onOpenCase={openCase} />
+          <Administration accessToken={currentAccessToken} section="history" onOpenCase={openCase} />
         ) : activeSection === 'notifications' ? (
-          <Notifications accessToken={accessToken} showFollowUp={false} />
+          <Notifications accessToken={currentAccessToken} showFollowUp={false} />
         ) : accountSection ? (
           <AccountSettings
-            accessToken={accessToken}
+            accessToken={currentAccessToken}
             profile={profile}
             section={activeSection}
             onProfileUpdated={setProfile}
           />
-        ) : <CaseRegistration accessToken={accessToken} />}
+        ) : <CaseRegistration accessToken={currentAccessToken} />}
       </main>
     )
   }
 
-  if (profile && accessToken && dashboard) {
+  if (profile && currentAccessToken && dashboard) {
     if (activeSection === 'search') {
       return (
         <main className="dashboard-page">
@@ -888,7 +984,7 @@ function App() {
             </div>
           </header>
           <GlobalSearch
-            accessToken={accessToken}
+            accessToken={currentAccessToken}
             onOpenCase={(caseId) => {
               openCase(caseId)
             }}
@@ -921,7 +1017,7 @@ function App() {
               <button className="button--quiet" onClick={handleLogout} type="button">Cerrar sesión</button>
             </div>
           </header>
-          <Documents accessToken={accessToken} />
+          <Documents accessToken={currentAccessToken} />
         </main>
       )
     }
@@ -950,7 +1046,7 @@ function App() {
           </header>
           <AccountSettings
             key={activeSection}
-            accessToken={accessToken}
+            accessToken={currentAccessToken}
             profile={profile}
             section={activeSection}
             onProfileUpdated={setProfile}
@@ -992,7 +1088,7 @@ function App() {
           </header>
           <Administration
             key={activeSection}
-            accessToken={accessToken}
+            accessToken={currentAccessToken}
             section={adminSection}
             onOpenCase={(caseId) => {
               openCase(caseId)
@@ -1026,7 +1122,7 @@ function App() {
               </button>
             </div>
           </header>
-          <PendingCases accessToken={accessToken} />
+          <PendingCases accessToken={currentAccessToken} />
         </main>
       )
     }
@@ -1055,7 +1151,7 @@ function App() {
           </header>
           <CaseDetail
             key={selectedCaseId}
-            accessToken={accessToken}
+            accessToken={currentAccessToken}
             caseId={selectedCaseId}
             initialEditing={startCaseEditing}
             onBack={() => {
@@ -1091,7 +1187,7 @@ function App() {
               </button>
             </div>
           </header>
-          <Statistics accessToken={accessToken} />
+          <Statistics accessToken={currentAccessToken} />
         </main>
       )
     }
@@ -1120,7 +1216,7 @@ function App() {
               </button>
             </div>
           </header>
-          <CaseRegistration accessToken={accessToken} />
+          <CaseRegistration accessToken={currentAccessToken} />
         </main>
       )
     }
@@ -1149,7 +1245,7 @@ function App() {
               </button>
             </div>
           </header>
-          <Notifications accessToken={accessToken} />
+          <Notifications accessToken={currentAccessToken} />
         </main>
       )
     }
@@ -1595,6 +1691,16 @@ function App() {
               </div>
             </div>
           </section>
+        </div>
+      </main>
+    )
+  }
+
+  if (isRestoringSession) {
+    return (
+      <main className="dashboard-page">
+        <div className="dashboard-content">
+          <p className="dashboard-empty" role="status">Restaurando sesión…</p>
         </div>
       </main>
     )

@@ -242,6 +242,10 @@ export default function GlobalSearch({
     setDropdownOpen(false)
   }
 
+  const totalResultados = results
+    ? results.estudiantes.length + results.casos.length + results.usuarios.length
+    : 0
+
   return (
     <div className="dashboard-content global-search">
       <section className="dashboard-welcome">
@@ -280,4 +284,128 @@ export default function GlobalSearch({
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder="Escribe nombre, correo o #caso…"
-                ref={input
+                ref={inputRef}
+                type="search"
+                value={query}
+              />
+
+              {dropdownOpen && suggestions.length > 0 && (
+                <ul className="global-search__dropdown" role="listbox">
+                  {suggestions.map((item, index) => (
+                    <li
+                      aria-selected={index === activeIndex}
+                      className={`global-search__dropdown-item${
+                        index === activeIndex ? ' is-active' : ''
+                      }`}
+                      key={item.key}
+                      onMouseDown={(event) => {
+                        event.preventDefault()
+                        applySuggestion(item)
+                      }}
+                      onMouseEnter={() => setActiveIndex(index)}
+                      role="option"
+                    >
+                      <span className="global-search__badge">{item.categoria}</span>
+                      <div className="global-search__dropdown-text">
+                        <strong>{item.titulo}</strong>
+                        <small>{item.subtitulo}</small>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <button className="primary-button" disabled={loading} type="submit">
+              {loading ? 'Buscando…' : 'Buscar'}
+            </button>
+          </div>
+        </form>
+
+        {error && (
+          <p className="global-search__error" role="alert">
+            {error}
+          </p>
+        )}
+      </section>
+
+      {results && (
+        <section className="global-search__results">
+          {totalResultados === 0 ? (
+            <div className="dashboard-panel">
+              <p>No se encontraron coincidencias para «{query.trim()}».</p>
+            </div>
+          ) : (
+            <div className="global-search__grid">
+              {results.casos.length > 0 && (
+                <article className="dashboard-panel">
+                  <h2>Casos ({results.casos.length})</h2>
+                  <ul className="global-search__list">
+                    {results.casos.map((caso) => (
+                      <li key={caso.id}>
+                        <button
+                          className="global-search__result-button"
+                          onClick={() => onOpenCase(caso.id)}
+                          type="button"
+                        >
+                          <strong>
+                            #{caso.id} · {caso.titulo}
+                          </strong>
+                          <span>
+                            {caso.fecha} · {caso.lugar}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              )}
+
+              {results.estudiantes.length > 0 && (
+                <article className="dashboard-panel">
+                  <h2>Estudiantes ({results.estudiantes.length})</h2>
+                  <ul className="global-search__list">
+                    {results.estudiantes.map((estudiante) => (
+                      <li key={estudiante.id}>
+                        <button
+                          className="global-search__result-button"
+                          onClick={() => onOpenStudent(estudiante.id)}
+                          type="button"
+                        >
+                          <strong>{estudiante.nombre_completo}</strong>
+                          <span>{estudiante.curso}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              )}
+
+              {results.usuarios.length > 0 && (
+                <article className="dashboard-panel">
+                  <h2>Funcionarios ({results.usuarios.length})</h2>
+                  <ul className="global-search__list">
+                    {results.usuarios.map((usuario) => (
+                      <li key={usuario.id}>
+                        <button
+                          className="global-search__result-button"
+                          onClick={() => onOpenUser(usuario.id)}
+                          type="button"
+                        >
+                          <strong>{usuario.nombre_completo}</strong>
+                          <span>
+                            {usuario.rol} · {usuario.correo}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+    </div>
+  )
+}

@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 @trazar('CONTROLADOR', 'AlertController', 'notificando caso grave o gravísimo a los responsables')
 def notificar_caso_gravisimo(request, caso, tipo_falta, lugar):
+    """Genera alerta interna para casos graves/gravísimos y envía correo solo si es gravísimo."""
     destinatarios = list(
         Usuario.objects.filter(
             rol__rol_nombre='Administrador',
@@ -26,8 +27,10 @@ def notificar_caso_gravisimo(request, caso, tipo_falta, lugar):
         logger.warning("El caso %s #%s no tiene administradores activos.", tipo_falta, caso.caso_id)
         return
 
-    es_gravisimo = tipo_falta == 'Gravísima'
+    es_gravisimo = (str(tipo_falta or "")).strip().lower() in {'gravísima', 'gravisima'}
     nivel = 'gravísimo' if es_gravisimo else 'grave'
+
+    # 1. Registra la notificación en el sistema para administradores activos.
     for destinatario in destinatarios:
         clave = f'caso_prioritario:{caso.caso_id}:admin:{destinatario.usuario_id}'
         notificacion, creada = Notificacion.objects.get_or_create(
@@ -56,6 +59,10 @@ def notificar_caso_gravisimo(request, caso, tipo_falta, lugar):
                 ),
                 motivo=f'Alerta creada por el registro de un caso {nivel}.',
             )
+
+    # 2. El correo externo por Resend se dispara únicamente cuando el caso es gravísimo.
+    if not es_gravisimo:
+        return
 
     destinatarios_correo = [
         usuario.usuario_correo for usuario in destinatarios
@@ -123,7 +130,7 @@ def verificar_alerta_curso_mas_de_10_casos(curso):
     prefijo_semana = f"umbral_curso:{curso.curso_id}:semana:{inicio_semana.isoformat()}:"
     clave_tramo_actual = f"{prefijo_semana}tramo:{tramo_actual}:"
 
-    # 1. Eliminar notificaciones de tramos anteriores ya resueltas (estado cambiado) o marcadas como leídas
+    # 1. Eliminar notificaciones de tramos anteriores ya resueltas (estado cambiado) o marcadas como leídas.
     estado_inicial = Notificacion.Estado.values[0]
     Notificacion.objects.filter(
         evento_clave__startswith=prefijo_semana
@@ -133,7 +140,7 @@ def verificar_alerta_curso_mas_de_10_casos(curso):
         ~Q(estado=estado_inicial) | Q(notificacion_leido=True)
     ).delete()
 
-    # 2. Destinatarios exclusivos: PConvivencia + Profesor Jefe del curso
+    # 2. Destinatarios exclusivos: PConvivencia + Profesor Jefe del curso.
     usuarios_convivencia = Usuario.objects.filter(
         rol__rol_nombre__iexact='PConvivencia',
         usuario_activo=True,
@@ -173,7 +180,7 @@ def verificar_alerta_curso_mas_de_10_casos(curso):
         f"de convivencia esta semana (actualmente registra {total_casos} casos)."
     )
 
-    # 3. Crear alerta única por tramo y destinatario
+    # 3. Crear alerta única por tramo y destinatario.
     for usuario in usuarios_destino.values():
         clave = f"{clave_tramo_actual}usuario:{usuario.usuario_id}"
         notificacion, creada = Notificacion.objects.get_or_create(

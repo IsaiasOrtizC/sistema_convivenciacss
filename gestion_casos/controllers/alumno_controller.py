@@ -1,6 +1,7 @@
 """Alumno Controller: consulta y administración de alumnos y sus antecedentes."""
 
 import logging
+import re
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -28,6 +29,20 @@ logger = logging.getLogger(__name__)
 
 MAX_EXCEL_BYTES = 5 * 1024 * 1024  # 5 MB
 
+_VALORES_NULOS = {"", "-", "--", "n/a", "na", "null", "none", "undefined", "nan"}
+_CURSO_COMPACTO_RE = re.compile(r"^\s*(\d+)\s*(?:[°ºo.]*\s*)?([A-Za-zÁÉÍÓÚáéíóú]+)?\s*$")
+
+_ALIASES_COLUMNAS = {
+    "nombre_completo": {"nombre completo", "alumno", "estudiante", "nombre alumno", "nombre estudiante"},
+    "nombre": {"nombres", "nombre", "primer nombre"},
+    "apaterno": {"apellido paterno", "ap. paterno", "ap paterno", "apaterno", "paterno"},
+    "amaterno": {"apellido materno", "ap. materno", "ap materno", "amaterno", "materno"},
+    "curso": {"curso", "codigo curso", "código curso"},
+    "grado": {"grado", "nivel", "enseñanza", "ensenanza"},
+    "paralelo": {"paralelo", "letra", "seccion", "sección"},
+    "lista": {"número de lista", "numero de lista", "n° lista", "no. lista", "nro lista", "lista", "n lista"},
+}
+
 
 def _registrar_auditoria_alumno(admin_id, accion, detalle):
     if not admin_id:
@@ -53,6 +68,139 @@ def _parsear_numero_lista(valor):
     if not (1 <= numero <= 99):
         raise ValidationError("El N° de lista debe estar entre 1 y 99.")
     return numero
+
+
+def _limpiar_celda(valor):
+    """Anula celdas vacías o basura devolviendo None; si sirve, retorna texto limpio."""
+    if valor is None:
+        return None
+    texto = " ".join(str(valor).strip().split())
+    if texto.lower() in _VALORES_NULOS:
+        return None
+    return texto
+
+
+def _normalizar_texto_col(texto: str) -> str:
+    """Quita tildes y normaliza espacios/minúsculas para comparar encabezados."""
+    return " ".join(_quitar_tildes(texto).strip().lower().split())
+
+
+def _detectar_mapeo_columnas(filas_crudas):
+    """
+    Busca la fila que contenga encabezados reconocibles y devuelve:
+    (indice_fila_encabezado, dict_campo_a_indice_columna)
+    """
+    for idx, fila in enumerate(filas_crudas):
+        limpias = [_limpiar_celda(c) for c in fila]
+        if not any(limpias):
+            continue
+
+        mapa_col = {}
+        for col_idx, celda in enumerate(limpias):
+            if not celda:
+                continue
+            clave_norm = _normalizar_texto_col(celda)
+            for campo_destino, aliases in _ALIASES_COLUMNAS.items():
+                aliases_norm = {_normalizar_texto_col(a) for a in aliases}
+                if clave_norm in aliases_norm and campo_destino not in mapa_col:
+                    mapa_col[campo_destino] = col_idx
+                    break
+
+        tiene_identidad = "nombre_completo" in mapa_col or "nombre" in mapa_col
+        tiene_contexto = any(k in mapa_col for k in ("apaterno", "curso", "grado"))
+        if tiene_identidad and tiene_contexto:
+            return idx, mapa_col
+
+    return None, {}
+
+
+def _separar_nombre_completo_flexible(nombre_completo: str):
+    """Separa un nombre completo en (nombre, apaterno, amaterno)."""
+    partes = [p for p in nombre_completo.split() if p]
+    if len(partes) >= 3:
+        return " ".join(partes[2:]), partes[0], partes[1]
+    if len(partes) == 2:
+        return partes[1], partes[0], ""
+    return (partes[0] if partes else ""), "", ""
+
+
+def _parsear_curso_y_paralelo(curso_valor, grado_valor, paralelo_valor):
+    """Extrae (curso_grado, curso_letra) desde columnas separadas o combinadas."""
+    paralelo_limpio = _limpiar_celda(paralelo_valor)
+    grado_limpio = _limpiar_celda(grado_valor)
+    curso_limpio = _limpiar_celda(curso_valor)
+
+    if grado_limpio:
+        match_g = _CURSO_COMPACTO_RE.match(grado_limpio)
+        grado_fmt = f"{int(match_g.group(1))}° Medio" if match_g else grado_limpio
+        letra_fmt = (
+            paralelo_limpio
+            or (match_g.group(2) if match_g and match_g.group(2) else "")
+        ).strip().upper()
+        return grado_fmt, letra_fmt
+
+    if curso_limpio:
+        match_c = _CURSO_COMPACTO_RE.match(curso_limpio)
+        if match_c:
+            num = int(match_c.group(1))
+            resto = (match_c.group(2) or "").strip()
+            if paralelo_limpio:
+                return f"{num}° Medio", paralelo_limpio.upper()
+            if len(resto) > 1 and resto[-1].isalpha():
+                return f"{num}° Medio", resto[-1].upper()
+            if resto.isalpha():
+                return f"{num}° Medio", resto.upper()
+            return f"{num}° Medio", ""
+        return curso_limpio, (paralelo_limpio or "").upper()
+
+    return "", (paralelo_limpio or "").upper()
+
+
+def _extraer_numero_lista_seguro(valor):
+    """Devuelve entero entre 1 y 99 o None si la celda no sirve."""
+    limpio = _limpiar_celda(valor)
+    if not limpio:
+        return None
+    if limpio.endswith(".0") and limpio[:-2].isdigit():
+        limpio = limpio[:-2]
+    if limpio.isdigit():
+        numero = int(limpio)
+        if 1 <= numero <= 99:
+            return numero
+    return None
+
+
+def _es_fila_no_valida(valores_utiles: list[str], mapa_col: dict) -> bool:
+    """Anula filas vacías, títulos, totales o repeticiones de cabecera."""
+    if not valores_utiles:
+        return True
+    union = " ".join(v.lower() for v in valores_utiles)
+    palabras_ruido = (
+        "colegio particular",
+        "listado simple de alumnos",
+        "fono ",
+        "contacto@",
+        "total alumnos",
+        "subtotal",
+        "resumen",
+    )
+    if any(p in union for p in palabras_ruido):
+        return True
+
+    coincidencias_header = 0
+    for col_idx in mapa_col.values():
+        if col_idx < len(valores_utiles):
+            val_norm = _normalizar_texto_col(valores_utiles[col_idx])
+            if val_norm in {
+                _normalizar_texto_col(a)
+                for aliases in _ALIASES_COLUMNAS.values()
+                for a in aliases
+            }:
+                coincidencias_header += 1
+    if coincidencias_header >= 2:
+        return True
+
+    return False
 
 
 def gestion_de_estudiantes_view(request):
@@ -132,7 +280,6 @@ def gestion_de_estudiantes_view(request):
             logger.exception("Error registrando alumno %s %s", nombre, apaterno)
             messages.error(request, "No fue posible registrar al alumno. Revisa el curso y vuelve a intentarlo.")
 
-    # Filtros combinables: búsqueda por texto, curso, N° de lista y estado
     filtro_busqueda = request.GET.get('busqueda', '').strip()
     filtro_curso = request.GET.get('curso', '').strip()
     filtro_lista = request.GET.get('numero_lista', '').strip()
@@ -215,7 +362,7 @@ def gestion_de_estudiantes_view(request):
 
 
 # ============================================================
-#  RF-70: IMPORTACIÓN MASIVA DE ALUMNOS DESDE EXCEL (.XLSX)
+#  RF-70: IMPORTACIÓN MASIVA DE ALUMNOS DESDE CUALQUIER EXCEL
 # ============================================================
 
 def importar_estudiantes_view(request):
@@ -247,7 +394,6 @@ def importar_estudiantes_view(request):
         messages.error(request, "No se pudo leer el archivo. Verifica que sea un Excel (.xlsx) válido.")
         return redirect('gestion_de_alumnos')
 
-    # Precarga en memoria para evitar consultas N+1 por fila
     cursos_mapa = {
         (c.curso_grado.strip().casefold(), c.curso_letra.strip().casefold()): c
         for c in Curso.objects.all()
@@ -279,34 +425,60 @@ def importar_estudiantes_view(request):
     duplicados_detectados = []
 
     try:
-        for num_fila, fila in enumerate(hoja.iter_rows(min_row=2, max_col=6, values_only=True), start=2):
-            if not fila or all(c is None or str(c).strip() == '' for c in fila):
+        filas_crudas = list(hoja.iter_rows(values_only=True))
+        idx_header, mapa_col = _detectar_mapeo_columnas(filas_crudas)
+
+        if idx_header is None:
+            messages.error(
+                request,
+                "No se encontraron columnas reconocibles de estudiante (nombre/apellido y curso/grado) en el Excel.",
+            )
+            return redirect('gestion_de_alumnos')
+
+        def _obtener_celda(fila_limpia, campo):
+            col_idx = mapa_col.get(campo)
+            if col_idx is not None and col_idx < len(fila_limpia):
+                return fila_limpia[col_idx]
+            return None
+
+        for offset, fila in enumerate(filas_crudas[idx_header + 1:], start=idx_header + 2):
+            fila_limpia = [_limpiar_celda(c) for c in fila]
+            valores_utiles = [c for c in fila_limpia if c is not None]
+
+            if _es_fila_no_valida(valores_utiles, mapa_col):
                 continue
 
             try:
-                nombre = str(fila[0]).strip() if fila[0] is not None else ''
-                apaterno = str(fila[1]).strip() if fila[1] is not None else ''
-                amaterno = str(fila[2]).strip() if fila[2] is not None else ''
-                valor_curso_grado = fila[3]
-                curso_letra = str(fila[4]).strip() if fila[4] is not None else ''
-                valor_numero_lista = fila[5] if len(fila) > 5 else None
+                nombre_completo = _obtener_celda(fila_limpia, "nombre_completo")
+                if nombre_completo:
+                    nombre, apaterno, amaterno = _separar_nombre_completo_flexible(nombre_completo)
+                    nombre = _obtener_celda(fila_limpia, "nombre") or nombre
+                    apaterno = _obtener_celda(fila_limpia, "apaterno") or apaterno
+                    amaterno = _obtener_celda(fila_limpia, "amaterno") or amaterno
+                else:
+                    nombre = _obtener_celda(fila_limpia, "nombre") or ""
+                    apaterno = _obtener_celda(fila_limpia, "apaterno") or ""
+                    amaterno = _obtener_celda(fila_limpia, "amaterno") or ""
 
-                if not (nombre and apaterno and amaterno and valor_curso_grado is not None and curso_letra):
-                    errores.append(f"Fila {num_fila}: faltan datos obligatorios.")
+                curso_grado, curso_letra = _parsear_curso_y_paralelo(
+                    _obtener_celda(fila_limpia, "curso"),
+                    _obtener_celda(fila_limpia, "grado"),
+                    _obtener_celda(fila_limpia, "paralelo"),
+                )
+
+                if not (nombre and apaterno and curso_grado and curso_letra):
+                    errores.append(f"Fila {offset}: faltan datos necesarios (nombre, apellido o curso).")
                     omitidos += 1
                     continue
 
-                if isinstance(valor_curso_grado, (int, float)):
-                    curso_grado = f"{int(valor_curso_grado)}° Medio"
-                else:
-                    texto_grado = str(valor_curso_grado).strip()
-                    curso_grado = f"{texto_grado}° Medio" if texto_grado.isdigit() else texto_grado
-
+                amaterno = amaterno or ""
                 curso_instancia = cursos_mapa.get(
                     (curso_grado.casefold(), curso_letra.casefold())
                 )
                 if not curso_instancia:
-                    errores.append(f"Fila {num_fila}: el curso '{curso_grado} {curso_letra}' no existe en el sistema.")
+                    errores.append(
+                        f"Fila {offset}: el curso '{curso_grado} {curso_letra}' no existe en el sistema."
+                    )
                     omitidos += 1
                     continue
 
@@ -318,24 +490,15 @@ def importar_estudiantes_view(request):
                 )
                 if clave_alumno in alumnos_existentes:
                     omitidos += 1
-                    duplicado = f"{nombre} {apaterno} {amaterno} ({curso_instancia})"
+                    duplicado = f"{nombre} {apaterno} {amaterno}".strip() + f" ({curso_instancia})"
                     duplicados_detectados.append(duplicado)
-                    errores.append(f"Fila {num_fila}: {duplicado} ya existía, se omitió.")
+                    errores.append(f"Fila {offset}: {duplicado} ya existía, se omitió.")
                     continue
 
-                numero_lista = None
-                if isinstance(valor_numero_lista, (int, float)):
-                    cand = int(valor_numero_lista)
-                    if 1 <= cand <= 99:
-                        numero_lista = cand
-                elif isinstance(valor_numero_lista, str) and valor_numero_lista.strip().isdigit():
-                    cand = int(valor_numero_lista.strip())
-                    if 1 <= cand <= 99:
-                        numero_lista = cand
-
+                numero_lista = _extraer_numero_lista_seguro(_obtener_celda(fila_limpia, "lista"))
                 if numero_lista and (curso_instancia.curso_id, numero_lista) in listas_ocupadas:
                     errores.append(
-                        f"Fila {num_fila}: el N° de lista {numero_lista} ya está en uso en {curso_instancia}. "
+                        f"Fila {offset}: el N° de lista {numero_lista} ya está en uso en {curso_instancia}. "
                         f"Se registró sin número de lista asignado."
                     )
                     numero_lista = None
@@ -354,11 +517,11 @@ def importar_estudiantes_view(request):
                     listas_ocupadas.add((curso_instancia.curso_id, numero_lista))
 
                 creados += 1
-                alumnos_agregados.append(f"{nombre} {apaterno} {amaterno} ({curso_instancia})")
+                alumnos_agregados.append(f"{nombre} {apaterno} {amaterno}".strip() + f" ({curso_instancia})")
 
             except Exception:
-                logger.exception("Error importando alumno desde fila %s del archivo %s", num_fila, archivo.name)
-                errores.append(f"Fila {num_fila}: error inesperado al procesar la fila.")
+                logger.exception("Error importando alumno desde fila %s del archivo %s", offset, archivo.name)
+                errores.append(f"Fila {offset}: error inesperado al procesar la fila.")
                 omitidos += 1
     finally:
         libro.close()
@@ -579,7 +742,6 @@ def detalle_estudiante_view(request, estudiante_id):
 
     total_casos = len(casos_detalle)
 
-    # Semáforo automático según puntaje ponderado: Leve = 1, Grave = 3, Gravísima = 5
     puntaje = (
         (conteo_gravedad['Leve'] * 1)
         + (conteo_gravedad['Grave'] * 3)

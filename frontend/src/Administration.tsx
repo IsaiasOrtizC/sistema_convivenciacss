@@ -149,6 +149,25 @@ function formatDateTime(value: string) {
   }).format(new Date(value))
 }
 
+const EMPTY_USER_FORM = {
+  nombre: '',
+  apellido_paterno: '',
+  apellido_materno: '',
+  correo: '',
+  rol_id: '',
+  curso_id: '',
+  contrasena: '',
+}
+
+const EMPTY_STUDENT_FORM = {
+  nombre: '',
+  apellido_paterno: '',
+  apellido_materno: '',
+  correo: '',
+  curso_id: '',
+  numero_lista: '',
+}
+
 export default function Administration({
   accessToken,
   section,
@@ -178,30 +197,35 @@ export default function Administration({
     puntaje_riesgo: number
     estado_texto: string
   } | null>(null)
+
+  // Formularios inline de creación
+  const [createUserForm, setCreateUserForm] = useState(EMPTY_USER_FORM)
+  const [createStudentForm, setCreateStudentForm] = useState(EMPTY_STUDENT_FORM)
+
+  // Estados exclusivos para los modales emergentes de edición
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
+  const [editUserForm, setEditUserForm] = useState(EMPTY_USER_FORM)
+
   const [editingStudent, setEditingStudent] = useState<AdminStudent | null>(null)
-  const [userForm, setUserForm] = useState({
-    nombre: '',
-    apellido_paterno: '',
-    apellido_materno: '',
-    correo: '',
-    rol_id: '',
-    curso_id: '',
-    contrasena: '',
-  })
-  const [studentForm, setStudentForm] = useState({
-    nombre: '',
-    apellido_paterno: '',
-    apellido_materno: '',
-    correo: '',
-    curso_id: '',
-    numero_lista: '',
-  })
+  const [editStudentForm, setEditStudentForm] = useState(EMPTY_STUDENT_FORM)
+
   const [upload, setUpload] = useState<File | null>(null)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+
+  // Cerrar modales con tecla Escape
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !busy) {
+        if (editingUser) setEditingUser(null)
+        if (editingStudent) setEditingStudent(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [editingUser, editingStudent, busy])
 
   const loadData = useCallback(async (
     nextPage: number,
@@ -334,22 +358,10 @@ export default function Administration({
     return response.status === 204 ? null : response.json() as Promise<unknown>
   }
 
-  function startCreateUser() {
-    setEditingUser(null)
-    setUserForm({
-      nombre: '',
-      apellido_paterno: '',
-      apellido_materno: '',
-      correo: '',
-      rol_id: '',
-      curso_id: '',
-      contrasena: '',
-    })
-  }
-
-  function startEditUser(user: AdminUser) {
+  function openEditUserModal(user: AdminUser) {
+    setError('')
     setEditingUser(user)
-    setUserForm({
+    setEditUserForm({
       nombre: user.nombre,
       apellido_paterno: user.apellido_paterno,
       apellido_materno: user.apellido_materno,
@@ -360,25 +372,42 @@ export default function Administration({
     })
   }
 
-  async function saveUser(event: FormEvent<HTMLFormElement>) {
+  async function handleCreateUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setBusy(true)
     setError('')
     setMessage('')
     try {
+      const result = await sendRequest('/api/v1/admin/usuarios/', 'POST', createUserForm)
+      setCreateUserForm(EMPTY_USER_FORM)
+      setMessage(isRecord(result) && typeof result.mensaje === 'string'
+        ? result.mensaje
+        : 'Usuario creado y contraseña enviada.')
+      await loadCurrentData(1, query, stateFilter)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'No se pudo crear el usuario.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleUpdateUser(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!editingUser) return
+    setBusy(true)
+    setError('')
+    setMessage('')
+    try {
       const result = await sendRequest(
-        editingUser
-          ? `/api/v1/admin/usuarios/${editingUser.id}/`
-          : '/api/v1/admin/usuarios/',
-        editingUser ? 'PUT' : 'POST',
-        userForm,
+        `/api/v1/admin/usuarios/${editingUser.id}/`,
+        'PUT',
+        editUserForm,
       )
       setEditingUser(null)
-      startCreateUser()
       setMessage(isRecord(result) && typeof result.mensaje === 'string'
         ? result.mensaje
         : 'Los datos del usuario se guardaron.')
-      await loadCurrentData(1, query, stateFilter)
+      await loadCurrentData(page, query, stateFilter)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo guardar el usuario.')
     } finally {
@@ -429,21 +458,10 @@ export default function Administration({
     }
   }
 
-  function startCreateStudent() {
-    setEditingStudent(null)
-    setStudentForm({
-      nombre: '',
-      apellido_paterno: '',
-      apellido_materno: '',
-      correo: '',
-      curso_id: '',
-      numero_lista: '',
-    })
-  }
-
-  function startEditStudent(student: AdminStudent) {
+  function openEditStudentModal(student: AdminStudent) {
+    setError('')
     setEditingStudent(student)
-    setStudentForm({
+    setEditStudentForm({
       nombre: student.nombre,
       apellido_paterno: student.apellido_paterno,
       apellido_materno: student.apellido_materno,
@@ -453,21 +471,36 @@ export default function Administration({
     })
   }
 
-  async function saveStudent(event: FormEvent<HTMLFormElement>) {
+  async function handleCreateStudent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setBusy(true)
     setError('')
     try {
-      await sendRequest(
-        editingStudent
-          ? `/api/v1/admin/estudiantes/${editingStudent.id}/`
-          : '/api/v1/admin/estudiantes/',
-        editingStudent ? 'PUT' : 'POST',
-        studentForm,
-      )
-      startCreateStudent()
-      setMessage(editingStudent ? 'Estudiante actualizado.' : 'Estudiante registrado.')
+      await sendRequest('/api/v1/admin/estudiantes/', 'POST', createStudentForm)
+      setCreateStudentForm(EMPTY_STUDENT_FORM)
+      setMessage('Estudiante registrado.')
       await loadCurrentData(1, query, stateFilter)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'No se pudo registrar al estudiante.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleUpdateStudent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!editingStudent) return
+    setBusy(true)
+    setError('')
+    try {
+      await sendRequest(
+        `/api/v1/admin/estudiantes/${editingStudent.id}/`,
+        'PUT',
+        editStudentForm,
+      )
+      setEditingStudent(null)
+      setMessage('Estudiante actualizado.')
+      await loadCurrentData(page, query, stateFilter)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'No se pudo guardar al estudiante.')
     } finally {
@@ -603,26 +636,25 @@ export default function Administration({
             <label>Último acceso desde<input type="date" value={accessDateFrom} onChange={(event) => setAccessDateFrom(event.target.value)} /></label>
             <label>Último acceso hasta<input type="date" value={accessDateTo} onChange={(event) => setAccessDateTo(event.target.value)} /></label>
             <button className="button--quiet" onClick={() => void loadCurrentData(1, query, stateFilter)} type="button">Buscar</button>
-            <button className="administration__primary" onClick={startCreateUser} type="button">Nuevo usuario</button>
           </section>
-          <form className="dashboard-panel administration__form" onSubmit={(event) => void saveUser(event)}>
-            <h2>{editingUser ? `Editar ${editingUser.nombre} ${editingUser.apellido_paterno}` : 'Crear usuario'}</h2>
+
+          <form className="dashboard-panel administration__form" onSubmit={(event) => void handleCreateUser(event)}>
+            <h2>Crear usuario</h2>
             <div className="administration__form-grid">
-              <label>Nombres<input required value={userForm.nombre} onChange={(event) => setUserForm({ ...userForm, nombre: event.target.value })} /></label>
-              <label>Apellido paterno<input required value={userForm.apellido_paterno} onChange={(event) => setUserForm({ ...userForm, apellido_paterno: event.target.value })} /></label>
-              <label>Apellido materno<input required value={userForm.apellido_materno} onChange={(event) => setUserForm({ ...userForm, apellido_materno: event.target.value })} /></label>
-              <label>Correo institucional<input required type="email" value={userForm.correo} onChange={(event) => setUserForm({ ...userForm, correo: event.target.value })} /></label>
-              <label>Rol<select required value={userForm.rol_id} onChange={(event) => setUserForm({ ...userForm, rol_id: event.target.value })}><option value="">Selecciona un rol</option>{roles.map((role) => <option key={role.id} value={role.id}>{role.nombre}</option>)}</select></label>
-              {roles.find((role) => String(role.id) === userForm.rol_id)?.nombre === 'Profesor Jefe' && (
-                <label>Curso asignado<select required value={userForm.curso_id} onChange={(event) => setUserForm({ ...userForm, curso_id: event.target.value })}><option value="">Selecciona un curso</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.nombre}</option>)}</select></label>
+              <label>Nombres<input required value={createUserForm.nombre} onChange={(event) => setCreateUserForm({ ...createUserForm, nombre: event.target.value })} /></label>
+              <label>Apellido paterno<input required value={createUserForm.apellido_paterno} onChange={(event) => setCreateUserForm({ ...createUserForm, apellido_paterno: event.target.value })} /></label>
+              <label>Apellido materno<input required value={createUserForm.apellido_materno} onChange={(event) => setCreateUserForm({ ...createUserForm, apellido_materno: event.target.value })} /></label>
+              <label>Correo institucional<input required type="email" value={createUserForm.correo} onChange={(event) => setCreateUserForm({ ...createUserForm, correo: event.target.value })} /></label>
+              <label>Rol<select required value={createUserForm.rol_id} onChange={(event) => setCreateUserForm({ ...createUserForm, rol_id: event.target.value })}><option value="">Selecciona un rol</option>{roles.map((role) => <option key={role.id} value={role.id}>{role.nombre}</option>)}</select></label>
+              {roles.find((role) => String(role.id) === createUserForm.rol_id)?.nombre === 'Profesor Jefe' && (
+                <label>Curso asignado<select required value={createUserForm.curso_id} onChange={(event) => setCreateUserForm({ ...createUserForm, curso_id: event.target.value })}><option value="">Selecciona un curso</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.nombre}</option>)}</select></label>
               )}
-              {editingUser && <label>Nueva contraseña (opcional)<input minLength={12} type="password" value={userForm.contrasena} onChange={(event) => setUserForm({ ...userForm, contrasena: event.target.value })} /></label>}
             </div>
             <div className="administration__actions">
-              <button className="administration__primary" disabled={busy} type="submit">{busy ? 'Guardando…' : editingUser ? 'Guardar usuario' : 'Crear y enviar contraseña'}</button>
-              {editingUser && <button className="button--quiet" onClick={startCreateUser} type="button">Cancelar</button>}
+              <button className="administration__primary" disabled={busy} type="submit">{busy ? 'Guardando…' : 'Crear y enviar contraseña'}</button>
             </div>
           </form>
+
           <section className="dashboard-panel">
             <div className="dashboard-panel__header"><h2>Funcionarios</h2><span>{total} usuarios</span></div>
             {selected.length > 0 && <div className="administration__actions">
@@ -639,7 +671,7 @@ export default function Administration({
                   <td>{formatDate(user.ultimo_acceso)}</td>
                   <td>{user.bloqueado ? 'Bloqueada' : user.activo ? 'Activa' : 'Inactiva'}{user.primer_ingreso && <small>Debe cambiar contraseña</small>}</td>
                   <td className="administration__row-actions">
-                    <button className="button--quiet" disabled={busy} onClick={() => startEditUser(user)} type="button">Editar</button>
+                    <button className="button--quiet" disabled={busy} onClick={() => openEditUserModal(user)} type="button">Editar</button>
                     <button className="button--quiet" disabled={busy} onClick={() => void userAction(user, 'estado')} type="button">{user.activo ? 'Desactivar' : 'Activar'}</button>
                     {user.bloqueado && <button className="button--quiet" disabled={busy} onClick={() => void userAction(user, 'desbloquear')} type="button">Desbloquear</button>}
                     <button className="administration__danger" disabled={busy} onClick={() => void userAction(user, 'eliminar')} type="button">Eliminar</button>
@@ -682,21 +714,22 @@ export default function Administration({
             }}><option value="">Todos</option><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select></label>
             <button className="button--quiet" onClick={() => void loadCurrentData(1, query, stateFilter)} type="button">Buscar</button>
           </section>
-          <form className="dashboard-panel administration__form" onSubmit={(event) => void saveStudent(event)}>
-            <h2>{editingStudent ? 'Editar estudiante' : 'Registrar estudiante'}</h2>
+
+          <form className="dashboard-panel administration__form" onSubmit={(event) => void handleCreateStudent(event)}>
+            <h2>Registrar estudiante</h2>
             <div className="administration__form-grid">
-              <label>Nombres<input required value={studentForm.nombre} onChange={(event) => setStudentForm({ ...studentForm, nombre: event.target.value })} /></label>
-              <label>Apellido paterno<input required value={studentForm.apellido_paterno} onChange={(event) => setStudentForm({ ...studentForm, apellido_paterno: event.target.value })} /></label>
-              <label>Apellido materno<input required value={studentForm.apellido_materno} onChange={(event) => setStudentForm({ ...studentForm, apellido_materno: event.target.value })} /></label>
-              <label>Correo (opcional)<input type="email" value={studentForm.correo} onChange={(event) => setStudentForm({ ...studentForm, correo: event.target.value })} /></label>
-              <label>Curso<select required value={studentForm.curso_id} onChange={(event) => setStudentForm({ ...studentForm, curso_id: event.target.value })}><option value="">Selecciona un curso</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.nombre}</option>)}</select></label>
-              <label>N.º de lista<input min="0" type="number" value={studentForm.numero_lista} onChange={(event) => setStudentForm({ ...studentForm, numero_lista: event.target.value })} /></label>
+              <label>Nombres<input required value={createStudentForm.nombre} onChange={(event) => setCreateStudentForm({ ...createStudentForm, nombre: event.target.value })} /></label>
+              <label>Apellido paterno<input required value={createStudentForm.apellido_paterno} onChange={(event) => setCreateStudentForm({ ...createStudentForm, apellido_paterno: event.target.value })} /></label>
+              <label>Apellido materno<input required value={createStudentForm.apellido_materno} onChange={(event) => setCreateStudentForm({ ...createStudentForm, apellido_materno: event.target.value })} /></label>
+              <label>Correo (opcional)<input type="email" value={createStudentForm.correo} onChange={(event) => setCreateStudentForm({ ...createStudentForm, correo: event.target.value })} /></label>
+              <label>Curso<select required value={createStudentForm.curso_id} onChange={(event) => setCreateStudentForm({ ...createStudentForm, curso_id: event.target.value })}><option value="">Selecciona un curso</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.nombre}</option>)}</select></label>
+              <label>N.º de lista<input min="0" type="number" value={createStudentForm.numero_lista} onChange={(event) => setCreateStudentForm({ ...createStudentForm, numero_lista: event.target.value })} /></label>
             </div>
             <div className="administration__actions">
-              <button className="administration__primary" disabled={busy} type="submit">{editingStudent ? 'Guardar estudiante' : 'Registrar estudiante'}</button>
-              {editingStudent && <button className="button--quiet" onClick={startCreateStudent} type="button">Cancelar</button>}
+              <button className="administration__primary" disabled={busy} type="submit">Registrar estudiante</button>
             </div>
           </form>
+
           <form className="dashboard-panel administration__import" onSubmit={(event) => void importStudents(event)}>
             <h2>Importación desde Excel</h2>
             <p>Usa un archivo .xlsx con columnas: Nombres, apellido paterno, apellido materno, grado, paralelo y número de lista (opcional).</p>
@@ -705,32 +738,34 @@ export default function Administration({
               <button className="button--quiet" disabled={busy || !upload} type="submit">Importar archivo</button>
             </div>
           </form>
+
           <section className="dashboard-panel">
-          <div className="dashboard-panel__header"><h2>Últimas importaciones</h2><span>{studentImports.length} operaciones</span></div>
-          {studentImports.length ? (
-            <div className="dashboard-table-wrap"><table className="dashboard-table">
-              <thead><tr><th>Fecha</th><th>Archivo / operador</th><th>Agregados</th><th>Duplicados / omitidos</th></tr></thead>
-              <tbody>{studentImports.map((item) => (
-                <tr key={`${item.realizado_en}-${item.archivo}`}>
-                  <td>{formatDateTime(item.realizado_en)}</td>
-                  <td>{item.archivo}<small>{item.importador}</small></td>
-                  <td>
-                    {item.alumnos_agregados.length}
-                    {item.alumnos_agregados.length > 0 && (
-                      <details><summary>Ver alumnos agregados</summary>{item.alumnos_agregados.map((name) => <small key={name}>{name}</small>)}</details>
-                    )}
-                  </td>
-                  <td>
-                    {item.duplicados_detectados.length} duplicados · {item.filas_omitidas} omitidos
-                    {item.duplicados_detectados.length > 0 && (
-                      <details><summary>Ver duplicados detectados</summary>{item.duplicados_detectados.map((name) => <small key={name}>{name}</small>)}</details>
-                    )}
-                  </td>
-                </tr>
-              ))}</tbody>
-            </table></div>
-          ) : <p className="dashboard-empty">Aún no se han importado alumnos.</p>}
+            <div className="dashboard-panel__header"><h2>Últimas importaciones</h2><span>{studentImports.length} operaciones</span></div>
+            {studentImports.length ? (
+              <div className="dashboard-table-wrap"><table className="dashboard-table">
+                <thead><tr><th>Fecha</th><th>Archivo / operador</th><th>Agregados</th><th>Duplicados / omitidos</th></tr></thead>
+                <tbody>{studentImports.map((item) => (
+                  <tr key={`${item.realizado_en}-${item.archivo}`}>
+                    <td>{formatDateTime(item.realizado_en)}</td>
+                    <td>{item.archivo}<small>{item.importador}</small></td>
+                    <td>
+                      {item.alumnos_agregados.length}
+                      {item.alumnos_agregados.length > 0 && (
+                        <details><summary>Ver alumnos agregados</summary>{item.alumnos_agregados.map((name) => <small key={name}>{name}</small>)}</details>
+                      )}
+                    </td>
+                    <td>
+                      {item.duplicados_detectados.length} duplicados · {item.filas_omitidas} omitidos
+                      {item.duplicados_detectados.length > 0 && (
+                        <details><summary>Ver duplicados detectados</summary>{item.duplicados_detectados.map((name) => <small key={name}>{name}</small>)}</details>
+                      )}
+                    </td>
+                  </tr>
+                ))}</tbody>
+              </table></div>
+            ) : <p className="dashboard-empty">Aún no se han importado alumnos.</p>}
           </section>
+
           <section className="dashboard-panel">
             <div className="dashboard-panel__header"><h2>Estudiantes</h2><span>{total} registros</span></div>
             {loading ? <p role="status">Cargando estudiantes…</p> : (
@@ -743,7 +778,7 @@ export default function Administration({
                     <td>{student.curso}</td><td>{student.activo ? 'Activo' : 'Inactivo'}</td>
                     <td className="administration__row-actions">
                       <button className="button--quiet" disabled={busy} onClick={() => void viewStudent(student)} type="button">Ficha</button>
-                      <button className="button--quiet" disabled={busy} onClick={() => startEditStudent(student)} type="button">Editar</button>
+                      <button className="button--quiet" disabled={busy} onClick={() => openEditStudentModal(student)} type="button">Editar</button>
                       <button className="button--quiet" disabled={busy} onClick={() => void toggleStudent(student)} type="button">{student.activo ? 'Desactivar' : 'Activar'}</button>
                       <button className="administration__danger" disabled={busy} onClick={() => void removeStudent(student)} type="button">Quitar</button>
                     </td>
@@ -785,6 +820,238 @@ export default function Administration({
             <Pagination page={page} totalPages={totalPages} busy={loading} onPage={(value) => void loadCurrentData(value, query, stateFilter)} />
           </section>
         </>
+      )}
+
+      {/* MODAL EMERGENTE: EDITAR USUARIO */}
+      {editingUser && (
+        <div
+          aria-labelledby="modal-edit-user-title"
+          aria-modal="true"
+          className="administration-modal__backdrop"
+          onClick={() => {
+            if (!busy) setEditingUser(null)
+          }}
+          role="dialog"
+        >
+          <form
+            className="dashboard-panel administration__form administration-modal__dialog"
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={(event) => void handleUpdateUser(event)}
+          >
+            <div className="administration-modal__header">
+              <h2 id="modal-edit-user-title">
+                Editar {editingUser.nombre} {editingUser.apellido_paterno}
+              </h2>
+              <button
+                aria-label="Cerrar ventana"
+                className="button--quiet"
+                disabled={busy}
+                onClick={() => setEditingUser(null)}
+                type="button"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="administration__form-grid">
+              <label>
+                Nombres
+                <input
+                  required
+                  value={editUserForm.nombre}
+                  onChange={(event) => setEditUserForm({ ...editUserForm, nombre: event.target.value })}
+                />
+              </label>
+              <label>
+                Apellido paterno
+                <input
+                  required
+                  value={editUserForm.apellido_paterno}
+                  onChange={(event) => setEditUserForm({ ...editUserForm, apellido_paterno: event.target.value })}
+                />
+              </label>
+              <label>
+                Apellido materno
+                <input
+                  required
+                  value={editUserForm.apellido_materno}
+                  onChange={(event) => setEditUserForm({ ...editUserForm, apellido_materno: event.target.value })}
+                />
+              </label>
+              <label>
+                Correo institucional
+                <input
+                  required
+                  type="email"
+                  value={editUserForm.correo}
+                  onChange={(event) => setEditUserForm({ ...editUserForm, correo: event.target.value })}
+                />
+              </label>
+              <label>
+                Rol
+                <select
+                  required
+                  value={editUserForm.rol_id}
+                  onChange={(event) => setEditUserForm({ ...editUserForm, rol_id: event.target.value })}
+                >
+                  <option value="">Selecciona un rol</option>
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.nombre}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {roles.find((role) => String(role.id) === editUserForm.rol_id)?.nombre === 'Profesor Jefe' && (
+                <label>
+                  Curso asignado
+                  <select
+                    required
+                    value={editUserForm.curso_id}
+                    onChange={(event) => setEditUserForm({ ...editUserForm, curso_id: event.target.value })}
+                  >
+                    <option value="">Selecciona un curso</option>
+                    {courses.map((course) => (
+                      <option key={course.id} value={course.id}>
+                        {course.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <label>
+                Nueva contraseña (opcional)
+                <input
+                  minLength={12}
+                  type="password"
+                  value={editUserForm.contrasena}
+                  onChange={(event) => setEditUserForm({ ...editUserForm, contrasena: event.target.value })}
+                />
+              </label>
+            </div>
+
+            <div className="administration__actions">
+              <button className="administration__primary" disabled={busy} type="submit">
+                {busy ? 'Guardando…' : 'Guardar usuario'}
+              </button>
+              <button
+                className="button--quiet"
+                disabled={busy}
+                onClick={() => setEditingUser(null)}
+                type="button"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* MODAL EMERGENTE: EDITAR ESTUDIANTE */}
+      {editingStudent && (
+        <div
+          aria-labelledby="modal-edit-student-title"
+          aria-modal="true"
+          className="administration-modal__backdrop"
+          onClick={() => {
+            if (!busy) setEditingStudent(null)
+          }}
+          role="dialog"
+        >
+          <form
+            className="dashboard-panel administration__form administration-modal__dialog"
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={(event) => void handleUpdateStudent(event)}
+          >
+            <div className="administration-modal__header">
+              <h2 id="modal-edit-student-title">
+                Editar estudiante: {editingStudent.nombre} {editingStudent.apellido_paterno}
+              </h2>
+              <button
+                aria-label="Cerrar ventana"
+                className="button--quiet"
+                disabled={busy}
+                onClick={() => setEditingStudent(null)}
+                type="button"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="administration__form-grid">
+              <label>
+                Nombres
+                <input
+                  required
+                  value={editStudentForm.nombre}
+                  onChange={(event) => setEditStudentForm({ ...editStudentForm, nombre: event.target.value })}
+                />
+              </label>
+              <label>
+                Apellido paterno
+                <input
+                  required
+                  value={editStudentForm.apellido_paterno}
+                  onChange={(event) => setEditStudentForm({ ...editStudentForm, apellido_paterno: event.target.value })}
+                />
+              </label>
+              <label>
+                Apellido materno
+                <input
+                  required
+                  value={editStudentForm.apellido_materno}
+                  onChange={(event) => setEditStudentForm({ ...editStudentForm, apellido_materno: event.target.value })}
+                />
+              </label>
+              <label>
+                Correo (opcional)
+                <input
+                  type="email"
+                  value={editStudentForm.correo}
+                  onChange={(event) => setEditStudentForm({ ...editStudentForm, correo: event.target.value })}
+                />
+              </label>
+              <label>
+                Curso
+                <select
+                  required
+                  value={editStudentForm.curso_id}
+                  onChange={(event) => setEditStudentForm({ ...editStudentForm, curso_id: event.target.value })}
+                >
+                  <option value="">Selecciona un curso</option>
+                  {courses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.nombre}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                N.º de lista
+                <input
+                  min="0"
+                  type="number"
+                  value={editStudentForm.numero_lista}
+                  onChange={(event) => setEditStudentForm({ ...editStudentForm, numero_lista: event.target.value })}
+                />
+              </label>
+            </div>
+
+            <div className="administration__actions">
+              <button className="administration__primary" disabled={busy} type="submit">
+                {busy ? 'Guardando…' : 'Guardar estudiante'}
+              </button>
+              <button
+                className="button--quiet"
+                disabled={busy}
+                onClick={() => setEditingStudent(null)}
+                type="button"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   )

@@ -44,6 +44,7 @@ type StatisticsProps = {
 
 type ChartType = 'bar' | 'line' | 'doughnut'
 const CHART_COLORS = ['#7b1a1a', '#d4a017', '#54a36b', '#db9841', '#5074a5', '#9564a5']
+const PAGE_SIZE = 10
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 const CURRENT_YEAR = new Date().getFullYear()
@@ -167,11 +168,17 @@ function StatChart({
       offset: total > 0 ? (precedingTotal / total) * circumference : 0,
     }
   })
-  const points = values.map((value, index) => {
-    const x = values.length < 2 ? 50 : (index / (values.length - 1)) * 100
-    const y = 90 - (value / max) * 80
-    return `${x},${y}`
-  }).join(' ')
+
+  const lineWidth = 360
+  const lineHeight = 100
+  const points = values
+    .map((value, index) => {
+      const x = values.length < 2 ? lineWidth / 2 : 12 + (index / (values.length - 1)) * (lineWidth - 24)
+      const y = 88 - (value / max) * 74
+      return `${x},${y}`
+    })
+    .join(' ')
+
   return (
     <article className={`stat-chart stat-chart--${type}`}>
       <div className="stat-chart__header">
@@ -202,15 +209,19 @@ function StatChart({
           <svg
             aria-label={`${title}: ${labels.map((label, index) => `${label}, ${values[index] ?? 0}`).join('; ')}`}
             className="stat-line-chart"
-            preserveAspectRatio="none"
+            preserveAspectRatio="xMidYMid meet"
             role="img"
-            viewBox="0 0 100 100"
+            viewBox={`0 0 ${lineWidth} ${lineHeight}`}
           >
-            <polyline points={points} />
+            <polyline fill="none" points={points} strokeWidth="2" />
             {values.map((value, index) => {
-              const x = values.length < 2 ? 50 : (index / (values.length - 1)) * 100
-              const y = 90 - (value / max) * 80
-              return <circle cx={x} cy={y} key={`${labels[index]}-${index}`} r="1.6" />
+              const x = values.length < 2 ? lineWidth / 2 : 12 + (index / (values.length - 1)) * (lineWidth - 24)
+              const y = 88 - (value / max) * 74
+              return (
+                <circle cx={x} cy={y} key={`${labels[index]}-${index}`} r="3.4">
+                  <title>{`${labels[index]}: ${value}`}</title>
+                </circle>
+              )
             })}
           </svg>
           <div className="stat-line-labels">
@@ -245,16 +256,16 @@ function StatChart({
           >
             <circle className="stat-doughnut-chart__track" cx="50" cy="50" r="40" />
             {chartSegments.map(({ length, offset }, index) => (
-                <circle
-                  className="stat-doughnut-chart__segment"
-                  cx="50"
-                  cy="50"
-                  key={`${labels[index]}-${index}`}
-                  r="40"
-                  stroke={CHART_COLORS[index % CHART_COLORS.length]}
-                  strokeDasharray={`${length} ${circumference - length}`}
-                  strokeDashoffset={-offset}
-                />
+              <circle
+                className="stat-doughnut-chart__segment"
+                cx="50"
+                cy="50"
+                key={`${labels[index]}-${index}`}
+                r="40"
+                stroke={CHART_COLORS[index % CHART_COLORS.length]}
+                strokeDasharray={`${length} ${circumference - length}`}
+                strokeDashoffset={-offset}
+              />
             ))}
           </svg>
           <ul className="stat-chart__legend">
@@ -283,6 +294,7 @@ function formatDate(value: string | null) {
 export default function Statistics({ accessToken }: StatisticsProps) {
   const [filters, setFilters] = useState<StatisticsFilters>({ ...DEFAULT_FILTERS })
   const [data, setData] = useState<StatisticsData | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
@@ -294,7 +306,10 @@ export default function Statistics({ accessToken }: StatisticsProps) {
       setError('')
       fetchStatistics(accessToken, filters)
         .then((result) => {
-          if (active) setData(result)
+          if (active) {
+            setData(result)
+            setCurrentPage(1)
+          }
         })
         .catch((requestError: unknown) => {
           if (!active) return
@@ -350,6 +365,13 @@ export default function Statistics({ accessToken }: StatisticsProps) {
       : data && data.variacion_pct < 0
         ? 'negative'
         : 'neutral'
+
+  const totalRows = data?.tabla_datos.length ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE))
+  const safePage = Math.min(currentPage, totalPages)
+  const paginatedRows = data
+    ? data.tabla_datos.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+    : []
 
   return (
     <div className="dashboard-content statistics-page">
@@ -439,14 +461,14 @@ export default function Statistics({ accessToken }: StatisticsProps) {
               title="Tendencia mensual de casos"
               labels={data.meses_labels}
               values={data.mensual_data}
-              defaultType="line"
+              defaultType="bar"
             />
           </section>
 
           <section className="dashboard-panel" aria-labelledby="statistics-table-title">
             <div className="dashboard-panel__header">
               <h2 id="statistics-table-title">Detalle de casos según filtros</h2>
-              <span>{data.tabla_datos.length} registros</span>
+              <span>{totalRows.toLocaleString('es-CL')} registros</span>
             </div>
             <div className="dashboard-table-wrap">
               <table className="dashboard-table">
@@ -454,7 +476,7 @@ export default function Statistics({ accessToken }: StatisticsProps) {
                   <tr><th>ID</th><th>Título</th><th>Fecha</th><th>Curso(s)</th><th>Zona</th><th>Gravedad</th></tr>
                 </thead>
                 <tbody>
-                  {data.tabla_datos.map((row) => (
+                  {paginatedRows.map((row) => (
                     <tr key={row.caso_id}>
                       <td><span className="case-id">#{row.caso_id}</span></td>
                       <td>{row.titulo}</td>
@@ -464,12 +486,37 @@ export default function Statistics({ accessToken }: StatisticsProps) {
                       <td>{row.gravedad}</td>
                     </tr>
                   ))}
-                  {data.tabla_datos.length === 0 && (
+                  {totalRows === 0 && (
                     <tr><td className="statistics-empty-row" colSpan={6}>No hay casos que coincidan con los filtros.</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
+            {totalRows > 0 && (
+              <div className="dashboard-pagination">
+                <span>
+                  Página {safePage} de {totalPages} · {totalRows.toLocaleString('es-CL')} casos
+                </span>
+                <div>
+                  <button
+                    className="button--quiet"
+                    disabled={safePage <= 1 || loading}
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                    type="button"
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    className="button--quiet"
+                    disabled={safePage >= totalPages || loading}
+                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                    type="button"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         </>
       )}
